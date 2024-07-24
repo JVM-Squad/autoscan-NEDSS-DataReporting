@@ -134,16 +134,6 @@ public class PostProcessingService {
                     case INVESTIGATION:
                         List<InvestigationResult> invData = processTopic(keyTopic, entity, ids,
                                 investigationRepository::executeStoredProcForPublicHealthCaseIds);
-                        ids.forEach(id -> {
-                            if (idVals.containsKey(id)) {
-                                processId(id, idVals.get(id),
-                                        investigationRepository::executeStoredProcForPageBuilder, Entity.CASE_ANSWERS);
-                                idVals.remove(id);
-                            }
-                        });
-                        processTopic(keyTopic, Entity.F_PAGE_CASE, ids,
-                                investigationRepository::executeStoredProcForFPageCase);
-                        datamartProcessor.process(invData);
 
                         /* CNDIT-1584: Notifications has a dependency on Investigation and should be processed
                         together to eliminate timing issues.*/
@@ -152,6 +142,19 @@ public class PostProcessingService {
                                 Entity.NOTIFICATIONS,
                                 ids,
                                 notificationRepository::executeStoredProcForNotificationIds);
+
+                        ids.forEach(id -> {
+                            if (idVals.containsKey(id)) {
+                                processId(id, idVals.get(id),
+                                        investigationRepository::executeStoredProcForPageBuilder, Entity.CASE_ANSWERS);
+                                idVals.remove(id);
+                            }
+                        });
+
+                        processTopic(keyTopic, Entity.F_PAGE_CASE, ids,
+                                investigationRepository::executeStoredProcForFPageCase);
+                        datamartProcessor.process(invData);
+
                         break;
                     case NOTIFICATIONS:
 //                        processTopic(keyTopic, entity, ids,
