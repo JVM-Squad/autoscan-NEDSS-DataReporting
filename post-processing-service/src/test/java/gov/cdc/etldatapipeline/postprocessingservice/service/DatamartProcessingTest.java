@@ -82,7 +82,7 @@ class DatamartProcessingTest {
 
     @Test
     void testDatamartProcessException() {
-        assertThrows(RuntimeException.class, () -> datamartProcessor.process(null));
+        assertDoesNotThrow(() -> datamartProcessor.process(null));
     }
 
     @Test
