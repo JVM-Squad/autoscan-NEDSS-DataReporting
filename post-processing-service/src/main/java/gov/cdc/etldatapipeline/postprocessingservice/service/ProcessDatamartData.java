@@ -1,9 +1,9 @@
 package gov.cdc.etldatapipeline.postprocessingservice.service;
 
 import gov.cdc.etldatapipeline.commonutil.json.CustomJsonGeneratorImpl;
+import gov.cdc.etldatapipeline.postprocessingservice.repository.model.InvestigationResult;
 import gov.cdc.etldatapipeline.postprocessingservice.repository.model.dto.Datamart;
 import gov.cdc.etldatapipeline.postprocessingservice.repository.model.dto.DatamartKey;
-import gov.cdc.etldatapipeline.postprocessingservice.repository.model.InvestigationResult;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -13,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -27,19 +28,22 @@ public class ProcessDatamartData {
     public String datamartTopic;
 
     public void process(List<InvestigationResult> data) {
-        try {
-            for (InvestigationResult invResult : data) {
-                if (invResult.getPatientKey().equals(1L)) continue; // skipping now for unprocessed patients
+        if (Objects.nonNull(data) && !data.isEmpty()) {
+            try {
+                for (InvestigationResult invResult : data) {
+                    if (invResult.getPatientKey().equals(1L)) continue; // skipping now for unprocessed patients
 
-                Datamart dmart = modelMapper.map(invResult, Datamart.class);
-                String jsonKey = jsonGenerator.generateStringJson(DatamartKey.builder().publicHealthCaseUid(invResult.getPublicHealthCaseUid()).build());
-                String jsonMessage = jsonGenerator.generateStringJson(dmart);
+                    Datamart dmart = modelMapper.map(invResult, Datamart.class);
+                    String jsonKey = jsonGenerator.generateStringJson(
+                            DatamartKey.builder().publicHealthCaseUid(invResult.getPublicHealthCaseUid()).build());
+                    String jsonMessage = jsonGenerator.generateStringJson(dmart);
 
-                kafkaTemplate.send(datamartTopic, jsonKey, jsonMessage);
+                    kafkaTemplate.send(datamartTopic, jsonKey, jsonMessage);
+                }
+            } catch (Exception e) {
+                logger.error("Error processing Datamart JSON array from investigation result data: {}", e.getMessage());
+                throw new RuntimeException(e);
             }
-        } catch (Exception e) {
-            logger.error("Error processing Datamart JSON array from investigation result data: {}", e.getMessage());
-            throw new RuntimeException(e);
         }
     }
 }

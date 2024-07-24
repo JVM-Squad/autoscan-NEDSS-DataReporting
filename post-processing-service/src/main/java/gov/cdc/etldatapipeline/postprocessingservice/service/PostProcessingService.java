@@ -99,8 +99,20 @@ public class PostProcessingService {
             logger.info("Got this payload: {} from the topic: {}", payloadNode, topic);
 
             Datamart dmData = objectMapper.readValue(payloadNode.get(PAYLOAD).toString(), Datamart.class);
+            if(Objects.isNull(dmData)) {
+                logger.warn("For Payload : {} \n DataMart object is null. Skipping further processing");
+                return;
+            }
             Map<Long, Long> dmMap = new HashMap<>();
+            if(Objects.isNull(dmData.getPublicHealthCaseUid())|| Objects.isNull(dmData.getPatientUid())) {
+                logger.warn("For Payload: {} \n DataMart Public Health Case/Patient Id is null. Skipping further processing", payloadNode);
+                return;
+            }
             dmMap.put(dmData.getPublicHealthCaseUid(), dmData.getPatientUid());
+            if(Objects.isNull(dmData.getDatamart())){
+                logger.warn("For payload: {} \nDataMart is null. Skipping further processing", payloadNode);
+                return;
+            }
             dmCache.computeIfAbsent(dmData.getDatamart(), k -> ConcurrentHashMap.newKeySet()).add(dmMap);
         } catch (Exception e) {
             logger.error("Error processing datamart message: {}", e.getMessage());
