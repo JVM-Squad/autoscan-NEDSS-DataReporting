@@ -64,9 +64,9 @@ BEGIN
                                   (SELECT (SELECT elp.cd                AS                [addr_elp_cd],
                                                   elp.use_cd            AS                [addr_elp_use_cd],
                                                   pl.postal_locator_uid as                [addr_pl_uid],
-                                                  STRING_ESCAPE(pl.street_addr1, 'json')  streetAddr1,
-                                                  STRING_ESCAPE(pl.street_addr2, 'json')  streetAddr2,
-                                                  STRING_ESCAPE(pl.city_desc_txt, 'json') city,
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.street_addr1, 'json'),1,50))) as street_addr1,
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.street_addr2, 'json'),1,50))) as street_addr2,
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.city_desc_txt, 'json'),1,50))) as city,
                                                   pl.zip_cd                               zip,
                                                   pl.cnty_cd                              cntyCd,
                                                   pl.state_cd                             state,
@@ -92,7 +92,7 @@ BEGIN
                                   (SELECT (SELECT tl.tele_locator_uid AS                               [ph_tl_uid],
                                                   elp.cd              AS                               [ph_elp_cd],
                                                   elp.use_cd          AS                               [ph_elp_use_cd],
-                                                  REPLACE(REPLACE(tl.phone_nbr_txt, '-', ''), ' ', '') telephoneNbr,
+                                                  REPLACE(tl.phone_nbr_txt, ' ', '') 				   telephoneNbr,
                                                   tl.extension_txt                                     extensionTxt,
                                                   elp.locator_desc_txt                                 phone_comments
                                            FROM nbs_odse.dbo.Entity_locator_participation elp WITH (NOLOCK)
@@ -100,6 +100,7 @@ BEGIN
                                                          ON elp.locator_uid = tl.tele_locator_uid
                                            WHERE elp.entity_uid = p.person_uid
                                              AND elp.CLASS_CD = 'TELE'
+                                             AND elp.CD IN ('O', 'CP')
                                              AND elp.RECORD_STATUS_CD = 'ACTIVE'
                                              AND tl.phone_nbr_txt IS NOT NULL
                                            FOR json path, INCLUDE_NULL_VALUES) AS phone) AS phone,
@@ -113,6 +114,8 @@ BEGIN
                                                          ON elp.locator_uid = tl.tele_locator_uid
                                            WHERE elp.entity_uid = p.person_uid
                                              AND elp.class_cd = 'TELE'
+                                             AND elp.USE_CD='WP'
+                                             AND elp.CD='O'
                                              AND elp.RECORD_STATUS_CD = 'ACTIVE'
                                              AND tl.email_address IS NOT NULL
                                            FOR json path, INCLUDE_NULL_VALUES) AS email) AS email,
@@ -145,9 +148,8 @@ BEGIN
                                   (SELECT (SELECT ei.entity_uid,
                                                   ei.type_cd          typeCd,
                                                   ei.record_status_cd recordStatusCd,
-                                                  STRING_ESCAPE(
-                                                          REPLACE(REPLACE(ei.root_extension_txt, '-', ''), ' ', ''),
-                                                          'json')     rootExtensionTxt,
+                                                  STRING_ESCAPE(REPLACE(ei.root_extension_txt, ' ', ''),
+                                                                'json')      rootExtensionTxt,
                                                   ei.entity_id_seq,
                                                   ei.assigning_authority_cd
                                            FROM nbs_odse.dbo.entity_id ei WITH (NOLOCK)

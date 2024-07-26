@@ -121,7 +121,7 @@ BEGIN
                nrt.outbreak_name               as OUTBREAK_NAME_DESC
         into #temp_inv_table
         from dbo.nrt_investigation nrt
-                 left join dbo.investigation i on i.case_uid = nrt.public_health_case_uid
+                 left join dbo.investigation i with (nolock) on i.case_uid = nrt.public_health_case_uid
         where nrt.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@id_list, ','));
 
         if @debug = 'true' select * from #temp_inv_table;
@@ -212,7 +212,7 @@ BEGIN
             [CONTACT_INFECTIOUS_TO_DATE]    = inv.CONTACT_INFECTIOUS_TO_DATE,
             [CONTACT_INV_STATUS]            = inv.CONTACT_INV_STATUS,
             [PROGRAM_AREA_DESCRIPTION]      = inv.PROGRAM_AREA_DESCRIPTION,
-            [ADD_TIME]                      = inv.ADD_TIME,
+            [ADD_TIME]          = inv.ADD_TIME,
             [LAST_CHG_TIME]                 = inv.LAST_CHG_TIME,
             [INVESTIGATION_ADDED_BY]        = inv.INVESTIGATION_ADDED_BY,
             [INVESTIGATION_LAST_UPDATED_BY] = inv.INVESTIGATION_LAST_UPDATED_BY,
@@ -223,7 +223,7 @@ BEGIN
             [LEGACY_CASE_ID]                = inv.LEGACY_CASE_ID,
             [OUTBREAK_NAME_DESC]            = inv.OUTBREAK_NAME_DESC
         from #temp_inv_table inv
-                 inner join dbo.investigation i on inv.case_uid = i.case_uid
+                 inner join dbo.investigation i with (nolock) on inv.case_uid = i.case_uid
             and inv.investigation_key = i.investigation_key
             and i.investigation_key is not null;
 
@@ -402,7 +402,7 @@ BEGIN
                inv.LEGACY_CASE_ID,
                inv.OUTBREAK_NAME_DESC
         FROM #temp_inv_table inv
-                 join dbo.nrt_investigation_key k on inv.case_uid = k.case_uid
+                 join dbo.nrt_investigation_key k with (nolock) on inv.case_uid = k.case_uid
         where inv.investigation_key is null;
 
         COMMIT TRANSACTION;
@@ -440,8 +440,8 @@ BEGIN
                         cm.CONFIRMATION_METHOD_KEY
         into #temp_cm_table
         from dbo.nrt_investigation_confirmation nrt
-                 left join dbo.confirmation_method cm on cm.confirmation_method_cd = nrt.confirmation_method_cd
-                 left join dbo.investigation i on i.case_uid = nrt.public_health_case_uid
+                 left join dbo.confirmation_method cm with (nolock) on cm.confirmation_method_cd = nrt.confirmation_method_cd
+                 left join dbo.investigation i with (nolock) on i.case_uid = nrt.public_health_case_uid
         where nrt.public_health_case_uid in (select value FROM STRING_SPLIT(@id_list, ','));
 
         if @debug = 'true' select * from #temp_cm_table;
@@ -452,14 +452,14 @@ BEGIN
         update cm
         set cm.CONFIRMATION_METHOD_DESC = cmt.CONFIRMATION_METHOD_DESC_TXT
         from #temp_cm_table cmt
-                 inner join dbo.confirmation_method cm
+                 inner join dbo.confirmation_method cm with (nolock)
                             on cmt.confirmation_method_key = cm.confirmation_method_key
                                 and cmt.CONFIRMATION_METHOD_KEY is not null;
 
         update cmg
         set cmg.CONFIRMATION_DT = cmt.CONFIRMATION_DT
         from #temp_cm_table cmt
-                 inner join dbo.confirmation_method_group cmg
+                 inner join dbo.confirmation_method_group cmg with (nolock)
                             on cmt.investigation_key = cmg.investigation_key
                                 and cmt.confirmation_method_key = cmg.confirmation_method_key
                                 and cmt.CONFIRMATION_METHOD_KEY is not null;
@@ -503,7 +503,7 @@ BEGIN
         insert into dbo.confirmation_method(CONFIRMATION_METHOD_KEY,CONFIRMATION_METHOD_CD,CONFIRMATION_METHOD_DESC)
         select distinct cmk.D_CONFIRMATION_METHOD_KEY, cmt.confirmation_method_cd, cmt.CONFIRMATION_METHOD_DESC_TXT
         from #temp_cm_table cmt
-                 join dbo.nrt_confirmation_method_key cmk on cmk.confirmation_method_cd = cmt.confirmation_method_cd
+                 join dbo.nrt_confirmation_method_key cmk with (nolock) on cmk.confirmation_method_cd = cmt.confirmation_method_cd
         where cmt.CONFIRMATION_METHOD_KEY is null
           and not exists (select confirmation_method_cd
                           from dbo.confirmation_method cd
@@ -513,8 +513,8 @@ BEGIN
         insert into dbo.CONFIRMATION_METHOD_GROUP ([INVESTIGATION_KEY],[CONFIRMATION_METHOD_KEY],[CONFIRMATION_DT])
         select cmt.INVESTIGATION_KEY, cm.CONFIRMATION_METHOD_KEY, cmt.CONFIRMATION_DT
         from #temp_cm_table cmt
-                 left outer join dbo.confirmation_method cm on cmt.confirmation_method_cd = cm.confirmation_method_cd
-                 left outer join dbo.confirmation_method_group cmg on cmt.investigation_key = cmg.investigation_key
+                 left outer join dbo.confirmation_method cm with (nolock) on cmt.confirmation_method_cd = cm.confirmation_method_cd
+                 left outer join dbo.confirmation_method_group cmg with (nolock) on cmt.investigation_key = cmg.investigation_key
         where cmg.investigation_key is null
           and cmg.confirmation_method_key is null;
 
@@ -575,9 +575,9 @@ BEGIN
                dtm.Datamart                       AS datamart,
                dtm.Stored_Procedure               AS stored_procedure
         FROM dbo.nrt_investigation nrt
-                 LEFT JOIN INVESTIGATION inv ON inv.CASE_UID = nrt.public_health_case_uid
-                 LEFT JOIN D_PATIENT pat ON pat.PATIENT_UID = nrt.patient_id
-                 LEFT JOIN dbo.nrt_datamart_metadata dtm ON dtm.condition_cd = nrt.cd
+                 LEFT JOIN INVESTIGATION inv with (nolock) ON inv.CASE_UID = nrt.public_health_case_uid
+                 LEFT JOIN D_PATIENT pat with (nolock) ON pat.PATIENT_UID = nrt.patient_id
+                 LEFT JOIN dbo.nrt_datamart_metadata dtm with (nolock) ON dtm.condition_cd = nrt.cd
         WHERE nrt.public_health_case_uid in
               (SELECT value FROM STRING_SPLIT(@id_list, ','));
 

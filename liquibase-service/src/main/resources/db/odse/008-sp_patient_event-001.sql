@@ -209,9 +209,9 @@ BEGIN
                                   (SELECT (SELECT elp.cd                                                                 AS [addr_elp_cd],
                                                   elp.use_cd                                                             AS [addr_elp_use_cd],
                                                   pl.postal_locator_uid                                                  as [addr_pl_uid],
-                                                  STRING_ESCAPE(pl.street_addr1, 'json')                                 AS [streetAddr1],
-                                                  STRING_ESCAPE(pl.street_addr2, 'json')                                 AS [streetAddr2],
-                                                  STRING_ESCAPE(pl.city_desc_txt, 'json')                                AS [city],
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.street_addr1, 'json'),1,50)))   AS street_addr1,
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.street_addr2, 'json'),1,50)))   AS street_addr2,
+                                                  LTRIM(RTRIM(SUBSTRING(STRING_ESCAPE(pl.city_desc_txt, 'json'),1,50)))  AS city,
                                                   pl.zip_cd                                                              AS [zip],
                                                   pl.cnty_cd                                                             AS [cntyCd],
                                                   pl.state_cd                                                            AS [state],
@@ -234,6 +234,7 @@ BEGIN
                                                     LEFT OUTER JOIN nbs_srte.dbo.Country_code cc with (nolock) ON cc.code = pl.cntry_cd
                                            WHERE elp.entity_uid = p.person_uid
                                              AND elp.class_cd = 'PST'
+                                             AND elp.use_cd IN ('H', 'BIR')
                                              AND elp.RECORD_STATUS_CD = 'ACTIVE'
                                            FOR json path, INCLUDE_NULL_VALUES) AS address) AS address,
                                   -- person phone
@@ -319,8 +320,8 @@ BEGIN
                                                   race_white_all,
                                                   race_all
                                            FROM nbs_odse.dbo.person_race pr WITH (NOLOCK)
-                                                    left outer join nbs_srte.dbo.race_code src ON pr.race_cd = src.code
-                                                    left outer join #temp_race_table trt on trt.patient_uid_race_out = p.person_uid
+                                                    left outer join nbs_srte.dbo.race_code src WITH (NOLOCK) ON pr.race_cd = src.code
+                                                    left outer join #temp_race_table trt WITH (NOLOCK) on trt.patient_uid_race_out = p.person_uid
                                            WHERE person_uid = p.person_uid
                                            FOR json path, INCLUDE_NULL_VALUES) AS race) AS race,
                                   -- Entity id
@@ -356,7 +357,7 @@ BEGIN
                ,0
                ,LEFT(@user_id_list, 199));
 
-    end try
+    END TRY
     BEGIN CATCH
 
 
@@ -384,4 +385,4 @@ BEGIN
 
     END CATCH
 
-end;
+END;
