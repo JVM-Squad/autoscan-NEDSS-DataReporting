@@ -16,6 +16,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -56,7 +57,7 @@ class DatamartProcessingTest {
     void testDatamartProcess() {
         String topic = "dummy_investigation";
         List<InvestigationResult> investigationResults = new ArrayList<>();
-        InvestigationResult invResult = getInvestigationResult();
+        InvestigationResult invResult = getInvestigationResult(123L);
         investigationResults.add(invResult);
 
         Function<InvestigationResult, List<String>> dmDetails =  r -> Arrays.asList(
@@ -81,8 +82,13 @@ class DatamartProcessingTest {
     }
 
     @Test
-    void testDatamartProcessException() {
+    void testDatamartProcessNoExceptionWhenDataIsNull() {
         assertDoesNotThrow(() -> datamartProcessor.process(null));
+    }
+
+    @Test
+    void testDatamartProcessException() {
+        assertThrows(RuntimeException.class, () -> datamartProcessor.process(Collections.singletonList(getInvestigationResult(null))));
     }
 
     @Test
@@ -101,9 +107,9 @@ class DatamartProcessingTest {
         assertEquals("sp_hepatitis_datamart_postprocessing", dm.getStoredProcedure());
     }
 
-    private InvestigationResult getInvestigationResult() {
+    private InvestigationResult getInvestigationResult(Long phcUid) {
         InvestigationResult investigationResult = new InvestigationResult();
-        investigationResult.setPublicHealthCaseUid(123L);
+        investigationResult.setPublicHealthCaseUid(phcUid);
         investigationResult.setInvestigationKey(100L);
         investigationResult.setPatientUid(456L);
         investigationResult.setPatientKey(200L);
@@ -111,6 +117,5 @@ class DatamartProcessingTest {
         investigationResult.setDatamart("Hepatitis_Datamart");
         investigationResult.setStoredProcedure("sp_hepatitis_datamart_postprocessing");
         return investigationResult;
-
     }
 }
