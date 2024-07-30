@@ -64,7 +64,13 @@ public class DataPostProcessor {
     public <T extends PersonExtendedProps> void processPersonAddress(String address, T pf) {
         if (!ObjectUtils.isEmpty(address)) {
             Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
-                    .filter(pAddress -> !ObjectUtils.isEmpty(pAddress.getPostalLocatorUid()))
+                    .filter(pa -> !ObjectUtils.isEmpty(pa.getPostalLocatorUid())
+                            && (pa.getUseCd().equalsIgnoreCase("H") || pa.getUseCd().equalsIgnoreCase("WP")))
+                    .max(Comparator.comparing(Address::getPostalLocatorUid))
+                    .map(n -> n.updatePerson(pf));
+            Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
+                    .filter(pa -> !ObjectUtils.isEmpty(pa.getPostalLocatorUid())
+                            && pa.getUseCd().equalsIgnoreCase("BIR"))
                     .max(Comparator.comparing(Address::getPostalLocatorUid))
                     .map(n -> n.updatePerson(pf));
         }

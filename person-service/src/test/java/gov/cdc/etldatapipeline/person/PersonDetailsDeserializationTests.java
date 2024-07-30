@@ -33,14 +33,13 @@ public class PersonDetailsDeserializationTests {
                 .withinCityLimitsInd("Y")
                 .country("United States")
                 .homeCountry("United States")
-                .birthCountry("Canada")
                 .useCd("H")
                 .cd("H")
                 .postalLocatorUid(10000010L)
                 .censusTract("3389.45")
                 .build();
 
-        assertEquals(3, addr.length);
+        assertEquals(4, addr.length);
         assertEquals(expected.toString(), addr[1].toString());
     }
 
