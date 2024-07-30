@@ -39,7 +39,7 @@ public class PersonDetailsDeserializationTests {
                 .censusTract("3389.45")
                 .build();
 
-        assertEquals(4, addr.length);
+        assertEquals(5, addr.length);
         assertEquals(expected.toString(), addr[1].toString());
     }
 

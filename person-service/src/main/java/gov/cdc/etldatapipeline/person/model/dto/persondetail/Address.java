@@ -15,7 +15,9 @@ import org.springframework.util.StringUtils;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Address implements ExtendPerson {
+    @JsonProperty("street_addr1")
     private String streetAddr1;
+    @JsonProperty("street_addr2")
     private String streetAddr2;
     private String city;
     private String zip;

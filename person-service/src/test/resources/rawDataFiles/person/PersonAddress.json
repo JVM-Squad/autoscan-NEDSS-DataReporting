@@ -1,7 +1,7 @@
 [
   {
-    "streetAddr1": "123 Main St.",
-    "streetAddr2": "",
+    "street_addr1": "1023 Main St.",
+    "street_addr2": "",
     "city": "Atlanta",
     "zip": "30024",
     "cntyCd": "13135",
@@ -15,8 +15,8 @@
     "addr_pl_uid": 10000009
   },
   {
-    "streetAddr1": "123 Main St.",
-    "streetAddr2": "",
+    "street_addr1": "123 Main St.",
+    "street_addr2": "",
     "city": "Atlanta",
     "zip": "30025",
     "cntyCd": "13135",
@@ -34,8 +34,8 @@
     "census_tract": "3389.45"
   },
   {
-    "streetAddr1": "123 Main St.",
-    "streetAddr2": "",
+    "street_addr1": "321 Main St.",
+    "street_addr2": "",
     "city": "Atlanta",
     "zip": "30025",
     "cntyCd": "13135",
@@ -53,8 +53,25 @@
     "census_tract": "3389.45"
   },
   {
-    "streetAddr1": "Test street",
-    "streetAddr2": "",
+    "addr_elp_cd": "O",
+    "addr_elp_use_cd": "WP",
+    "addr_pl_uid": 10050575,
+    "street_addr1": "98011 Reedle Rd",
+    "street_addr2": "",
+    "city": null,
+    "zip": null,
+    "cntyCd": "",
+    "state": "13",
+    "cntryCd": "840",
+    "state_desc": "Georgia",
+    "county": null,
+    "within_city_limits_ind": null,
+    "country": "United States",
+    "address_comments": ""
+  },
+  {
+    "street_addr1": "Test street",
+    "street_addr2": "",
     "city": "NYC",
     "zip": ""
   }
