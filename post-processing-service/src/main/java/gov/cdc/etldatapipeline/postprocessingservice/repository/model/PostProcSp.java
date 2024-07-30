@@ -10,7 +10,7 @@ WHEN WE SEND DATA BACK FROM THE STORED PROC FOR FURTHER PROCESSING.
 
 @Entity
 @Data
-public class PatientStoredProc {
+public class PostProcSp {
     @Id
     private Long id;
 }

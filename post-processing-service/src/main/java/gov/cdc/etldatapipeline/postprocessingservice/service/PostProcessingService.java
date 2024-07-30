@@ -36,11 +36,8 @@ public class PostProcessingService {
     final Map<Long, String> idVals = new ConcurrentHashMap<>();
     final Map<String, Set<Map<Long, Long>>> dmCache = new ConcurrentHashMap<>();
 
-    private final PatientRepository patientRepository;
-    private final ProviderRepository providerRepository;
-    private final OrganizationRepository organizationRepository;
+    private final PostProcRepository postProcRepository;
     private final InvestigationRepository investigationRepository;
-    private final NotificationRepository notificationRepository;
 
     private final ProcessDatamartData datamartProcessor;
 
@@ -100,17 +97,17 @@ public class PostProcessingService {
 
             Datamart dmData = objectMapper.readValue(payloadNode.get(PAYLOAD).toString(), Datamart.class);
             if(Objects.isNull(dmData)) {
-                logger.warn("For Payload : {} \n DataMart object is null. Skipping further processing");
+                logger.warn("For payload: {} DataMart object is null. Skipping further processing", payloadNode);
                 return;
             }
             Map<Long, Long> dmMap = new HashMap<>();
-            if(Objects.isNull(dmData.getPublicHealthCaseUid())|| Objects.isNull(dmData.getPatientUid())) {
-                logger.warn("For Payload: {} \n DataMart Public Health Case/Patient Id is null. Skipping further processing", payloadNode);
+            if(Objects.isNull(dmData.getPublicHealthCaseUid()) || Objects.isNull(dmData.getPatientUid())) {
+                logger.warn("For payload: {} DataMart Public Health Case/Patient Id is null. Skipping further processing", payloadNode);
                 return;
             }
             dmMap.put(dmData.getPublicHealthCaseUid(), dmData.getPatientUid());
             if(Objects.isNull(dmData.getDatamart())){
-                logger.warn("For payload: {} \nDataMart is null. Skipping further processing", payloadNode);
+                logger.warn("For payload: {} DataMart is null. Skipping further processing", payloadNode);
                 return;
             }
             dmCache.computeIfAbsent(dmData.getDatamart(), k -> ConcurrentHashMap.newKeySet()).add(dmMap);
@@ -135,25 +132,17 @@ public class PostProcessingService {
                 switch (entity) {
                     case ORGANIZATION:
                         processTopic(keyTopic, entity, ids,
-                                organizationRepository::executeStoredProcForOrganizationIds);
+                                postProcRepository::executeStoredProcForOrganizationIds);
                         break;
                     case PROVIDER:
-                        processTopic(keyTopic, entity, ids, providerRepository::executeStoredProcForProviderIds);
+                        processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForProviderIds);
                         break;
                     case PATIENT:
-                        processTopic(keyTopic, entity, ids, patientRepository::executeStoredProcForPatientIds);
+                        processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForPatientIds);
                         break;
                     case INVESTIGATION:
                         List<InvestigationResult> invData = processTopic(keyTopic, entity, ids,
                                 investigationRepository::executeStoredProcForPublicHealthCaseIds);
-
-                        /* CNDIT-1584: Notifications has a dependency on Investigation and should be processed
-                        together to eliminate timing issues.*/
-                        processTopic(
-                                keyTopic,
-                                Entity.NOTIFICATIONS,
-                                ids,
-                                notificationRepository::executeStoredProcForNotificationIds);
 
                         ids.forEach(id -> {
                             if (idVals.containsKey(id)) {
@@ -169,8 +158,8 @@ public class PostProcessingService {
 
                         break;
                     case NOTIFICATIONS:
-//                        processTopic(keyTopic, entity, ids,
-//                        notificationRepository::executeStoredProcForNotificationIds);
+                        processTopic(keyTopic, entity, ids,
+                                postProcRepository::executeStoredProcForNotificationIds);
                         break;
                     default:
                         logger.warn("Unknown topic: {} cannot be processed", keyTopic);

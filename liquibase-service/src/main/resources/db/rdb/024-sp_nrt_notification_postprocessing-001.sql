@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE [dbo].[sp_nrt_notification_postprocessing] @phc_uids nvarchar(max), @debug bit = 'false'
+CREATE   PROCEDURE [dbo].[sp_nrt_notification_postprocessing] @notification_uids nvarchar(max), @debug bit = 'false'
 AS
 BEGIN
 
@@ -38,11 +38,11 @@ BEGIN
                ,'START'
                ,0
                ,'SP_Start'
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                ,0
                );
 
-        SET @proc_step_name='Create NOTIFICATION and NOTIFICATION_EVENT Temp tables-'+ LEFT(@phc_uids,105);
+        SET @proc_step_name='Create NOTIFICATION and NOTIFICATION_EVENT Temp tables-'+ LEFT(@notification_uids,105);
         SET @proc_step_no = 1;
 
         /* Temp notification table creation */
@@ -56,7 +56,7 @@ BEGIN
         INTO #temp_ntf_table
         FROM dbo.nrt_notifications nrt
                  LEFT JOIN dbo.nrt_notification_key nk with (nolock) ON nrt.notification_uid = nk.notification_uid
-        WHERE nrt.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
+        WHERE nrt.notification_uid in (SELECT value FROM STRING_SPLIT(@notification_uids, ','));
 
         /* Temp notification_event table creation */
         SELECT nrt.notification_uid,
@@ -78,7 +78,7 @@ BEGIN
                  LEFT JOIN dbo.RDB_DATE dsub with (nolock) ON CAST(nrt.notif_add_time AS DATE) = dsub.DATE_MM_DD_YYYY
                  LEFT JOIN dbo.RDB_DATE dupd with (nolock) ON CAST(nrt.notif_last_chg_time AS DATE) = dupd.DATE_MM_DD_YYYY
                  LEFT JOIN dbo.CONDITION cnd with (nolock) ON nrt.condition_cd = cnd.CONDITION_CD
-        WHERE nrt.notification_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
+        WHERE nrt.notification_uid in (SELECT value FROM STRING_SPLIT(@notification_uids, ','));
 
         /* Logging */
         set @rowcount=@@rowcount
@@ -101,7 +101,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
         BEGIN TRANSACTION;
@@ -140,7 +140,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
         SET @proc_step_name='Update NOTIFICATION_EVENT Dimension';
@@ -180,7 +180,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
         SET @proc_step_name='Insert into NOTIFICATION Dimension';
@@ -231,7 +231,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
         SET @proc_step_name='Insert into NOTIFICATION_EVENT Dimension';
@@ -280,7 +280,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
 
@@ -313,7 +313,7 @@ BEGIN
                ,@proc_step_no
                ,@proc_step_name
                ,0
-               ,LEFT(@phc_uids,500)
+               ,LEFT(@notification_uids,500)
                );
 
         select 'Success';
@@ -351,7 +351,7 @@ BEGIN
             ,@Proc_Step_no
             , 'Step -' +CAST(@Proc_Step_no AS VARCHAR(3))+' -' +CAST(@ErrorMessage AS VARCHAR(500))
             ,0
-            ,LEFT(@phc_uids,500)
+            ,LEFT(@notification_uids,500)
             );
 
 
