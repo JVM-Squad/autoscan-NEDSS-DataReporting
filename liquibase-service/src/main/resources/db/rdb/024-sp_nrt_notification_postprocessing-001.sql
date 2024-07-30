@@ -1,4 +1,4 @@
-CREATE   PROCEDURE [dbo].[sp_nrt_notification_postprocessing] @notification_uids nvarchar(max), @debug bit = 'false'
+CREATE OR ALTER PROCEDURE [dbo].[sp_nrt_notification_postprocessing] @notification_uids nvarchar(max), @debug bit = 'false'
 AS
 BEGIN
 
