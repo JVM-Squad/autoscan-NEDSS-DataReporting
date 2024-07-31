@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cdc.etldatapipeline.person.model.dto.patient.PatientReporting;
 import gov.cdc.etldatapipeline.person.model.dto.patient.PatientSp;
+import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderSp;
 import gov.cdc.etldatapipeline.person.transformer.PersonTransformers;
 import gov.cdc.etldatapipeline.person.transformer.PersonType;
 import org.junit.jupiter.api.Assertions;
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static gov.cdc.etldatapipeline.commonutil.TestUtils.readFileData;
@@ -155,8 +158,44 @@ public class PatientDataPostProcessingTests {
         Assertions.assertEquals(expected, actual);
     }
 
+    @Test public void ProviderAddressTransformation() throws JsonProcessingException {
+        ProviderSp providerSp = ProviderSp.builder()
+                .personUid(10000001L)
+                .addressNested(readFileData(FILE_PREFIX + "PersonAddress.json"))
+                .build();
+        String processedData =tx.processData(providerSp, PersonType.PROVIDER_REPORTING);
+        JsonNode addressNode = objectMapper.readTree(processedData).get("payload");
+
+        BiFunction<JsonNode,String,String> getNodeValue
+                = (node,name) -> Objects.isNull(node.get(name)) ? null : node.get(name).asText();
+
+        List<String> actual = Arrays.asList(getNodeValue.apply(addressNode,"street_address_1"),
+                getNodeValue.apply(addressNode,"street_address_2"),
+                getNodeValue.apply(addressNode,"city"),
+                getNodeValue.apply(addressNode,"zip"),
+                getNodeValue.apply(addressNode,"county_code"),
+                getNodeValue.apply(addressNode,"county"),
+                getNodeValue.apply(addressNode,"state_code"),
+                getNodeValue.apply(addressNode,"state"),
+                getNodeValue.apply(addressNode,"country"));
+
+        // Expected
+        List<String> expected = Arrays.asList(
+                "98011 Reedle Rd",
+                "",
+                "null",
+                "null",
+                "",
+                "null",
+                "13",
+                "Georgia",
+                "United States");
+        // Validate the PatientProvider field processing
+        Assertions.assertEquals(expected, actual);
+    }
+
     @Test
-    public void PatientProviderAddressTransformationTest() throws JsonProcessingException {
+    public void PatientAddressTransformationTest() throws JsonProcessingException {
 
         // Build the PatientProvider object with the json serialized data
         PatientSp perOp = PatientSp.builder()
@@ -166,18 +205,21 @@ public class PatientDataPostProcessingTests {
 
         // Process the respective field json to PatientProvider fields
         String processedData = tx.processData(perOp, PersonType.PATIENT_REPORTING);
-        JsonNode payloadNode = objectMapper.readTree(processedData).get("payload");
+        JsonNode addressNode = objectMapper.readTree(processedData).get("payload");
 
-        List<String> actual = Arrays.asList(payloadNode.get("street_address_1").asText(),
-                payloadNode.get("street_address_2").asText(),
-                payloadNode.get("city").asText(),
-                payloadNode.get("zip").asText(),
-                payloadNode.get("county_code").asText(),
-                payloadNode.get("county").asText(),
-                payloadNode.get("state_code").asText(),
-                payloadNode.get("state").asText(),
-                payloadNode.get("country").asText(),
-                payloadNode.get("birth_country").asText());
+        BiFunction<JsonNode,String,String> getNodeValue
+                = (node,name) -> Objects.isNull(node.get(name)) ? null : node.get(name).asText();
+
+        List<String> actual = Arrays.asList(getNodeValue.apply(addressNode,"street_address_1"),
+                getNodeValue.apply(addressNode,"street_address_2"),
+                getNodeValue.apply(addressNode,"city"),
+                getNodeValue.apply(addressNode,"zip"),
+                getNodeValue.apply(addressNode,"county_code"),
+                getNodeValue.apply(addressNode,"county"),
+                getNodeValue.apply(addressNode,"state_code"),
+                getNodeValue.apply(addressNode,"state"),
+                getNodeValue.apply(addressNode,"country"),
+                getNodeValue.apply(addressNode,"birth_country"));
 
         // Expected
         List<String> expected = Arrays.asList(

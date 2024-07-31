@@ -1,6 +1,8 @@
 package gov.cdc.etldatapipeline.person.transformer;
 
 import gov.cdc.etldatapipeline.person.model.dto.PersonExtendedProps;
+import gov.cdc.etldatapipeline.person.model.dto.patient.PatientElasticSearch;
+import gov.cdc.etldatapipeline.person.model.dto.patient.PatientReporting;
 import gov.cdc.etldatapipeline.person.model.dto.persondetail.*;
 import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderElasticSearch;
 import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderReporting;
@@ -63,10 +65,24 @@ public class DataPostProcessor {
 
     public <T extends PersonExtendedProps> void processPersonAddress(String address, T pf) {
         if (!ObjectUtils.isEmpty(address)) {
-            Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
-                    .filter(pAddress -> !ObjectUtils.isEmpty(pAddress.getPostalLocatorUid()))
-                    .max(Comparator.comparing(Address::getPostalLocatorUid))
-                    .map(n -> n.updatePerson(pf));
+            if(pf.getClass() == PatientReporting.class || pf.getClass() == PatientElasticSearch.class) {
+                Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
+                        .filter(pa -> !ObjectUtils.isEmpty(pa.getPostalLocatorUid())
+                                && (pa.getUseCd().equalsIgnoreCase("H")))
+                        .max(Comparator.comparing(Address::getPostalLocatorUid))
+                        .map(n -> n.updatePerson(pf));
+                Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
+                        .filter(pa -> !ObjectUtils.isEmpty(pa.getPostalLocatorUid())
+                                && pa.getUseCd().equalsIgnoreCase("BIR"))
+                        .max(Comparator.comparing(Address::getPostalLocatorUid))
+                        .map(n -> n.updatePerson(pf));
+            } else if (pf.getClass() == ProviderReporting.class || pf.getClass() == ProviderElasticSearch.class) {
+                Arrays.stream(utilHelper.deserializePayload(address, Address[].class))
+                        .filter(pa -> !ObjectUtils.isEmpty(pa.getPostalLocatorUid())
+                                && pa.getUseCd().equalsIgnoreCase("WP"))
+                        .max(Comparator.comparing(Address::getPostalLocatorUid))
+                        .map(n -> n.updatePerson(pf));
+            }
         }
     }
 

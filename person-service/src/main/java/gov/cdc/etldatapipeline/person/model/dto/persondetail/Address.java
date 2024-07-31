@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 @Data
 @Builder
@@ -14,7 +15,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Address implements ExtendPerson {
+    @JsonProperty("street_addr1")
     private String streetAddr1;
+    @JsonProperty("street_addr2")
     private String streetAddr2;
     private String city;
     private String zip;
@@ -43,24 +46,29 @@ public class Address implements ExtendPerson {
     private String censusTract;
 
     public <T extends PersonExtendedProps> T updatePerson(T personFull) {
-        personFull.setStreetAddress1(streetAddr1);
-        personFull.setStreetAddress2(streetAddr2);
-        personFull.setCity(city);
-        personFull.setWithinCityLimits(withinCityLimitsInd);
-        personFull.setZip(zip);
-        personFull.setCountyCode(cntyCd);
-        personFull.setCounty(county);
-        personFull.setStateCode(state);
-        personFull.setState(stateDesc);
-        personFull.setCountryCode(cntryCd);
-        personFull.setCountry(country);
-        personFull.setHomeCountry(homeCountry);
-        personFull.setBirthCountry(birthCountry);
-        personFull.setAddressComments(addressComments);
-        personFull.setAddrElpCd(cd);
-        personFull.setAddrElpUseCd(useCd);
-        personFull.setAddrPlUid(postalLocatorUid);
-        personFull.setCensusTract(censusTract);
+        if (!StringUtils.hasText(useCd)) return personFull;
+        if (useCd.equalsIgnoreCase("H") || useCd.equalsIgnoreCase("WP")) {
+            personFull.setStreetAddress1(streetAddr1);
+            personFull.setStreetAddress2(streetAddr2);
+            personFull.setCity(city);
+            personFull.setWithinCityLimits(withinCityLimitsInd);
+            personFull.setZip(zip);
+            personFull.setCountyCode(cntyCd);
+            personFull.setCounty(county);
+            personFull.setStateCode(state);
+            personFull.setState(stateDesc);
+            personFull.setCountryCode(cntryCd);
+            personFull.setCountry(country);
+            personFull.setHomeCountry(homeCountry);
+            personFull.setAddressComments(addressComments);
+            personFull.setAddrElpCd(cd);
+            personFull.setAddrElpUseCd(useCd);
+            personFull.setAddrPlUid(postalLocatorUid);
+            personFull.setCensusTract(censusTract);
+        }
+        if (useCd.equalsIgnoreCase("BIR")) {
+            personFull.setBirthCountry(birthCountry);
+        }
         return personFull;
     }
 }

@@ -3,13 +3,7 @@ package gov.cdc.etldatapipeline.person;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gov.cdc.etldatapipeline.person.model.dto.PersonExtendedProps;
-import gov.cdc.etldatapipeline.person.model.dto.patient.PatientElasticSearch;
-import gov.cdc.etldatapipeline.person.model.dto.patient.PatientReporting;
 import gov.cdc.etldatapipeline.person.model.dto.patient.PatientSp;
-import gov.cdc.etldatapipeline.person.model.dto.persondetail.*;
-import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderElasticSearch;
-import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderReporting;
 import gov.cdc.etldatapipeline.person.model.dto.provider.ProviderSp;
 import gov.cdc.etldatapipeline.person.repository.PatientRepository;
 import gov.cdc.etldatapipeline.person.repository.ProviderRepository;
@@ -65,12 +59,8 @@ public class PersonServiceTest {
         PatientSp patientSp = constructPatient();
         Mockito.when(patientRepository.computePatients(anyString())).thenReturn(List.of(patientSp));
 
-        String processedData = tx.processData(patientSp, PersonType.PATIENT_REPORTING);
-        JsonNode payloadNode = objectMapper.readTree(processedData).get("payload");
-        PatientReporting expectedPf = objectMapper.treeToValue(payloadNode, PatientReporting.class);
-
-        //Construct transformed patient
-        constructPatPrvFull(expectedPf);
+        //Run the Patient Reporting Data Transformation
+        tx.processData(patientSp, PersonType.PATIENT_REPORTING);
 
         // Validate Patient Reporting Data Transformation
         validateDataTransformation(
@@ -85,13 +75,8 @@ public class PersonServiceTest {
         PatientSp patientSp = constructPatient();
         Mockito.when(patientRepository.computePatients(anyString())).thenReturn(List.of(patientSp));
 
-        //Build expected unflattened Provider
-        String processedData = tx.processData(patientSp, PersonType.PATIENT_ELASTIC_SEARCH);
-        JsonNode payloadNode = objectMapper.readTree(processedData).get("payload");
-        PatientElasticSearch expectedPf = objectMapper.treeToValue(payloadNode, PatientElasticSearch.class);
-
-        //Construct transformed patient
-        constructPatPrvFull(expectedPf);
+        //Run the Patient ElasticSearch Data Transformation
+        tx.processData(patientSp, PersonType.PATIENT_ELASTIC_SEARCH);
 
         // Validate Patient ElasticSearch Data Transformation
         validateDataTransformation(
@@ -107,13 +92,8 @@ public class PersonServiceTest {
         Mockito.when(patientRepository.computePatients(anyString())).thenReturn(new ArrayList<>());
         Mockito.when(providerRepository.computeProviders(anyString())).thenReturn(List.of(providerSp));
 
-        //Build expected unflattened Provider
-        String processedData = tx.processData(providerSp, PersonType.PROVIDER_REPORTING);
-        JsonNode payloadNode = objectMapper.readTree(processedData).get("payload");
-        ProviderReporting expectedPf = objectMapper.treeToValue(payloadNode, ProviderReporting.class);
-
-        //Augment Provider with the flattened data
-        constructPatPrvFull(expectedPf);
+        //Run the Provider Reporting Data Transformation
+        tx.processData(providerSp, PersonType.PROVIDER_REPORTING);
 
         // Validate Patient Reporting Data Transformation
         validateDataTransformation(
@@ -129,13 +109,8 @@ public class PersonServiceTest {
         Mockito.when(patientRepository.computePatients(anyString())).thenReturn(new ArrayList<>());
         Mockito.when(providerRepository.computeProviders(anyString())).thenReturn(List.of(providerSp));
 
-        //Build expected unflattened Provider
-        String processedData = tx.processData(providerSp, PersonType.PROVIDER_ELASTIC_SEARCH);
-        JsonNode payloadNode = objectMapper.readTree(processedData).get("payload");
-        ProviderElasticSearch expectedPf = objectMapper.treeToValue(payloadNode, ProviderElasticSearch.class);
-
-        //Augment Provider with the flattened data
-        constructPatPrvFull(expectedPf);
+        //Run the Provider ElasticSearch Data Transformation
+        tx.processData(providerSp, PersonType.PROVIDER_ELASTIC_SEARCH);
 
         // Validate Patient Reporting Data Transformation
         validateDataTransformation(
@@ -196,87 +171,6 @@ public class PersonServiceTest {
                 .entityDataNested(readFileData(filePathPrefix + "PersonEntityData.json"))
                 .emailNested(readFileData(filePathPrefix + "PersonEmail.json"))
                 .build();
-    }
-
-    private <T extends PersonExtendedProps> void constructPatPrvFull(T patProv) {
-        // Name
-        Name.builder()
-                .lastNm("Singgh")
-                .middleNm("Js")
-                .firstNm("Suurma")
-                .nmSuffix("Jr")
-                .build().updatePerson(patProv);
-
-        // Address
-        Address.builder()
-                .streetAddr1("123 Main St.")
-                .streetAddr2("")
-                .city("Atlanta")
-                .zip("30025")
-                .cntyCd("13135")
-                .county("Gwinnett County")
-                .state("13")
-                .stateDesc("Georgia")
-                .cntryCd("840")
-                .homeCountry("United States")
-                .birthCountry("Canada")
-                .censusTract("3389.45")
-                .build()
-                .updatePerson(patProv);
-
-
-        // Work Phone
-        Phone.builder().telephoneNbr("2323222422").extensionTxt("232").cd("WP").build().updatePerson(patProv);
-
-        // Home Phone
-        Phone.builder().telephoneNbr("4562323222").extensionTxt("211").cd("H").build().updatePerson(patProv);
-
-        // Cell Phone
-        Phone.builder().telephoneNbr("2823252423").cd("MC").build().updatePerson(patProv);
-
-        // Race
-        Race.builder()
-                .raceCd("2028-9")
-                .raceCategoryCd("2028-9")
-                .raceDescTxt("Amer Indian")
-                .build()
-                .updatePerson(patProv);
-
-
-        // SSN
-        EntityData.builder()
-                .rootExtensionTxt("313431144414")
-                .assigningAuthorityCd("SSA")
-                .build()
-                .updatePerson(patProv);
-
-
-        // Patient Number
-        EntityData.builder()
-                .typeCd("PN")
-                .rootExtensionTxt("56743114514")
-                .assigningAuthorityCd("2.16.740.1.113883.3.1147.1.1002")
-                .build()
-                .updatePerson(patProv);
-
-        //QEC
-        EntityData.builder()
-                .typeCd("QEC")
-                .rootExtensionTxt("12314286")
-                .build()
-                .updatePerson(patProv);
-
-        //RegNum
-        EntityData.builder()
-                .typeCd("PRN")
-                .rootExtensionTxt("86741517517")
-                .assigningAuthorityCd("3.16.740.1.113883.3.1147.1.1002")
-                .build()
-                .updatePerson(patProv);
-
-        // Email
-        Email.builder().emailAddress("someone2@email.com").build().updatePerson(patProv);
-
     }
 
 }
