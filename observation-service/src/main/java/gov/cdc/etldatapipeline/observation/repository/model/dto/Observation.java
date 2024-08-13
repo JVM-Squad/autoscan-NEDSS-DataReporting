@@ -60,6 +60,18 @@ public class Observation {
     @Column(name = "electronic_ind")
     private Character electronicInd;
 
+    @Column(name = "ctrl_cd_display_form")
+    private String ctrlCdDisplayForm;
+
+    @Column(name = "processing_decision_cd")
+    private String processingDecisionCd;
+
+    @Column(name = "cd")
+    private String cd;
+
+    @Column(name = "shared_ind")
+    private Character sharedInd;
+
     @Column(name = "version_ctrl_nbr")
     private Short versionCtrlNbr;
 

@@ -251,3 +251,17 @@ databaseChangeLog:
         - sqlFile:
             path: 035-sp_nrt_ldf_postprocessing-001.sql
             splitStatements: false
+  - changeSet:
+      id: 36
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 036-sp_d_morbidity_postprocessing-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 37
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 037-sp_d_lab_test_postprocessing-001.sql
+            splitStatements: false
