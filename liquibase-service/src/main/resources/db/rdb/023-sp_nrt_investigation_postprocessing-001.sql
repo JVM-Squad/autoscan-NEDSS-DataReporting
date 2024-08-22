@@ -428,7 +428,7 @@ BEGIN
 
         BEGIN TRANSACTION;
 
-        SET @proc_step_name = 'Update CONFIRMATION_METHOD and CONFIRMATION_METHOD_GROUP';
+        SET @proc_step_name = 'Update CONFIRMATION_METHOD';
         SET @proc_step_no = 3;
 
         /*Temp Confirmation Method Table*/
@@ -456,15 +456,7 @@ BEGIN
                             on cmt.confirmation_method_key = cm.confirmation_method_key
                                 and cmt.CONFIRMATION_METHOD_KEY is not null;
 
-        update cmg
-        set cmg.CONFIRMATION_DT = cmt.CONFIRMATION_DT
-        from #temp_cm_table cmt
-                 inner join dbo.confirmation_method_group cmg with (nolock)
-                            on cmt.investigation_key = cmg.investigation_key
-                                and cmt.confirmation_method_key = cmg.confirmation_method_key
-                                and cmt.CONFIRMATION_METHOD_KEY is not null;
-
-/*Logging*/
+        /*Logging*/
         SET @rowcount = @@rowcount
         INSERT INTO [dbo].[job_flow_log]
         (batch_id
@@ -485,7 +477,7 @@ BEGIN
                ,LEFT(@id_list, 500));
 
 
-        SET @proc_step_name = 'Insert into CONFIRMATION_METHOD and CONFIRMATION_METHOD_GROUP';
+        SET @proc_step_name = 'Insert into CONFIRMATION_METHOD';
         SET @proc_step_no = 4;
 
         -- generate new CONFIRMATION_METHOD_KEY for the corresponding cd
@@ -509,14 +501,44 @@ BEGIN
                           from dbo.confirmation_method cd
                           where cd.confirmation_method_cd = cmt.confirmation_method_cd);
 
+        /* Logging */
+        set @rowcount = @@rowcount
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id
+        ,[Dataflow_Name]
+        ,[package_Name]
+        ,[Status_Type]
+        ,[step_number]
+        ,[step_name]
+        ,[row_count]
+        ,[msg_description1])
+        VALUES (@batch_id
+               ,@dataflow_name
+               ,@package_name
+               ,'START'
+               ,@proc_step_no
+               ,@proc_step_name
+               ,@rowcount
+               ,LEFT(@id_list, 500));
+
+        SET @proc_step_name = 'UPDATE CONFIRMATION_METHOD_GROUP';
+        SET @proc_step_no = 5;
+
+        delete dbo.CONFIRMATION_METHOD_GROUP
+        where investigation_key in
+              (select investigation_key from dbo.INVESTIGATION where case_uid in
+                    (select value FROM STRING_SPLIT(@id_list, ','))
+        )
 
         insert into dbo.CONFIRMATION_METHOD_GROUP ([INVESTIGATION_KEY],[CONFIRMATION_METHOD_KEY],[CONFIRMATION_DT])
         select cmt.INVESTIGATION_KEY, cm.CONFIRMATION_METHOD_KEY, cmt.CONFIRMATION_DT
         from #temp_cm_table cmt
-                 left outer join dbo.confirmation_method cm with (nolock) on cmt.confirmation_method_cd = cm.confirmation_method_cd
-                 left outer join dbo.confirmation_method_group cmg with (nolock) on cmt.investigation_key = cmg.investigation_key
-        where cmg.investigation_key is null
-          and cmg.confirmation_method_key is null;
+        left outer join dbo.confirmation_method cm with (nolock) on cmt.confirmation_method_cd = cm.confirmation_method_cd
+
+        /* Need to clear nrt table to support multi select updates */
+        delete dbo.nrt_investigation_confirmation
+        where public_health_case_uid in
+            (select public_health_case_uid from #temp_cm_table)
 
         /* Logging */
         set @rowcount = @@rowcount
@@ -542,7 +564,7 @@ BEGIN
 
 
         SET @proc_step_name = 'Get Topic for Datamart';
-        SET @proc_step_no = 5;
+        SET @proc_step_no = 6;
 
         INSERT INTO [dbo].[job_flow_log]
         (batch_id
