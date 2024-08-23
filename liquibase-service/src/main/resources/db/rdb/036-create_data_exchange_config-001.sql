@@ -1,17 +1,5 @@
 IF
-NOT EXISTS(SELECT *
-              FROM sys.databases
-              WHERE name = 'RDB')
-BEGIN
-    CREATE
-DATABASE RDB;
-END
-GO
-
-USE RDB;
-GO
-
-IF NOT EXISTS(
+NOT EXISTS(
     SELECT 'X'
     FROM INFORMATION_SCHEMA.TABLES
     WHERE TABLE_NAME = 'data_sync_config')
