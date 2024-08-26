@@ -580,8 +580,8 @@ BEGIN
                  LEFT OUTER JOIN nbs_odse.dbo.case_management cm WITH (NOLOCK) on results.public_health_case_uid = cm.public_health_case_uid
                  LEFT JOIN
              (SELECT DISTINCT act_uid       AS                                                 nac_page_case_uid,
-                              MIN(last_chg_time) AS                                                  nac_last_chg_time,
-                              MIN(add_time)      as                                                  nac_add_time,
+                              MAX(last_chg_time) AS                                                  nac_last_chg_time,
+                              MAX(add_time)      as                                                  nac_add_time,
                               MAX(CASE WHEN type_cd = 'PerAsReporterOfPHC' THEN entity_uid END) person_as_reporter_uid,
                               MAX(CASE WHEN type_cd = 'HospOfADT' THEN entity_uid END)          hospital_uid,
                               MAX(CASE WHEN type_cd = 'OrgAsClinicOfPHC' THEN entity_uid END)   ordering_facility_uid
