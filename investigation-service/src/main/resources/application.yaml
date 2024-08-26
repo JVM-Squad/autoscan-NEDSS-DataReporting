@@ -7,7 +7,7 @@ spring:
       topic-name-es: elastic_search_investigation
       topic-name-confirmation: nrt_investigation_confirmation
       topic-name-observation: nrt_investigation_observation
-      topic-name-notifications: nrt_notifications
+      topic-name-notifications: nrt_investigation_notification
     dlq:
       retry-suffix: _retry
       dlq-suffix: _dlt
