@@ -15,7 +15,6 @@ COPY liquibase-service/src/main/resources/db/master /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/master/routines /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/odse /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/odse/routines /liquibase/changelog
-COPY liquibase-service/src/main/resources/db/odse/tables /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/odse/views /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/rdb /liquibase/changelog
 COPY liquibase-service/src/main/resources/db/rdb/routines /liquibase/changelog
