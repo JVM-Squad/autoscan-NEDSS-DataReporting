@@ -68,7 +68,7 @@ class PostProcessingServiceTest {
             "dummy_provider, '{\"payload\":{\"provider_uid\":123}}', 123",
             "dummy_organization, '{\"payload\":{\"organization_uid\":123}}', 123",
             "dummy_investigation, '{\"payload\":{\"public_health_case_uid\":123}}', 123",
-            "dummy_notifications, '{\"payload\":{\"notification_uid\":123}}', 123"
+            "dummy_notification, '{\"payload\":{\"notification_uid\":123}}', 123"
     })
     void testExtractIdFromMessage(String topic, String messageKey, Long expectedId) {
         Long extractedId = postProcessingServiceMock.extractIdFromMessage(topic, messageKey, messageKey);
@@ -150,7 +150,7 @@ class PostProcessingServiceTest {
 
     @Test
     void testPostProcessNotificationMessage() {
-        String topic = "dummy_notifications";
+        String topic = "dummy_notification";
         String key = "{\"payload\":{\"notification_uid\":123}}";
 
         postProcessingServiceMock.postProcessMessage(topic, key, key);
@@ -162,7 +162,7 @@ class PostProcessingServiceTest {
 
         List<ILoggingEvent> logs = listAppender.list;
         assertEquals(6, logs.size());
-        assertTrue(logs.get(4).getFormattedMessage().contains(PostProcessingService.Entity.NOTIFICATIONS.getStoredProcedure()));
+        assertTrue(logs.get(4).getFormattedMessage().contains(PostProcessingService.Entity.NOTIFICATION.getStoredProcedure()));
         assertTrue(logs.get(5).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
@@ -220,7 +220,7 @@ class PostProcessingServiceTest {
 
         String ntfKey1 = "{\"payload\":{\"notification_uid\":567}}";
         String ntfKey2 = "{\"payload\":{\"notification_uid\":568}}";
-        String ntfTopic = "dummy_notifications";
+        String ntfTopic = "dummy_notification";
 
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey1, orgKey1);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey2, orgKey2);
@@ -254,7 +254,7 @@ class PostProcessingServiceTest {
         String providerTopic = "dummy_provider";
         String patientTopic = "dummy_patient";
         String invTopic = "dummy_investigation";
-        String ntfTopic = "dummy_notifications";
+        String ntfTopic = "dummy_notification";
         String ldfTopic = "dummy_ldf_data";
 
         postProcessingServiceMock.postProcessMessage(invTopic, investigationKey, investigationKey);
