@@ -54,7 +54,7 @@ BEGIN
                nrt.notif_add_user_id AS NOTIFICATION_SUBMITTED_BY,
                nrt.notif_last_chg_time AS NOTIFICATION_LAST_CHANGE_TIME
         INTO #temp_ntf_table
-        FROM dbo.nrt_notifications nrt
+        FROM dbo.nrt_investigation_notification nrt
                  LEFT JOIN dbo.nrt_notification_key nk with (nolock) ON nrt.notification_uid = nk.notification_uid
         WHERE nrt.notification_uid in (SELECT value FROM STRING_SPLIT(@notification_uids, ','));
 
@@ -69,7 +69,7 @@ BEGIN
                cnd.CONDITION_KEY,
                COALESCE(dupd.DATE_KEY, 1) AS NOTIFICATION_UPD_DT_KEY
         INTO #temp_ntf_event_table
-        FROM dbo.nrt_notifications nrt
+        FROM dbo.nrt_investigation_notification nrt
                  LEFT JOIN dbo.nrt_notification_key nk ON nrt.notification_uid = nk.notification_uid
                  LEFT JOIN dbo.NOTIFICATION_EVENT eve with (nolock) ON eve.NOTIFICATION_KEY = nk.d_notification_key
                  LEFT JOIN dbo.INVESTIGATION inv with (nolock) ON nrt.public_health_case_uid = inv.CASE_UID

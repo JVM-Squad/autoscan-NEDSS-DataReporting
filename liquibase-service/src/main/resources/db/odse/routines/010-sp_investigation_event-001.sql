@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE [dbo].[sp_investigation_event_update] @phc_id_list nvarchar(max)
+CREATE   PROCEDURE [dbo].[sp_investigation_event] @phc_id_list nvarchar(max)
 AS
 BEGIN
 
@@ -27,6 +27,61 @@ BEGIN
                , LEFT (@phc_id_list, 199)
                );
 
+
+        SELECT *
+        into
+            #temp_page_case_answer_table
+        FROM (SELECT *,
+                     ROW_NUMBER() OVER (PARTITION BY NBS_QUESTION_UID, answer_txt
+                         order by
+                             NBS_QUESTION_UID,
+                             other_value_ind_cd desc) rowid
+              FROM (SELECT distinct nbs_case_answer_uid,
+                                    nuim.nbs_ui_metadata_uid,
+                                    nrdbm.nbs_rdb_metadata_uid,
+                                    nrdbm.rdb_table_nm,
+                                    nrdbm.rdb_column_nm,
+                                    nuim.code_set_group_id,
+                                    cast(replace(answer_txt, char(13)+ char(10), ' ') as varchar(2000)) as answer_txt,
+                                    pa.act_uid,
+                                    pa.record_status_cd,
+                                    nuim.nbs_question_uid,
+                                    nuim.investigation_form_cd,
+                                    nuim.unit_value,
+                                    nuim.question_identifier,
+                                    pa.answer_group_seq_nbr,
+                                    nuim.data_location,
+                                    question_label,
+                                    other_value_ind_cd,
+                                    unit_type_cd,
+                                    mask,
+                                    nuim.block_nm,
+                                    question_group_seq_nbr,
+                                    data_type,
+                                    pa.last_chg_time
+                    from nbs_odse.dbo.nbs_rdb_metadata nrdbm with (nolock)
+                             inner join nbs_odse.dbo.nbs_ui_metadata nuim
+                        with (nolock)
+                                        on
+                                            nrdbm.nbs_ui_metadata_uid = nuim.nbs_ui_metadata_uid
+                             left outer join nbs_odse.dbo.nbs_case_answer pa
+                        with (nolock)
+                                             on
+                                                 nuim.nbs_question_uid = pa.nbs_question_uid
+                             inner join nbs_srte.dbo.code_value_general cvg
+                        with (nolock)
+                                        on
+                                            cvg.code = nuim.data_type
+                    where
+                        cvg.code_set_nm = 'NBS_DATA_TYPE'
+                      and
+                        act_uid in (
+                            SELECT
+                                value
+                            FROM
+                                STRING_SPLIT(@phc_id_list
+                                    , ','))) as answer_table) as answer_table
+        where rowid = 1;
 
         /*Complete Investigation section*/
         SELECT results.public_health_case_uid,
@@ -124,7 +179,6 @@ BEGIN
                results.coinfection_id,
                results.contact_inv_txt,
                pac.prog_area_desc_txt              program_area_description,
-               notification.notification_uid,
                notification.local_id               notification_local_id,
                notification.add_time               notification_add_time,
                notification.record_status_cd       notification_record_status_cd,
@@ -141,10 +195,9 @@ BEGIN
                results.person_participations,
                results.organization_participations,
                results.investigation_confirmation_method,
-               results.investigation_case_answer
-                ,results.investigation_notifications
-                ,results.notification_history
-        --,con.investigation_form_cd
+               results.investigation_case_answer,
+               results.investigation_notifications
+        --con.investigation_form_cd,
         -- ,results.investigation_act_entity
         -- ,results.ldf_public_health_case
         -- into dbo.Investigation_Dim_Event
@@ -284,8 +337,8 @@ BEGIN
                      nesteddata.organization_participations,
                      nesteddata.investigation_confirmation_method,
                      nesteddata.investigation_case_answer
-                      ,nesteddata.investigation_notifications
-                      ,nesteddata.notification_history
+                      ,
+                     nesteddata.investigation_notifications
               --,nesteddata.ldf_public_health_case
               FROM
                   --public health case
@@ -416,83 +469,40 @@ BEGIN
                           (
                               SELECT
                                   (
-                                      SELECT
+                                      select
                                           nbs_case_answer_uid,
-                                          nbs_ui_metadata_uid,
-                                          nbs_rdb_metadata_uid,
-                                          rdb_table_nm,
-                                          rdb_column_nm,
-                                          code_set_group_id,
-                                          answer_txt,
-                                          act_uid,
-                                          record_status_cd,
-                                          nbs_question_uid,
-                                          investigation_form_cd,
-                                          unit_value,
-                                          question_identifier,
-                                          data_location,
-                                          answer_group_seq_nbr,
-                                          question_label,
-                                          other_value_ind_cd,
-                                          unit_type_cd,
-                                          mask,
-                                          block_nm,
-                                          question_group_seq_nbr,
-                                          data_type,
-                                          last_chg_time
-                                      FROM (SELECT *,
-                                                   ROW_NUMBER() OVER (PARTITION BY NBS_QUESTION_UID
-                                                       order by
-                                                           NBS_QUESTION_UID,
-                                                           other_value_ind_cd desc) rowid
-                                            FROM (SELECT distinct nbs_case_answer_uid,
-                                                                  nuim.nbs_ui_metadata_uid,
-                                                                  nrdbm.nbs_rdb_metadata_uid,
-                                                                  nrdbm.rdb_table_nm,
-                                                                  nrdbm.rdb_column_nm,
-                                                                  nuim.code_set_group_id,
-                                                                  cast(replace(answer_txt, char(13)+ char(10), ' ') as varchar(2000)) as answer_txt,
-                                                                  pa.act_uid,
-                                                                  pa.record_status_cd,
-                                                                  nuim.nbs_question_uid,
-                                                                  nuim.investigation_form_cd,
-                                                                  nuim.unit_value,
-                                                                  nuim.question_identifier,
-                                                                  pa.answer_group_seq_nbr,
-                                                                  nuim.data_location,
-                                                                  question_label,
-                                                                  other_value_ind_cd,
-                                                                  unit_type_cd,
-                                                                  mask,
-                                                                  nuim.block_nm,
-                                                                  question_group_seq_nbr,
-                                                                  data_type,
-                                                                  pa.last_chg_time
-                                                  from nbs_odse.dbo.nbs_rdb_metadata nrdbm with (nolock)
-                                                           inner join nbs_odse.dbo.nbs_ui_metadata nuim
-                                                      with (nolock)
-                                                                      on
-                                                                          nrdbm.nbs_ui_metadata_uid = nuim.nbs_ui_metadata_uid
-                                                           left outer join nbs_odse.dbo.nbs_case_answer pa
-                                                      with (nolock)
-                                                                           on
-                                                                               nuim.nbs_question_uid = pa.nbs_question_uid
-                                                           inner join nbs_srte.dbo.code_value_general cvg
-                                                      with (nolock)
-                                                                      on
-                                                                          cvg.code = nuim.data_type
-                                                  where
-                                                      cvg.code_set_nm = 'NBS_DATA_TYPE'
-                                                    and
-                                                      pa.act_uid = phc.public_health_case_uid
-                                                     --and pa.last_chg_time>=phc.last_chg_time
-                                                 ) as answer_table) as answer_table
-                                      where rowid = 1
+                                          nca.nbs_ui_metadata_uid,
+                                          nca.nbs_rdb_metadata_uid,
+                                          nca.rdb_table_nm,
+                                          nca.rdb_column_nm,
+                                          nca.code_set_group_id,
+                                          nca.answer_txt,
+                                          nca.act_uid,
+                                          nca.record_status_cd,
+                                          nca.nbs_question_uid,
+                                          nca.investigation_form_cd,
+                                          nca.unit_value,
+                                          nca.question_identifier,
+                                          nca.data_location,
+                                          nca.answer_group_seq_nbr,
+                                          nca.question_label,
+                                          nca.other_value_ind_cd,
+                                          nca.unit_type_cd,
+                                          nca.mask,
+                                          nca.block_nm,
+                                          nca.question_group_seq_nbr,
+                                          nca.data_type,
+                                          nca.last_chg_time
+                                      from #temp_page_case_answer_table nca WITH (NOLOCK)
+                                      WHERE
+                                          nca.act_uid = phc.public_health_case_uid
+                                      --AND nca.last_chg_time = phc.last_chg_time
                                       FOR json path,INCLUDE_NULL_VALUES
                                   ) AS investigation_case_answer
-                          ) AS investigation_case_answer,
+                          ) AS investigation_case_answer
+
                           -- investigation notification columns
-                          (
+                              ,(
                               SELECT
                                   (
                                       SELECT
@@ -535,86 +545,8 @@ BEGIN
                                         AND act.source_class_cd = 'NOTF'
                                         AND act.target_class_cd = 'CASE' FOR json path,INCLUDE_NULL_VALUES
                                   ) AS investigation_notifications
-                          ) AS investigation_notifications,
-                          (select
-                               (
-                                   select distinct min(case
-                                       when version_ctrl_nbr = 1
-                                           then nf.record_status_cd
-                                       end) as first_notification_status
-                                                 ,sum(case
-                                       when nf.record_status_cd = 'REJECTED'
-                                           then 1
-                                       else 0
-                                       end) notif_rejected_count
-                                                 ,sum(case
-                                       when nf.record_status_cd = 'APPROVED'
-                                           or nf.record_status_cd = 'PEND_APPR'
-                                           then 1
-                                       when nf.record_status_cd = 'REJECTED'
-                                           then -1
-                                       else 0
-                                       end) notif_created_count
-                                                 ,sum(case
-                                       when nf.record_status_cd = 'COMPLETED'
-                                           then 1
-                                       else 0
-                                       end) notif_sent_count
-                                                 ,min(case
-                                       when nf.record_status_cd = 'COMPLETED'
-                                           then rpt_sent_time
-                                       end) as first_notification_send_date
-                                                 ,
-                                       sum(case
-                                           when nf.record_status_cd = 'PEND_APPR'
-                                               then 1
-                                           else 0
-                                           end) notif_created_pendings_count
-                                                 ,max(case
-                                       when nf.record_status_cd = 'APPROVED'
-                                           or nf.record_status_cd = 'PEND_APPR'
-                                           then nf.last_chg_time
-                                       end) as last_notificationdate
-                                                 ,
-                                                 --done?
-                                       max(case
-                                           when nf.record_status_cd = 'COMPLETED'
-                                               then rpt_sent_time
-                                           end) as last_notification_send_date
-                                                 ,
-                                                 --done?
-                                       min(nf.add_time) as first_notification_date
-                                                 ,
-                                                 --done
-                                       min(nf.add_user_id) as first_notification_submitted_by
-                                                 ,
-                                                 --done
-                                       min(nf.add_user_id) as last_notification_submittedby
-                                                 --done
-                                                 --min(case when record_status_cd='completed' then  last_chg_user_id end) as firstnotificationsubmittedby,
-                                                 ,min(case
-                                       when nf.record_status_cd = 'COMPLETED'
-                                           and rpt_sent_time is not null
-                                           then rpt_sent_time
-                                       end) as notificationdate
-                                   from nbs_odse.dbo.act_relationship ar with (nolock)
-                                            inner join nbs_odse.dbo.notification_hist nf with (nolock) on ar.source_act_uid = nf.notification_uid
-                                   where
-                                       ar.target_act_uid = phc.public_health_case_uid
-                                     and
-                                       source_class_cd = 'NOTF'
-                                     and target_class_cd = 'CASE'
-                                     and nf.cd='NOTF'
-                                     and (
-                                       nf.record_status_cd = 'COMPLETED'
-                                           OR nf.record_status_cd = 'MSG_FAIL'
-                                           OR nf.record_status_cd = 'REJECTED'
-                                           OR nf.record_status_cd = 'PEND_APPR'
-                                           OR nf.record_status_cd = 'APPROVED'
-                                       )
-                                   FOR json path,INCLUDE_NULL_VALUES
-                               ) AS notification_history
-                          ) AS notification_history
+                          ) AS investigation_notifications
+
                       /*
                        -- ldf_phc associated with phc
                       ,(
@@ -648,8 +580,8 @@ BEGIN
                  LEFT OUTER JOIN nbs_odse.dbo.case_management cm WITH (NOLOCK) on results.public_health_case_uid = cm.public_health_case_uid
                  LEFT JOIN
              (SELECT DISTINCT act_uid       AS                                                 nac_page_case_uid,
-                              last_chg_time AS                                                  nac_last_chg_time,
-                              add_time      as                                                  nac_add_time,
+                              MIN(last_chg_time) AS                                                  nac_last_chg_time,
+                              MIN(add_time)      as                                                  nac_add_time,
                               MAX(CASE WHEN type_cd = 'PerAsReporterOfPHC' THEN entity_uid END) person_as_reporter_uid,
                               MAX(CASE WHEN type_cd = 'HospOfADT' THEN entity_uid END)          hospital_uid,
                               MAX(CASE WHEN type_cd = 'OrgAsClinicOfPHC' THEN entity_uid END)   ordering_facility_uid

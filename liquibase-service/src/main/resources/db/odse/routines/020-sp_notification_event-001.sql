@@ -76,7 +76,6 @@ BEGIN
                                           phc.cd_desc_txt as 'condition_desc'
                                       FROM
                                           act_relationship act WITH (NOLOCK)
-                                              join notification notif WITH (NOLOCK) on  act.source_act_uid = notif.notification_uid
                                               join public_health_case phc WITH (NOLOCK) on act.target_act_uid = phc.public_health_case_uid
                                               join participation part with (nolock) ON part.type_cd='SubjOfPHC' AND part.act_uid=act.target_act_uid
                                               join person per with (nolock) ON per.cd='PAT' AND per.person_uid = part.subject_entity_uid
@@ -126,7 +125,7 @@ BEGIN
                                           when nf.record_status_cd = 'APPROVED'
                                               or nf.record_status_cd = 'PEND_APPR'
                                               then nf.last_chg_time
-                                          end) as last_notificationdate
+                                          end) as last_notification_date
                                                     ,
                                                     --done?
                                           max(case
