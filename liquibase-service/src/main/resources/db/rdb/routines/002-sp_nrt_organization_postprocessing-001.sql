@@ -17,16 +17,16 @@ BEGIN
         set @batch_id = cast((format(getdate(),'yyMMddHHmmss')) as bigint);
 
         INSERT INTO [dbo].[job_flow_log] (
-           batch_id
-         ,[create_dttm]
-         ,[update_dttm]
-         ,[Dataflow_Name]
-         ,[package_Name]
-         ,[Status_Type]
-         ,[step_number]
-         ,[step_name]
-         ,[msg_description1]
-         ,[row_count]
+                                           batch_id
+                                         ,[create_dttm]
+                                         ,[update_dttm]
+                                         ,[Dataflow_Name]
+                                         ,[package_Name]
+                                         ,[Status_Type]
+                                         ,[step_number]
+                                         ,[step_name]
+                                         ,[msg_description1]
+                                         ,[row_count]
         )
         VALUES (
                  @batch_id
@@ -83,7 +83,7 @@ BEGIN
 
         if @debug = 'true' select * from #temp_org_table;
 
-        /* Logging */
+        /* Logging --Commented to debug
         set @rowcount=@@rowcount
         INSERT INTO [dbo].[job_flow_log]
         (
@@ -101,12 +101,12 @@ BEGIN
                ,@dataflow_name
                ,@package_name
                ,'START'
-               ,@proc_step_no
+      ,@proc_step_no
                ,@proc_step_name
                ,@rowcount
                ,LEFT(@id_list,500)
                );
-
+		*/
 
         /* D_Organization Update Operation */
         BEGIN TRANSACTION;
@@ -254,16 +254,16 @@ BEGIN
 
             /* Logging */
             INSERT INTO [dbo].[job_flow_log] (
-               batch_id
-             ,[create_dttm]
-             ,[update_dttm]
-             ,[Dataflow_Name]
-             ,[package_Name]
-             ,[Status_Type]
-             ,[step_number]
-             ,[step_name]
-             ,[row_count]
-             ,[msg_description1]
+                                               batch_id
+                                             ,[create_dttm]
+                                             ,[update_dttm]
+                                             ,[Dataflow_Name]
+                                             ,[package_Name]
+                                             ,[Status_Type]
+                                             ,[step_number]
+                                             ,[step_name]
+                                             ,[row_count]
+                                             ,[msg_description1]
             )
             VALUES
                 (
@@ -314,16 +314,16 @@ BEGIN
         SET @proc_step_no = 4;
 
         INSERT INTO [dbo].[job_flow_log] (
-           batch_id
-         ,[create_dttm]
-         ,[update_dttm]
-         ,[Dataflow_Name]
-         ,[package_Name]
-         ,[Status_Type]
-         ,[step_number]
-         ,[step_name]
-         ,[row_count]
-         ,[msg_description1]
+                                           batch_id
+                                         ,[create_dttm]
+                                         ,[update_dttm]
+                                         ,[Dataflow_Name]
+                                         ,[package_Name]
+                                         ,[Status_Type]
+                                         ,[step_number]
+                                         ,[step_name]
+                                         ,[row_count]
+                                         ,[msg_description1]
         )
         VALUES (
                  @batch_id
@@ -348,16 +348,16 @@ BEGIN
 
         /* Logging */
         INSERT INTO [dbo].[job_flow_log] (
-           batch_id
-         ,[create_dttm]
-         ,[update_dttm]
-         ,[Dataflow_Name]
-         ,[package_Name]
-         ,[Status_Type]
-         ,[step_number]
-         ,[step_name]
-         ,[row_count]
-         ,[msg_description1]
+                                           batch_id
+                                         ,[create_dttm]
+                                         ,[update_dttm]
+                                         ,[Dataflow_Name]
+                                         ,[package_Name]
+                                         ,[Status_Type]
+                                         ,[step_number]
+                                         ,[step_name]
+                                         ,[row_count]
+                                         ,[msg_description1]
         )
         VALUES
             (

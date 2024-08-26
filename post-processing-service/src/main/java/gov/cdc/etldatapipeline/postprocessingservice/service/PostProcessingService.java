@@ -60,7 +60,7 @@ public class PostProcessingService {
         PROVIDER(2, "provider", "provider_uid", "sp_nrt_provider_postprocessing"),
         PATIENT(3, "patient", "patient_uid", "sp_nrt_patient_postprocessing"),
         INVESTIGATION(4, "investigation", "public_health_case_uid", "sp_nrt_investigation_postprocessing"),
-        NOTIFICATIONS(5, "notifications", "notification_uid", "sp_nrt_notification_postprocessing"),
+        NOTIFICATION(5, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
         LDF_DATA(6, "ldf_data", "ldf_uid", "sp_nrt_ldf_postprocessing"),
         F_PAGE_CASE(0, "fact page case", "public_health_case_uid", "sp_f_page_case_postprocessing"),
         CASE_ANSWERS(0, "case answers", "public_health_case_uid", "sp_page_builder_postprocessing"),
@@ -203,7 +203,7 @@ public class PostProcessingService {
                                 investigationRepository::executeStoredProcForFPageCase);
                         datamartProcessor.process(invData);
                         break;
-                    case NOTIFICATIONS:
+                    case NOTIFICATION:
                         processTopic(keyTopic, entity, ids,
                                 postProcRepository::executeStoredProcForNotificationIds);
                         break;

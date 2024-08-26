@@ -1,13 +1,10 @@
-CREATE OR ALTER PROCEDURE [dbo].[sp_investigation_event] @phc_id_list nvarchar(max)
+CREATE   PROCEDURE [dbo].[sp_investigation_event] @phc_id_list nvarchar(max)
 AS
 BEGIN
 
     BEGIN TRY
 
         DECLARE @batch_id BIGINT;
-
-        /*NBS case answer section
-         * TODO: Bring in null rows*/
 
         SET @batch_id = cast((format(getdate(),'yyMMddHHmmss')) as bigint);
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
@@ -35,7 +32,7 @@ BEGIN
         into
             #temp_page_case_answer_table
         FROM (SELECT *,
-                     ROW_NUMBER() OVER (PARTITION BY NBS_QUESTION_UID
+                     ROW_NUMBER() OVER (PARTITION BY NBS_QUESTION_UID, answer_txt
                          order by
                              NBS_QUESTION_UID,
                              other_value_ind_cd desc) rowid
@@ -567,7 +564,8 @@ BEGIN
               WHERE
                   phc.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_id_list
                       , ','))) AS results
-                 LEFT JOIN notification WITH (NOLOCK) ON results.public_health_case_uid = notification.notification_uid
+                 JOIN act_relationship act_rel WITH (NOLOCK) on act_rel.target_act_uid = results.public_health_case_uid AND act_rel.target_class_cd = 'CASE'
+                 JOIN notification WITH (NOLOCK) on  act_rel.source_act_uid = notification.notification_uid  AND act_rel.source_class_cd = 'NOTF'
                  LEFT JOIN nbs_srte.dbo.jurisdiction_code jc WITH (NOLOCK) ON results.jurisdiction_cd = jc.code
                  LEFT JOIN act WITH (NOLOCK) ON act.act_uid = results.public_health_case_uid
                  LEFT JOIN nbs_srte.dbo.program_area_code pac WITH (NOLOCK) on results.prog_area_cd = pac.prog_area_cd
@@ -581,9 +579,9 @@ BEGIN
                            on results.contact_inv_status_cd = cvg2.code and cvg2.code_set_nm = 'PHC_IN_STS'
                  LEFT OUTER JOIN nbs_odse.dbo.case_management cm WITH (NOLOCK) on results.public_health_case_uid = cm.public_health_case_uid
                  LEFT JOIN
-             (SELECT DISTINCT act_uid       AS                                                  nac_page_case_uid,
-                              last_chg_time AS                                                  nac_last_chg_time,
-                              add_time      as                                                  nac_add_time,
+             (SELECT DISTINCT act_uid       AS                                                 nac_page_case_uid,
+                              MAX(last_chg_time) AS                                                  nac_last_chg_time,
+                              MAX(add_time)      as                                                  nac_add_time,
                               MAX(CASE WHEN type_cd = 'PerAsReporterOfPHC' THEN entity_uid END) person_as_reporter_uid,
                               MAX(CASE WHEN type_cd = 'HospOfADT' THEN entity_uid END)          hospital_uid,
                               MAX(CASE WHEN type_cd = 'OrgAsClinicOfPHC' THEN entity_uid END)   ordering_facility_uid
