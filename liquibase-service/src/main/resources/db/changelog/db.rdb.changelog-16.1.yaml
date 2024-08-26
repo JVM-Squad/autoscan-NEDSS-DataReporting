@@ -95,14 +95,14 @@ databaseChangeLog:
       author: liquibase
       changes:
         - sqlFile:
-            path: 013-create_nrt_notifications-001.sql
+            path: 013-create_nrt_investigation_notification-001.sql
             splitStatements: false
   - changeSet:
       id: 14
       author: liquibase
       changes:
         - sqlFile:
-            path: 021-create-nrt-notifications-002.sql
+            path: 021-create-nrt-investigation-notification-002.sql
             splitStatements: false
   - changeSet:
       id: 15
