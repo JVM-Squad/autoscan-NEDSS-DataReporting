@@ -6,7 +6,8 @@ spring:
       organization: nrt_organization
       patient: nrt_patient
       provider: nrt_provider
-      notification: nrt_notifications
+      notification: nrt_investigation_notification
+      ldf_data: nrt_ldf_data
       datamart: nbs_Datamart
     dlq:
       retry-suffix: -retry

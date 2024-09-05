@@ -5,8 +5,11 @@ import gov.cdc.etldatapipeline.commonutil.json.CustomJsonGeneratorImpl;
 import gov.cdc.etldatapipeline.ldfdata.repository.LdfDataRepository;
 import gov.cdc.etldatapipeline.ldfdata.model.dto.LdfData;
 import gov.cdc.etldatapipeline.ldfdata.model.dto.LdfDataKey;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -35,11 +38,17 @@ class LdfDataServiceTest {
     @Captor
     private ArgumentCaptor<String> messageCaptor;
 
+    private AutoCloseable closeable;
     private final CustomJsonGeneratorImpl jsonGenerator = new CustomJsonGeneratorImpl();
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        closeable=MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        closeable.close();
     }
 
     @Test
@@ -93,6 +102,22 @@ class LdfDataServiceTest {
         assertThrows(NoDataException.class, () -> ldfDataService.processMessage(payload, ldfTopic));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "'{\"payload\": {\"before\": {}}}'",
+            "'{\"payload\": {\"after\": {\"business_object_nm\": \"PHC\", \"business_object_uid\": \"100000010\"}}}'",
+            "'{\"payload\": {\"after\": {\"business_object_nm\": \"PHC\", \"ldf_uid\": \"100000001\"}}}'",
+            "'{\"payload\": {\"after\": {\"ldf_uid\": \"100000001\", \"business_object_uid\": \"100000010\"}}}'"
+    })
+    void testProcessMessageIncompleteData(String payload) {
+        String ldfTopic = "LdfData";
+        String ldfTopicOutput = "LdfDataOutput";
+
+        final var ldfDataService = getInvestigationService(ldfTopic, ldfTopicOutput);
+        ldfDataService.processMessage(payload, ldfTopic);
+        verify(kafkaTemplate, never()).send(eq(ldfTopicOutput), anyString(), anyString());
+    }
+
     private void validateData(String inputTopicName, String outputTopicName,
                               String payload, LdfData ldfData) {
         final var ldfDataService = getInvestigationService(inputTopicName, outputTopicName);
@@ -100,7 +125,6 @@ class LdfDataServiceTest {
 
         LdfDataKey ldfDataKey = new LdfDataKey();
         ldfDataKey.setLdfUid(ldfData.getLdfUid());
-        ldfDataKey.setBusinessObjectUid(ldfData.getBusinessObjectUid());
 
         String expectedKey = jsonGenerator.generateStringJson(ldfDataKey);
         String expectedValue = jsonGenerator.generateStringJson(ldfData);
@@ -110,7 +134,6 @@ class LdfDataServiceTest {
         assertEquals(expectedKey, keyCaptor.getValue());
         assertEquals(expectedValue, messageCaptor.getValue());
         assertTrue(keyCaptor.getValue().contains(String.valueOf(ldfDataKey.getLdfUid())));
-        assertTrue(keyCaptor.getValue().contains(String.valueOf(ldfDataKey.getBusinessObjectUid())));
     }
 
     private LdfDataService getInvestigationService(String inputTopicName, String outputTopicName) {

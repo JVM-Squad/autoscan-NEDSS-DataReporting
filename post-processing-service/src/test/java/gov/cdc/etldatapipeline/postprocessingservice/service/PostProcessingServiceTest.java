@@ -68,10 +68,11 @@ class PostProcessingServiceTest {
             "dummy_provider, '{\"payload\":{\"provider_uid\":123}}', 123",
             "dummy_organization, '{\"payload\":{\"organization_uid\":123}}', 123",
             "dummy_investigation, '{\"payload\":{\"public_health_case_uid\":123}}', 123",
-            "dummy_notifications, '{\"payload\":{\"notification_uid\":123}}', 123"
+            "dummy_notification, '{\"payload\":{\"notification_uid\":123}}', 123"
     })
     void testExtractIdFromMessage(String topic, String messageKey, Long expectedId) {
         Long extractedId = postProcessingServiceMock.extractIdFromMessage(topic, messageKey, messageKey);
+        assertNotNull(extractedId);
         assertEquals(expectedId, extractedId);
     }
 
@@ -81,6 +82,8 @@ class PostProcessingServiceTest {
         String key = "{\"payload\":{\"patient_uid\":123}}";
 
         postProcessingServiceMock.postProcessMessage(topic, key, key);
+        assertEquals(123L, postProcessingServiceMock.idCache.get(topic).get(0));
+
         postProcessingServiceMock.processCachedIds();
 
         String expectedPatientIdsString = "123";
@@ -88,8 +91,8 @@ class PostProcessingServiceTest {
         assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(3, logs.size());
-        assertTrue(logs.get(2).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -105,8 +108,8 @@ class PostProcessingServiceTest {
         assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(3, logs.size());
-        assertTrue(logs.get(2).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -122,8 +125,8 @@ class PostProcessingServiceTest {
         assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(3, logs.size());
-        assertTrue(logs.get(2).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -140,13 +143,14 @@ class PostProcessingServiceTest {
         assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(5, logs.size());
-        assertTrue(logs.get(4).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(6, logs.size());
+        assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.INVESTIGATION.getStoredProcedure()));
+        assertTrue(logs.get(5).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
     void testPostProcessNotificationMessage() {
-        String topic = "dummy_notifications";
+        String topic = "dummy_notification";
         String key = "{\"payload\":{\"notification_uid\":123}}";
 
         postProcessingServiceMock.postProcessMessage(topic, key, key);
@@ -157,8 +161,9 @@ class PostProcessingServiceTest {
         assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(3, logs.size());
-        assertTrue(logs.get(2).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.NOTIFICATION.getStoredProcedure()));
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -181,8 +186,26 @@ class PostProcessingServiceTest {
                 expectedRdbTableNames);
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(7, logs.size());
-        assertTrue(logs.get(6).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertEquals(8, logs.size());
+        assertTrue(logs.get(7).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+    }
+
+    @Test
+    void testPostProcessLdfData() {
+        String topic = "dummy_ldf_data";
+        String key = "{\"payload\":{\"ldf_uid\":123}}";
+
+        postProcessingServiceMock.postProcessMessage(topic, key, key);
+        postProcessingServiceMock.processCachedIds();
+
+        String expectedLdfIdsString = "123";
+        verify(postProcRepositoryMock).executeStoredProcForLdfIds(expectedLdfIdsString);
+        assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
+
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.LDF_DATA.getStoredProcedure()));
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -197,7 +220,7 @@ class PostProcessingServiceTest {
 
         String ntfKey1 = "{\"payload\":{\"notification_uid\":567}}";
         String ntfKey2 = "{\"payload\":{\"notification_uid\":568}}";
-        String ntfTopic = "dummy_notifications";
+        String ntfTopic = "dummy_notification";
 
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey1, orgKey1);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey2, orgKey2);
@@ -225,31 +248,34 @@ class PostProcessingServiceTest {
         String patientKey = "{\"payload\":{\"patient_uid\":125}}";
         String investigationKey = "{\"payload\":{\"public_health_case_uid\":126}}";
         String notificationKey = "{\"payload\":{\"notification_uid\":127}}";
+        String ldfKey = "{\"payload\":{\"ldf_uid\":127}}";
 
         String orgTopic = "dummy_organization";
         String providerTopic = "dummy_provider";
         String patientTopic = "dummy_patient";
         String invTopic = "dummy_investigation";
-        String notfTopic = "dummy_notifications";
+        String ntfTopic = "dummy_notification";
+        String ldfTopic = "dummy_ldf_data";
 
         postProcessingServiceMock.postProcessMessage(invTopic, investigationKey, investigationKey);
         postProcessingServiceMock.postProcessMessage(providerTopic, providerKey, providerKey);
         postProcessingServiceMock.postProcessMessage(patientTopic, patientKey, patientKey);
-        postProcessingServiceMock.postProcessMessage(notfTopic, notificationKey, notificationKey);
+        postProcessingServiceMock.postProcessMessage(ntfTopic, notificationKey, notificationKey);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey, orgKey);
+        postProcessingServiceMock.postProcessMessage(ldfTopic, ldfKey, ldfKey);
         postProcessingServiceMock.processCachedIds();
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(17, logs.size());
 
-        List<String> topicLogList = logs.stream().map(ILoggingEvent::getFormattedMessage).filter(m -> m.contains(
-                "message topic")).toList();
+        List<String> topicLogList = logs.stream().map(ILoggingEvent::getFormattedMessage).filter(m -> m.matches(
+                "Processing .+ for topic: .*")).toList();
         assertTrue(topicLogList.get(0).contains(orgTopic));
         assertTrue(topicLogList.get(1).contains(providerTopic));
         assertTrue(topicLogList.get(2).contains(patientTopic));
         assertTrue(topicLogList.get(3).contains(invTopic));
         assertTrue(topicLogList.get(4).contains(invTopic));
-        assertTrue(topicLogList.get(5).contains(notfTopic));
+        assertTrue(topicLogList.get(5).contains(ntfTopic));
+        assertTrue(topicLogList.get(6).contains(ldfTopic));
     }
 
     @Test
@@ -312,7 +338,7 @@ class PostProcessingServiceTest {
 
         verify(investigationRepositoryMock, never()).executeStoredProcForPageBuilder(anyLong(), anyString());
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(5, logs.size());
+        assertEquals(6, logs.size());
     }
 
     @Test
@@ -362,8 +388,8 @@ class PostProcessingServiceTest {
     void testPostProcessDatamartIncompleteData(String msg) {
         String topic = "dummy_datamart";
 
+        postProcessingServiceMock.postProcessDatamart(topic, msg);
         List<ILoggingEvent> logs = listAppender.list;
-        assertThrows(NoDataException.class, () -> postProcessingServiceMock.postProcessDatamart(topic, msg));
         assertTrue(logs.get(logs.size()-1).getFormattedMessage().contains("Skipping further processing"));
     }
 

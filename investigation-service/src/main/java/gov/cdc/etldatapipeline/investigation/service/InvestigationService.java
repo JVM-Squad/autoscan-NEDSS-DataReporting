@@ -45,6 +45,9 @@ public class InvestigationService {
     @Value("${spring.kafka.output.topic-name-reporting}")
     public String investigationTopicReporting;
 
+    @Value("${service.phc-datamart-enable}")
+    public boolean phcDatamartEnable;
+
     private final InvestigationRepository investigationRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ProcessInvestigationDataUtil processDataUtil;
@@ -80,7 +83,7 @@ public class InvestigationService {
         processInvestigation(message);
     }
 
-    public String processInvestigation(String value) {
+    public void processInvestigation(String value) {
         String publicHealthCaseUid = "";
         try {
             ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -90,7 +93,9 @@ public class InvestigationService {
                 publicHealthCaseUid = payloadNode.get("public_health_case_uid").asText();
                 investigationKey.setPublicHealthCaseUid(Long.valueOf(publicHealthCaseUid));
 
-                processPhcFactDatamart(publicHealthCaseUid);
+                if (phcDatamartEnable) {
+                    processPhcFactDatamart(publicHealthCaseUid);
+                }
 
                 logger.debug(topicDebugLog, publicHealthCaseUid, investigationTopic);
                 Optional<Investigation> investigationData = investigationRepository.computeInvestigations(publicHealthCaseUid);
@@ -105,7 +110,6 @@ public class InvestigationService {
                             logger.info("Investigation data (uid={}) sent to {}", investigation.getPublicHealthCaseUid(), investigationTopicReporting))
                         .thenRunAsync(() -> processDataUtil.processNotifications(investigation.getInvestigationNotifications(), objectMapper))
                         .join();
-                    return objectMapper.writeValueAsString(investigation);
                 } else {
                     throw new NoDataException("No investigation data found for id: " + publicHealthCaseUid);
                 }
@@ -119,7 +123,6 @@ public class InvestigationService {
             logger.error(msg, e.getMessage());
             throw new RuntimeException(e);
         }
-        return null;
     }
 
     private void processPhcFactDatamart(String publicHealthCaseUid) {

@@ -24,6 +24,7 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -49,18 +50,19 @@ public class PostProcessingService {
     private final ProcessDatamartData datamartProcessor;
 
     static final String PAYLOAD = "payload";
-    static final String SP_EXECUTION_COMPLETED = "Stored proc execution completed";
+    static final String SP_EXECUTION_COMPLETED = "Stored proc execution completed: {}";
 
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Getter
-    private enum Entity {
+    enum Entity {
         ORGANIZATION(1, "organization", "organization_uid", "sp_nrt_organization_postprocessing"),
         PROVIDER(2, "provider", "provider_uid", "sp_nrt_provider_postprocessing"),
         PATIENT(3, "patient", "patient_uid", "sp_nrt_patient_postprocessing"),
         INVESTIGATION(4, "investigation", "public_health_case_uid", "sp_nrt_investigation_postprocessing"),
-        NOTIFICATIONS(5, "notifications", "notification_uid", "sp_nrt_notification_postprocessing"),
-        F_PAGE_CASE(0, "investigation", "public_health_case_uid", "sp_f_page_case_postprocessing"),
+        NOTIFICATION(5, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
+        LDF_DATA(6, "ldf_data", "ldf_uid", "sp_nrt_ldf_postprocessing"),
+        F_PAGE_CASE(0, "fact page case", "public_health_case_uid", "sp_f_page_case_postprocessing"),
         CASE_ANSWERS(0, "case answers", "public_health_case_uid", "sp_page_builder_postprocessing"),
         UNKNOWN(-1, "unknown", "unknown_uid", "sp_nrt_unknown_postprocessing");
 
@@ -99,7 +101,8 @@ public class PostProcessingService {
             "${spring.kafka.topic.organization}",
             "${spring.kafka.topic.patient}",
             "${spring.kafka.topic.provider}",
-            "${spring.kafka.topic.notification}"
+            "${spring.kafka.topic.notification}",
+            "${spring.kafka.topic.ldf_data}"
     })
     public void postProcessMessage(
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -136,20 +139,20 @@ public class PostProcessingService {
 
             Datamart dmData = objectMapper.readValue(payloadNode.get(PAYLOAD).toString(), Datamart.class);
             if (Objects.isNull(dmData)) {
-                throw new NoDataException("For payload: " + payloadNode + " DataMart object is null. Skipping further processing");
+                logger.info("For payload: {} DataMart object is null. Skipping further processing", payloadNode);
+                return;
             }
             Map<Long, Long> dmMap = new HashMap<>();
             if (Objects.isNull(dmData.getPublicHealthCaseUid()) || Objects.isNull(dmData.getPatientUid())) {
-                throw new NoDataException("For payload: " + payloadNode + " DataMart Public Health Case/Patient Id is null. Skipping further processing");
+                logger.info("For payload: {} DataMart Public Health Case/Patient Id is null. Skipping further processing", payloadNode);
+                return;
             }
             dmMap.put(dmData.getPublicHealthCaseUid(), dmData.getPatientUid());
             if (Objects.isNull(dmData.getDatamart())) {
-                throw new NoDataException("For payload: " + payload + " DataMart value is null. Skipping further processing");
+                logger.info("For payload: {} DataMart value is null. Skipping further processing", payloadNode);
+                return;
             }
             dmCache.computeIfAbsent(dmData.getDatamart(), k -> ConcurrentHashMap.newKeySet()).add(dmMap);
-        } catch (NoDataException nde) {
-            logger.warn(nde.getMessage());
-            throw nde;
         } catch (Exception e) {
             logger.error("Error processing datamart message: {}", e.getMessage());
             throw new RuntimeException(e);
@@ -166,6 +169,8 @@ public class PostProcessingService {
                 String keyTopic = entry.getKey();
                 List<Long> ids = entry.getValue();
                 idCache.put(keyTopic, new ArrayList<>());
+
+                logger.info("Processing {} id(s) from topic: {}", ids.size(), keyTopic);
 
                 Entity entity = getEntityByTopic(keyTopic);
                 switch (entity) {
@@ -185,8 +190,8 @@ public class PostProcessingService {
 
                         ids.forEach(id -> {
                             if (idVals.containsKey(id)) {
-                                processId(id, idVals.get(id),
-                                        investigationRepository::executeStoredProcForPageBuilder, Entity.CASE_ANSWERS);
+                                processTopic(keyTopic, Entity.CASE_ANSWERS, id, idVals.get(id),
+                                        investigationRepository::executeStoredProcForPageBuilder);
                                 idVals.remove(id);
                             }
                         });
@@ -195,9 +200,13 @@ public class PostProcessingService {
                                 investigationRepository::executeStoredProcForFPageCase);
                         datamartProcessor.process(invData);
                         break;
-                    case NOTIFICATIONS:
+                    case NOTIFICATION:
                         processTopic(keyTopic, entity, ids,
                                 postProcRepository::executeStoredProcForNotificationIds);
+                        break;
+                    case LDF_DATA:
+                        processTopic(keyTopic, entity, ids,
+                                postProcRepository::executeStoredProcForLdfIds);
                         break;
                     default:
                         logger.warn("Unknown topic: {} cannot be processed", keyTopic);
@@ -223,10 +232,10 @@ public class PostProcessingService {
                     String patients =
                             dmSet.stream().flatMap(m -> m.values().stream().map(String::valueOf)).collect(Collectors.joining(","));
 
-                    logger.info("Processing the {} message topic. Calling stored proc: {}('{}','{}')", dmType,
+                    logger.info("Processing {} message topic. Calling stored proc: {} '{}','{}'", dmType,
                             "sp_hepatitis_datamart_postprocessing", cases, patients);
                     investigationRepository.executeStoredProcForHepDatamart(cases, patients);
-                    completeLog();
+                    completeLog("sp_hepatitis_datamart_postprocessing");
                 }
             } else {
                 logger.info("No data to process from the datamart topics.");
@@ -247,7 +256,7 @@ public class PostProcessingService {
             }
             id = keyNode.get(PAYLOAD).get(entity.getUidName()).asLong();
 
-            if (topic.contains(Entity.INVESTIGATION.getName())) {
+            if (entity.equals(Entity.INVESTIGATION)) {
                 JsonNode tblNode = payloadNode.get(PAYLOAD).get("rdb_table_name_list");
                 if (tblNode != null && !tblNode.isNull()) {
                     idVals.put(id, tblNode.asText());
@@ -265,7 +274,7 @@ public class PostProcessingService {
     private Entity getEntityByTopic(String topic) {
         return Arrays.stream(Entity.values())
                 .filter(entity -> entity.getPriority() > 0)
-                .filter(entity -> topic.contains(entity.getName()))
+                .filter(entity -> topic.endsWith(entity.getName()))
                 .findFirst()
                 .orElse(Entity.UNKNOWN);
     }
@@ -273,32 +282,32 @@ public class PostProcessingService {
     private void processTopic(String keyTopic, Entity entity, List<Long> ids, Consumer<String> repositoryMethod) {
         String idsString = prepareAndLog(keyTopic, entity, ids);
         repositoryMethod.accept(idsString);
-        completeLog();
+        completeLog(entity.getStoredProcedure());
     }
 
     private <T> List<T> processTopic(String keyTopic, Entity entity, List<Long> ids,
                                      Function<String, List<T>> repositoryMethod) {
         String idsString = prepareAndLog(keyTopic, entity, ids);
         List<T> result = repositoryMethod.apply(idsString);
-        completeLog();
+        completeLog(entity.getStoredProcedure());
         return result;
+    }
+
+    private void processTopic(String keyTopic, Entity entity, Long id, String vals, BiConsumer<Long, String> repositoryMethod) {
+        logger.info("Processing {} for topic: {}. Calling stored proc: {} '{}', '{}'", StringUtils.capitalize(entity.getName()), keyTopic,
+                entity.getStoredProcedure(), id, vals);
+        repositoryMethod.accept(id, vals);
+        completeLog(entity.getStoredProcedure());
     }
 
     private String prepareAndLog(String keyTopic, Entity entity, List<Long> ids) {
         String idsString = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
-        logger.info("Processing the {} message topic: {}. Calling stored proc: {} '{}'", entity.getName(), keyTopic,
+        logger.info("Processing {} for topic: {}. Calling stored proc: {} '{}'", StringUtils.capitalize(entity.getName()), keyTopic,
                 entity.getStoredProcedure(), idsString);
         return idsString;
     }
 
-    private void processId(Long id, String vals, BiConsumer<Long, String> repositoryMethod, Entity entity) {
-        logger.info("Processing PHC ID for {}. Calling stored proc: {} '{}', '{}'", entity.getName(),
-                entity.getStoredProcedure(), id, vals);
-        repositoryMethod.accept(id, vals);
-        completeLog();
-    }
-
-    private void completeLog() {
-        logger.info(SP_EXECUTION_COMPLETED);
+    private void completeLog(String sp) {
+        logger.info(SP_EXECUTION_COMPLETED, sp);
     }
 }
