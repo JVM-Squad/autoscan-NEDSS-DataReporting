@@ -1,15 +1,15 @@
-package gov.cdc.etldatapipeline.person;
+package gov.cdc.etldatapipeline.service;
 
-import gov.cdc.etldatapipeline.person.service.PersonStatusService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
-class PersonStatusServiceTest {
+class DataPipelineStatusServiceTest {
 
     @Test
     void statusTest() {
-        PersonStatusService statusService = new PersonStatusService();
+        DataPipelineStatusService statusService = new DataPipelineStatusService();
         Assertions.assertEquals(HttpStatus.OK, statusService.getHealthStatus().getStatusCode());
     }
 }
+

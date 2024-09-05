@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -13,9 +11,7 @@ import lombok.NoArgsConstructor;
  * Data Model to capture the results of the stored procedure `sp_organization_event`
  */
 @Data
-@Builder
 @Entity
-@AllArgsConstructor
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class OrganizationSp {
@@ -66,6 +62,5 @@ public class OrganizationSp {
     private String organizationFax;
     @Column(name = "organization_entity_id")
     private String organizationEntityId;
-
 }
 

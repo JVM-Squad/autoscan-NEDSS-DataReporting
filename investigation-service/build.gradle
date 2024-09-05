@@ -34,6 +34,13 @@ jacocoTestReport {
         csv.required = false
         html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
     }
+
+    afterEvaluate {
+        classDirectories.from = files(classDirectories.files.collect {
+            fileTree(dir: it,
+                    exclude: ['**/*_$$_javassist_*', '**/LogDynamic*.class', '**/*Application.class', '**/*DataSourceConfig.class'])
+        })
+    }
 }
 
 dependencies {
