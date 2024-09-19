@@ -275,7 +275,7 @@ public class Investigation {
     private String programAreaDescription;
 
     @Column(name = "notification_local_id")
-    private Long notificationLocalId;
+    private String notificationLocalId;
 
     @Column(name = "notification_add_time")
     private String notificationAddTime;

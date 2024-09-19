@@ -132,18 +132,31 @@ databaseChangeLog:
         - sqlFile:
             path: 018-sp_public_health_case_fact_datamart_event-001.sql
             splitStatements: false
-
   - changeSet:
       id: 19
       author: liquibase
       changes:
         - sqlFile:
-            path: 019-v_inv_form_code_data-001.sql
+            path: 001-v_inv_form_code_data-001.sql
             splitStatements: false
   - changeSet:
       id: 20
       author: liquibase
       changes:
         - sqlFile:
-            path: 020-fn_get_record_status-001.sql
+            path: 001-fn_get_record_status-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 21
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 020-sp_notification_event-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 22
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 020-sp_notification_event-002.sql
             splitStatements: false

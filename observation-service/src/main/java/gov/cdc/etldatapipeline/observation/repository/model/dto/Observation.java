@@ -22,7 +22,7 @@ public class Observation {
 
     @Id
     @Column(name = "observation_uid")
-    private Long id;
+    private Long observationUid;
 
     @Column(name = "obs_domain_cd_st_1")
     private String obsDomainCdSt1;
@@ -59,6 +59,18 @@ public class Observation {
 
     @Column(name = "electronic_ind")
     private Character electronicInd;
+
+    @Column(name = "ctrl_cd_display_form")
+    private String ctrlCdDisplayForm;
+
+    @Column(name = "processing_decision_cd")
+    private String processingDecisionCd;
+
+    @Column(name = "cd")
+    private String cd;
+
+    @Column(name = "shared_ind")
+    private Character sharedInd;
 
     @Column(name = "version_ctrl_nbr")
     private Short versionCtrlNbr;
