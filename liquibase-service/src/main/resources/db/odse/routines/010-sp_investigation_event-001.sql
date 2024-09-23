@@ -5,9 +5,7 @@ BEGIN
     BEGIN TRY
 
         DECLARE @batch_id BIGINT;
-
         SET @batch_id = cast((format(getdate(),'yyMMddHHmmss')) as bigint);
-
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
         (      batch_id
@@ -28,8 +26,6 @@ BEGIN
                , 0
                , LEFT (@phc_id_list, 199)
                );
-
-
 
         /*Complete Investigation section*/
         SELECT results.public_health_case_uid,
@@ -144,9 +140,9 @@ BEGIN
                results.person_participations,
                results.organization_participations,
                results.investigation_confirmation_method,
-               results.investigation_case_answer
-                ,results.investigation_notifications
-                ,results.notification_history
+               results.investigation_case_answer,
+               results.investigation_notifications,
+               results.notification_history
         --,con.investigation_form_cd
         -- ,results.investigation_act_entity
         -- ,results.ldf_public_health_case
@@ -286,9 +282,9 @@ BEGIN
                      nesteddata.person_participations,
                      nesteddata.organization_participations,
                      nesteddata.investigation_confirmation_method,
-                     nesteddata.investigation_case_answer
-                      ,nesteddata.investigation_notifications
-                      ,nesteddata.notification_history
+                     nesteddata.investigation_case_answer,
+                     nesteddata.investigation_notifications,
+                     nesteddata.notification_history
               --,nesteddata.ldf_public_health_case
               FROM
                   --public health case
