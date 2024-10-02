@@ -20,4 +20,3 @@ CREATE TABLE data_sync_config
     log_end_row                NVARCHAR(255) NULL
 );
 END
-GO
