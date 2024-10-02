@@ -1,4 +1,4 @@
-INSERT INTO [RDB].[dbo].[data_sync_config]
+INSERT INTO [dbo].[data_sync_config]
 (table_name, source_db, query, query_with_null_timestamp, query_count, query_with_pagination)
 VALUES
     ('NRT_OBSERVATION', 'RDB_MODERN', 'SELECT * FROM nrt_observation WHERE last_chg_time :operator :timestamp OR refresh_datetime :operator :timestamp;', NULL, 'SELECT COUNT(*) FROM nrt_observation WHERE last_chg_time :operator :timestamp OR refresh_datetime :operator :timestamp;', 'WITH PaginatedResults AS (
@@ -11,7 +11,7 @@ VALUES
 ;
 
 
-INSERT INTO [RDB].[dbo].[data_sync_config]
+INSERT INTO [dbo].[data_sync_config]
 (table_name, source_db, query, query_with_null_timestamp, query_count, query_with_pagination)
 VALUES
     ('NRT_OBSERVATION_CODED', 'RDB_MODERN', 'SELECT *
