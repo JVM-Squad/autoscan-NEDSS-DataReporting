@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cdc.etldatapipeline.commonutil.NoDataException;
 import gov.cdc.etldatapipeline.observation.repository.IObservationRepository;
 import gov.cdc.etldatapipeline.observation.repository.model.dto.Observation;
-import gov.cdc.etldatapipeline.observation.repository.model.dto.ObservationKey;
+import gov.cdc.etldatapipeline.observation.repository.model.reporting.ObservationKey;
 import gov.cdc.etldatapipeline.observation.repository.model.reporting.ObservationReporting;
 import gov.cdc.etldatapipeline.observation.util.ProcessObservationDataUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -54,7 +54,7 @@ class ObservationServiceTest {
         closeable.close();
     }
 
-    ProcessObservationDataUtil transformer = new ProcessObservationDataUtil();
+    ProcessObservationDataUtil transformer = new ProcessObservationDataUtil(kafkaTemplate);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -134,6 +134,7 @@ class ObservationServiceTest {
         observation.setOrganizationParticipations(readFileData(filePathPrefix + "OrganizationParticipations.json"));
         observation.setMaterialParticipations(readFileData(filePathPrefix + "MaterialParticipations.json"));
         observation.setFollowupObservations(readFileData(filePathPrefix + "FollowupObservations.json"));
+        observation.setParentObservations(readFileData(filePathPrefix + "ParentObservations.json"));
         return observation;
     }
 
@@ -147,7 +148,11 @@ class ObservationServiceTest {
         observation.setAuthorOrganizationId(34567890L);     // null when obsDomainCdSt1=Result
         observation.setOrderingOrganizationId(23456789L);   // null when obsDomainCdSt1=Result
         observation.setMaterialId(10000005L);
-        observation.setResultObservationUid(56789012L);
+        observation.setResultObservationUid("56789012,56789013");
+        observation.setFollowupObservationUid("56789014,56789015");
+        observation.setReportObservationUid(observationUid);
+        observation.setReportRefrUid(234567899L);
+        observation.setReportSprtUid(234567888L);
         return observation;
     }
 

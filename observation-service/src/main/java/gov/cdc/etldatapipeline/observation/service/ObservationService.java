@@ -5,7 +5,7 @@ import gov.cdc.etldatapipeline.commonutil.NoDataException;
 import gov.cdc.etldatapipeline.commonutil.json.CustomJsonGeneratorImpl;
 import gov.cdc.etldatapipeline.observation.repository.IObservationRepository;
 import gov.cdc.etldatapipeline.observation.repository.model.dto.Observation;
-import gov.cdc.etldatapipeline.observation.repository.model.dto.ObservationKey;
+import gov.cdc.etldatapipeline.observation.repository.model.reporting.ObservationKey;
 import gov.cdc.etldatapipeline.observation.repository.model.dto.ObservationTransformed;
 import gov.cdc.etldatapipeline.observation.repository.model.reporting.ObservationReporting;
 import gov.cdc.etldatapipeline.observation.util.ProcessObservationDataUtil;
@@ -123,5 +123,10 @@ public class ObservationService {
         reportingModel.setOrderingOrganizationId(observationTransformed.getOrderingOrganizationId());
         reportingModel.setMaterialId(observationTransformed.getMaterialId());
         reportingModel.setResultObservationUid(observationTransformed.getResultObservationUid());
+        reportingModel.setFollowupObservationUid(observationTransformed.getFollowUpObservationUid());
+        reportingModel.setReportObservationUid(Optional.ofNullable(observationTransformed.getReportObservationUid())
+                .orElse(reportingModel.getObservationUid()));
+        reportingModel.setReportRefrUid(observationTransformed.getReportRefrUid());
+        reportingModel.setReportSprtUid(observationTransformed.getReportSprtUid());
     }
 }
