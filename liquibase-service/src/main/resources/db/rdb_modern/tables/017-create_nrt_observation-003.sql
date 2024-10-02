@@ -262,7 +262,7 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_observation' and xtype = '
         IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'transcriptionist_id_assign_auth'   AND Object_ID = Object_ID(N'nrt_observation'))
             BEGIN
                 ALTER TABLE nrt_observation
-                    ADD transcriptionist_id_val varchar(199);
+                    ADD transcriptionist_id_assign_auth varchar(199);
 
             END;
 
@@ -272,10 +272,10 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_observation' and xtype = '
                     ADD transcriptionist_auth_type varchar(100);
             END;
 
-        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'assistant_interpreter_assign_auth'   AND Object_ID = Object_ID(N'nrt_observation'))
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'assistant_interpreter_id_assign_auth'   AND Object_ID = Object_ID(N'nrt_observation'))
             BEGIN
                 ALTER TABLE nrt_observation
-                    ADD assistant_interpreter_id_val varchar(199);
+                    ADD assistant_interpreter_id_assign_auth varchar(199);
             END;
 
         IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'assistant_interpreter_auth_type'   AND Object_ID = Object_ID(N'nrt_observation'))
