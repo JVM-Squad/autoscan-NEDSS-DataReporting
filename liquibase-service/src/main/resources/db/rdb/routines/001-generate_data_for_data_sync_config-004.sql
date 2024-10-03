@@ -1,8 +1,9 @@
+-- Removing existing nrt_obs_coded query, which wasn't correct
 DELETE
 FROM [dbo].[data_sync_config]
 WHERE table_name = 'NRT_OBSERVATION_CODED';
 
-
+-- Inserting valid query back into the config
 INSERT INTO [dbo].[data_sync_config]
 (table_name, source_db, query, query_with_null_timestamp, query_count, query_with_pagination)
 VALUES
