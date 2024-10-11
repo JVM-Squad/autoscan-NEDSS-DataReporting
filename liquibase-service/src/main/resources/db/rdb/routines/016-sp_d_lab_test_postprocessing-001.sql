@@ -13,7 +13,7 @@ BEGIN
     DECLARE @batch_id BIGINT;
     SET @batch_id = cast((format(getdate(),'yyyyMMddHHmmss')) as bigint);
 
-    --BEGIN TRY
+    BEGIN TRY
 
         SET @Proc_Step_no = 1;
         SET @Proc_Step_Name = 'SP_Start';
@@ -50,414 +50,6 @@ BEGIN
         ;
 
 
-        -- BEGIN TRANSACTION; 
-	
-		-- 	SET @Proc_Step_no =  2 ;
-		-- 	SET @Proc_Step_Name = 'Generating UPDATED_OBSERVATION_LIST '; 
-
-        --     IF OBJECT_ID('#UPDATED_OBSERVATION_LIST', 'U') IS NOT NULL
-        --         drop table #UPDATED_OBSERVATION_LIST
-        --     ;
-
-		-- 	SELECT
-        --         *
-        --     INTO #UPDATED_OBSERVATION_LIST
-        --     FROM dbo.nrt_observation
-        --         WHERE observation_uid IN (SELECT value FROM STRING_SPLIT(@obs_ids, ','));
-
-		-- 	 SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--      INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-        -- if @debug  = 'true' select * from #UPDATED_OBSERVATION_LIST;
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @Proc_Step_no =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = ' GENERATING UPDATED_LAB_TEST_LIST '; 
-
-
-		-- 	  IF OBJECT_ID('#UPDATED_LAB_TEST_LIST', 'U') IS NOT NULL 
-		-- 	         drop table  #UPDATED_LAB_TEST_LIST;
-
-		-- 				select LAB_TEST_uid, LAB_TEST_key 
-		-- 				into #UPDATED_LAB_TEST_LIST
-		-- 				from rdb_modern..LAB_TEST
-		-- 				where LAB_TEST_uid in (select observation_uid from #UPDATED_OBSERVATION_LIST)
-		-- 				;
-
-		-- 				-- create table updated_LAB_RPT_USER_COMMENT as
-
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-        --     -- if @debug  = 'true' select * from #UPDATED_LAB_TEST_LIST;
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = '#UPDATED_LAB_RPT_USER_COMMENT'; 
-
-
-		-- 	  IF OBJECT_ID('#UPDATED_LAB_RPT_USER_COMMENT', 'U') IS NOT NULL 
-		-- 	         drop table  #UPDATED_LAB_RPT_USER_COMMENT;
-
- 
-		-- 				select user_comment_key 
-		-- 				into  #UPDATED_LAB_RPT_USER_COMMENT
-		-- 				from rdb_modern..LAB_RPT_USER_COMMENT 
-		-- 				where LAB_TEST_uid in (select observation_uid from  #UPDATED_OBSERVATION_LIST);
-
-
-		-- 				-- create table updt_Test_Result_Grouping_LIST as 
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--      INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = 'GENERATING #updt_Test_Result_Grouping_LIST '; 
-
-
-		-- 	  IF OBJECT_ID('#updt_Test_Result_Grouping_LIST', 'U') IS NOT NULL 
-		-- 	         drop table  #updt_Test_Result_Grouping_LIST;
-
-		-- 				select LAB_TEST_uid 
-		-- 				into #updt_Test_Result_Grouping_LIST
-		-- 				from rdb_modern..Test_Result_Grouping 
-		-- 				where LAB_TEST_uid in (select observation_uid from #updated_observation_List);
-
-
-		-- 				-- create table updt_Lab_Result_Val_list as 
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = 'GENERATING #updt_Lab_Result_Val_list'; 
-
-
-		-- 	  IF OBJECT_ID('#updt_Lab_Result_Val_list', 'U') IS NOT NULL 
-		-- 	         drop table  #updt_Lab_Result_Val_list;
-
-
-		-- 				 select LAB_TEST_uid
-		-- 				 into #updt_Lab_Result_Val_list 
-		-- 				 from rdb_modern..Lab_Result_Val 
-		-- 				 where LAB_TEST_uid in (select observation_uid from #updated_observation_List);
-
-
-		-- 				-- create table updated_LAB_TEST_result_list as 
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = '#updated_LAB_TEST_result_list'; 
-
-
-		-- 	  IF OBJECT_ID('GENERATING #updated_LAB_TEST_result_list', 'U') IS NOT NULL 
-		-- 	         drop table  #updated_LAB_TEST_result_list;
-
-
-		-- 				 select LAB_TEST_key 
-		-- 				 into #updated_LAB_TEST_result_list
-		-- 				 from rdb_modern..LAB_TEST_RESULT 
-		-- 				 where LAB_TEST_uid in (select OBSERVATION_UID from #updated_observation_list);
-
-
-		-- 				-- create table updT_Result_Comment_Grp_LIST as 
-
-
-		--     SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-		-- COMMIT TRANSACTION;
-
-        -- BEGIN TRANSACTION; 
-
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = 'GENERATING #updT_Result_Comment_Grp_LIST'; 
-
-
-		-- 	  IF OBJECT_ID('#updT_Result_Comment_Grp_LIST', 'U') IS NOT NULL 
-		-- 	         drop table  #updT_Result_Comment_Grp_LIST;
-
-
-		-- 				 select LAB_TEST_uid 
-		-- 				 into #updT_Result_Comment_Grp_LIST
-		-- 				 from rdb_modern..RESULT_COMMENT_GROUP 
-		-- 				 where LAB_TEST_uid in (select observation_uid from #updated_observation_List);
-
-
-		-- 				-- create table updt_Lab_Result_Comment_list as 
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-
-		-- COMMIT TRANSACTION;
-
-        --             BEGIN TRANSACTION; 
-		-- 	SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-		-- 	SET @PROC_STEP_NAME = ' GENERATING #updt_Lab_Result_Comment_list'; 
-
-
-		-- 	  IF OBJECT_ID('#updt_Lab_Result_Comment_list', 'U') IS NOT NULL 
-		-- 	         drop table  #updt_Lab_Result_Comment_list;
-
- 
-		-- 				 select LAB_TEST_uid 
-		-- 				 into #updt_Lab_Result_Comment_list
-		-- 				 from rdb_modern..Lab_Result_Comment 
-		-- 				 where LAB_TEST_uid in (select observation_uid from #updated_observation_List);
-
-		-- 				-- create table rdb..updated_LAB_TEST_list as 
-
-		-- 	SELECT @RowCount_no = @@ROWCOUNT;
-	
-		--     INSERT INTO [dbo].[job_flow_log]
-        --         (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-        --         VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-
-		-- 	COMMIT TRANSACTION;
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = 'GENERATING #updated_LAB_TEST_list'; 
-
-			-- -- what is this step doing???
-			-- -- Ask Upasana
-
-			--   IF OBJECT_ID('#updated_LAB_TEST_list', 'U') IS NOT NULL 
-			--          drop table  #updated_LAB_TEST_list;
- 
-			-- 			 select * 
-			-- 			 into #updated_LAB_TEST_list
-			-- 			 from rdb_modern..updated_LAB_TEST_list;
-
-
-			-- 			-- create table s_edx_document1 as ( spoke with Pradeepp- need to get Max add time value only 
-
-			-- SELECT @RowCount_no = @@ROWCOUNT;
-	
-		    -- INSERT INTO [dbo].[job_flow_log]
-            --     (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-            --     VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-
-			-- COMMIT TRANSACTION;
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = ' GENERATING #s_edx_document1 '; 
-
-
-			-- -- this section relies on one of the tables created by the nested JSON in Kafka
-			-- -- nrt_observation_edx
-			-- -- while the table does not exist, use the original reference to NBS_ODSE
-			-- IF OBJECT_ID('#s_edx_document1', 'U') IS NOT NULL 
-			--          drop table  #s_edx_document1;
-
-			-- 			select EDX_Document_uid, act_uid, add_time
-			-- 			 into #s_edx_document1
-			-- 			from (select EDX_Document_uid, act_uid, add_time ,ROW_NUMBER() OVER (PARTITION BY act_uid ORDER BY add_time DESC) rankno
-			-- 			 from dbo.nrt_observation_edx noe, rdb_modern..s_updated_lab sul
-			-- 			 where  noe.act_uid=sul.observation_Uid 
-			-- 			 ) edx_lst
-			-- 			 where edx_lst.rankno = 1
-			-- 			 ;
-
-
-			-- SELECT @RowCount_no = @@ROWCOUNT;
-	
-		    -- INSERT INTO [dbo].[job_flow_log]
-            --     (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
-            --     VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
-
-
-			-- COMMIT TRANSACTION;
-
-
-
-			-- I believe this step is made redundant by the fact that nrt_observation has these values already sorted out
-			-- refer to the following link
-			-- https://cdc-nbs.atlassian.net/wiki/spaces/NM/pages/533430304/004+observation#ordering_person_id,-patient_id,-morb_physician_id-and-morb_reporter_id,-transcriptionist_id,-assistant_interpreter_id,-result_interpreter_id-from-person_participations-for-Order
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = 'GENERATING #updated_participant'; 
-
-
-			--   IF OBJECT_ID('#updated_participant', 'U') IS NOT NULL 
-			--          drop table  #updated_participant;
-
-			-- 			 select act_uid,
-			-- 			subject_entity_uid, type_cd,act_class_cd,record_status_cd,subject_class_cd,
-			-- 			observation_uid
-			-- 			into #updated_participant
-			-- 			from nbs_odse..participation, #updated_observation_List obs 
-			-- 			where 
-			-- 			participation.act_uid=obs.observation_uid;
-
-			--  CREATE NONCLUSTERED INDEX [idx_TMP_updated_participant_tcd] ON rdb.[dbo].[TMP_updated_participant]
-			-- 		(
-			-- 			[type_cd] ASC,
-			-- 			[act_class_cd] ASC,
-			-- 			[record_status_cd] ASC,
-			-- 			[subject_class_cd] ASC
-			-- 		)
-			-- 		INCLUDE ( 	[act_uid],
-			-- 			[subject_entity_uid])
-			-- 		;
-
-			-- 			 -- Create Table merged_provider as
-
-			-- 			  SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		    --  INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-			-- 	(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-			-- 	VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
-
-
-			-- COMMIT TRANSACTION;
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = ' GENERATING TMP_merged_provider '; 
-
-
-			--   IF OBJECT_ID('#merged_provider', 'U') IS NOT NULL 
-			--          drop table  #merged_provider;
-
-			-- 			  Select distinct a.provider_first_name, a.provider_last_name, a.provider_uid, a.provider_key,
-			-- 					 b.root_extension_txt as person_id_val,
-			-- 					 b.type_cd as patient_id_type,
-			-- 			--VS		 put(b.type_cd,$EI_TYPE.) as person_id_type_desc,   /* code_set_nm = EI_TYPE */
-			-- 				     cvg.code_short_desc_txt as person_id_type_desc,   /* code_set_nm = EI_TYPE */
-			-- 					 b.assigning_authority_cd as person_id_assign_auth_cd,
-			-- 					 b.record_status_cd
-			-- 			   into #merged_provider
-			-- 			   from #updated_participant PART 
-			-- 				   LEFT JOIN rdb..d_provider a	  ON PART.SUBJECT_ENTITY_UID=a.provider_uid
-			-- 				   LEFT JOIN nbs_odse..entity_id b On a.provider_uid = b.entity_uid
-			-- 				   left join nbs_srte..code_value_general  as cvg on b.type_cd = cvg.code 	and cvg.code_set_nm = 'EI_TYPE'
-			-- 				   ;
-
-
-			-- 			/* -- VS
-
-			-- 			data filter_participants (rename = (subject_entity_uid = provider_uid));
-			-- 			set updated_participant;
-			-- 			where type_cd in ('ENT', 'ASS', 'VRF')
-			-- 				and act_class_cd = 'OBS'
-			-- 				and record_status_cd ='ACTIVE'
-			-- 				and subject_class_cd = 'PSN'; 
- 
-			-- 			*/
-
-			-- 			 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		    --  INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-			-- 	(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-			-- 	VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
-
-
-			-- COMMIT TRANSACTION;
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = ' GENERATING TMP_filter_participants '; 
-
-
-			--   IF OBJECT_ID('#filter_participants', 'U') IS NOT NULL 
-			--          drop table   #filter_participants ;
-
-
-			-- 			 select act_uid,
-			-- 			subject_entity_uid as provider_uid_filter,
-			-- 			 type_cd,act_class_cd,
-			-- 			 record_status_cd as record_status_cd_filter,
-			-- 			 subject_class_cd,
-			-- 			observation_uid
-			-- 			into #filter_participants
-			-- 			from #updated_participant
-			-- 			where type_cd in ('ENT', 'ASS', 'VRF')
-			-- 				and act_class_cd = 'OBS'
-			-- 				and record_status_cd ='ACTIVE'
-			-- 				and subject_class_cd = 'PSN'; 
-
-
-			-- 			-- create table participants as 
-
-			-- 			 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		    --  INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-			-- 	(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-			-- 	VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
-
-
-			-- COMMIT TRANSACTION;
-
-            -- BEGIN TRANSACTION; 
-			-- SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			-- SET @PROC_STEP_NAME = ' GENERATING TMP_participants '; 
-
-
-			--   IF OBJECT_ID('#participants', 'U') IS NOT NULL 
-			--          drop table    #participants ;
-
-
-			-- 			 select * 
-			-- 			 into #participants
-			-- 			 from #filter_participants tfp, #merged_provider tmp
-			-- 			where tfp.provider_uid_filter= tmp.provider_uid;
-
-
-			-- 			-- create table LAB_TESTinit_a as 
-
-			-- 			 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		    --  INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-			-- 	(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-			-- 	VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
-
-
-			-- COMMIT TRANSACTION;
 
 			BEGIN TRANSACTION; 
 			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
@@ -2360,47 +1952,47 @@ BEGIN
 
   	COMMIT TRANSACTION;
 
-    -- END TRY
+    END TRY
 
-    -- BEGIN CATCH
-
-
-    --     IF @@TRANCOUNT > 0   ROLLBACK TRANSACTION;
+    BEGIN CATCH
 
 
-
-    --         DECLARE @ErrorNumber INT = ERROR_NUMBER();
-    --         DECLARE @ErrorLine INT = ERROR_LINE();
-    --         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-    --         DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-    --         DECLARE @ErrorState INT = ERROR_STATE();
+        IF @@TRANCOUNT > 0   ROLLBACK TRANSACTION;
 
 
-    --     INSERT INTO [dbo].[job_flow_log] (
-    --                                        batch_id
-    --         ,[Dataflow_Name]
-    --         ,[package_Name]
-    --         ,[Status_Type]
-    --         ,[step_number]
-    --         ,[step_name]
-    --         ,[Error_Description]
-    --         ,[row_count]
-    --     )
-    --     VALUES
-    --         (
-    --         @batch_id
-    --             ,'D_LAB_TEST'
-    --             ,'D_LAB_TEST'
-    --             ,'ERROR'
-    --             ,@Proc_Step_no
-    --             ,'ERROR - '+ @Proc_Step_name
-    --             , 'Step -' +CAST(@Proc_Step_no AS VARCHAR(3))+' -' +CAST(@ErrorMessage AS VARCHAR(500))
-    --             ,0
-    --         );
+
+            DECLARE @ErrorNumber INT = ERROR_NUMBER();
+            DECLARE @ErrorLine INT = ERROR_LINE();
+            DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+            DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+            DECLARE @ErrorState INT = ERROR_STATE();
 
 
-    --     return -1 ;
+        INSERT INTO [dbo].[job_flow_log] (
+                                           batch_id
+            ,[Dataflow_Name]
+            ,[package_Name]
+            ,[Status_Type]
+            ,[step_number]
+            ,[step_name]
+            ,[Error_Description]
+            ,[row_count]
+        )
+        VALUES
+            (
+            @batch_id
+                ,'D_LAB_TEST'
+                ,'D_LAB_TEST'
+                ,'ERROR'
+                ,@Proc_Step_no
+                ,'ERROR - '+ @Proc_Step_name
+                , 'Step -' +CAST(@Proc_Step_no AS VARCHAR(3))+' -' +CAST(@ErrorMessage AS VARCHAR(500))
+                ,0
+            );
 
-    -- END CATCH
+
+        return -1 ;
+
+    END CATCH
 
 END;
