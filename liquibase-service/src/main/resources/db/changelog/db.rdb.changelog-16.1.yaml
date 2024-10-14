@@ -13,3 +13,31 @@ databaseChangeLog:
         - sqlFile:
             path: 001-create_data_sync_config-001.sql
             splitStatements: false
+  - changeSet:
+      id: 2
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-create_data_sync_config-002.sql
+            splitStatements: false
+  - changeSet:
+      id: 3
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-create_data_sync_config-003.sql
+            splitStatements: false
+  - changeSet:
+      id: 4
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-create_data_sync_config-004.sql
+            splitStatements: false
+  - changeSet:
+      id: 5
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-create_data_sync_config-005.sql
+            splitStatements: false
