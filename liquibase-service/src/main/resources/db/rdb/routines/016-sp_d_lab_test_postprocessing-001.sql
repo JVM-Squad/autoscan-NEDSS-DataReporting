@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE dbo.sp_d_lab_test_postprocessing_COPY
+CREATE OR ALTER PROCEDURE dbo.sp_d_lab_test_postprocessing
     @obs_ids nvarchar(max),
     @debug bit = 'false'
 as
@@ -108,7 +108,7 @@ BEGIN
 							obs.txt						 	as Clinical_information,
 							obs.obs_domain_cd_st_1 		 	as LAB_TEST_Type,
 							obs.cd					 	 	as LAB_TEST_cd, 	
-							obs.Cd_desc_text			 	as LAB_TEST_cd_desc,
+							obs.cd_desc_txt			 	as LAB_TEST_cd_desc,
 							obs.Cd_system_cd			 	as LAB_TEST_cd_sys_cd,
 							obs.Cd_system_desc_txt		 	as LAB_TEST_cd_sys_nm,
 							obs.Alt_cd					 	as Alt_LAB_TEST_cd,
@@ -175,11 +175,7 @@ BEGIN
 						where Jurisdiction_cd is not null
 						;
 
-
-						--vs PROC SORT DATA=s_edx_document NODUPKEY OUT=s_edx_document; BY act_uid; 
-
-						/* --VS --*/
-						-- create table s_edx_document as 
+					if @debug = 'true' select @Proc_Step_Name as step, * from #LAB_TESTinit_a;
 
 			SELECT @RowCount_no = @@ROWCOUNT;
 	
@@ -187,7 +183,6 @@ BEGIN
                 (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
                 VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
-			if @debug  = 'true' select * from #LAB_TESTinit_a;
 
 			COMMIT TRANSACTION;
 
@@ -261,7 +256,7 @@ BEGIN
 							mat.act_uid			 as LAB_TEST_uid_mat,
 							mat.material_cd						 as specimen_src,
 							mat.material_nm						 as specimen_nm,
-							mat.material_desc			 as Specimen_details,
+							mat.material_details			 as Specimen_details,
 							mat.material_collection_vol					 as Specimen_collection_vol,
 							mat.material_collection_vol_unit				 as Specimen_collection_vol_unit,
 							mat.material_desc				 as Specimen_desc,
@@ -341,7 +336,6 @@ BEGIN
 							FROM #OBS_REASON LRV
 							;
 
-						-- create table LAB_TEST_oth as 
 			SELECT @RowCount_no = @@ROWCOUNT;
 	
 		    INSERT INTO [dbo].[job_flow_log]
@@ -388,7 +382,7 @@ BEGIN
 						left join dbo.nrt_provider as nprov	on lti.result_interpreter_id= nprov.provider_uid
 						;
 
-
+					if @debug = 'true' select @Proc_Step_Name as step, * from #LAB_TEST_oth;
 			SELECT @RowCount_no = @@ROWCOUNT;
 	
 		    INSERT INTO [dbo].[job_flow_log]
@@ -495,9 +489,12 @@ BEGIN
 								l.LAB_TEST_uid_oth as LAB_TEST_uid_oth_mor
 								into  #Morb_OID
 								from #LabReportMorb l,
+									dbo.nrt_observation l_extension,
 									 dbo.nrt_observation o
-								where o.report_observation_uid = l.Lab_Rpt_Uid_Test1 -- column seems to be missing, also is it even the right column
-									and o.CTRL_CD_DISPLAY_FORM = 'MorbReport'
+								where 
+								l.Lab_Rpt_Uid_Test1 = l_extension.observation_uid
+								and o.observation_uid = l_extension.report_observation_uid -- column seems to be missing, also is it even the right column
+								and o.CTRL_CD_DISPLAY_FORM = 'MorbReport'
 									;
 
 							   ALTER TABLE #Morb_OID 	DROP COLUMN Lab_Rpt_Uid_Test1,LAB_TEST_uid,LAB_TEST_uid_oth ;
@@ -575,9 +572,7 @@ BEGIN
 									   WHERE PROCESSING_DECISION_CD is not null 
 										AND PROCESSING_DECISION_DESC IS NULL
 										;
-	
-						/**********************************/
-						/* update parent of R_Result */
+
 
 			SELECT @RowCount_no = @@ROWCOUNT;
 	
@@ -593,7 +588,7 @@ BEGIN
 			SET @PROC_STEP_NAME = ' GENERATING #R_Result_to_R_Order '; 
 
 
-			-- verified same as legacy process join with act_uid
+			-- verified same as classic process join with act_uid
 			  IF OBJECT_ID('#R_Result_to_R_Order', 'U') IS NOT NULL 
 			         drop table  #R_Result_to_R_Order;
 
@@ -609,7 +604,6 @@ BEGIN
 								;
 
 
-						/* update root of R_Result */
 						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
 				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
@@ -623,6 +617,8 @@ BEGIN
 			SET @PROC_STEP_NAME = ' GENERATING #R_Result_to_R_Order_to_Order '; 
 
 
+				-- this step gets the parent to R_Order records
+				-- the highest level parent for R_Order is an Order, and that is the root record
 			  IF OBJECT_ID('rdb.dbo.#R_Result_to_R_Order_to_Order', 'U') IS NOT NULL 
 			         drop table   #R_Result_to_R_Order_to_Order;
 
@@ -631,21 +627,23 @@ BEGIN
 						select 	tst.*,
 								coalesce(tst2.record_status_cd, tst3.record_status_cd, tst4.record_status_cd )
 											 as record_status_cd_for_result_drug ,
-								tst2.report_sprt_uid			as root_thru_srpt,
-								tst3.report_refr_uid				as root_thru_refr,
-								coalesce(tst2.report_sprt_uid, 	tst4.report_observation_uid)
-															as root_ordered_test_pntr -- VS label='Order uid'
+								parent_test.report_sprt_uid			as root_thru_srpt,
+								parent_test.report_refr_uid				as root_thru_refr,
+								coalesce(parent_test.report_sprt_uid, 	parent_test.report_observation_uid)
+															as root_ordered_test_pntr
 						into #R_Result_to_R_Order_to_Order
 						from #R_Result_to_R_Order	as tst
-							left join 	#LAB_TEST1 as tst2    
-								on   tst2.LAB_TEST_uid = tst.parent_test_pntr
-							left join 	#LAB_TEST1 as tst3    
-								on   tst3.LAB_TEST_uid = tst.parent_test_pntr
-							left join 	#LAB_TEST1 as tst4    
-								on   tst4.LAB_TEST_uid = tst.parent_test_pntr
+							left join 	dbo.nrt_observation as parent_test  
+								on   parent_test.observation_uid = tst.parent_test_pntr
+							left join dbo.nrt_observation as tst2
+								on parent_test.report_sprt_uid = tst2.observation_uid
+							left join dbo.nrt_observation as tst3
+								on parent_test.report_refr_uid = tst3.observation_uid
+							left join dbo.nrt_observation as tst4
+								on parent_test.report_observation_uid = tst4.observation_uid
 						;
 
-
+						if @debug = 'true' select 'r_result_to_r_order_to_order' as nm, * from #R_Result_to_R_Order_to_Order;
 						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
 				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
@@ -673,9 +671,11 @@ BEGIN
 
 
 						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+		     SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -710,16 +710,11 @@ BEGIN
 
 
 
-						/* update root order test and parent of R_Order */
-
-
-						-- create table R_Order_to_Result as
-
-
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -732,58 +727,25 @@ BEGIN
 			  IF OBJECT_ID('#R_Order_to_Result', 'U') IS NOT NULL 
 			         drop table  #R_Order_to_Result;
 					 	
-						select 	tst.LAB_TEST_uid			as LAB_TEST_uid ,--label='R_Order_uid',
-								tst.report_refr_uid			as parent_test_pntr, --label='Result_uid',
-								tst2.lab_test_uid			as root_ordered_test_pntr, --label='Order uid',
-								tst2.record_status_cd as record_status_cd --label='record_status_cd_for_result'
+						select 	tst.LAB_TEST_uid			as LAB_TEST_uid ,
+								tst.report_refr_uid			as parent_test_pntr, 
+								tst2.observation_uid			as root_ordered_test_pntr, 
+								tst2.record_status_cd as record_status_cd 
 						into #R_Order_to_Result
 						from 	#LAB_TEST1_final as tst
 							LEFT JOIN dbo.nrt_observation obs2
 								ON tst.report_refr_uid = obs2.observation_uid
-							LEFT JOIN #LAB_TEST1_final tst2
-								ON obs2.report_observation_uid = tst2.lab_rpt_uid
+							LEFT JOIN dbo.nrt_observation tst2
+								ON obs2.report_observation_uid = tst2.observation_uid
 						where tst.LAB_TEST_type IN( 'R_Order','I_Order')
 						;
 
-					-- BELOW IS THE LOGIC FROM THE ORIGINAL STORED PROCEDURE
 
-					-- from 	#LAB_TEST1_final as tst,
-					-- 			#LAB_TEST1_final as tst2,
-					-- 			nbs_odse..act_relationship	as act,
-					-- 			nbs_odse..act_relationship	as act2
-					-- 	where tst.LAB_TEST_type IN( 'R_Order','I_Order')
-					-- 			and tst.LAB_TEST_uid = act.source_act_uid -- this section just gets tst.report_refr_uid
-					-- 			and act.type_cd = 'REFR'
-					-- 			and act.target_class_cd ='OBS'
-					-- 			and act.source_class_cd ='OBS'
-					-- 			and act.target_act_uid = act2.source_act_uid -- this section uses tst.report_refr_id as the source observation (act)
-					-- 			and act2.type_cd = 'COMP'
-					-- 			and act2.target_class_cd ='OBS'
-					-- 			and act2.source_class_cd ='OBS'
-					-- 			and tst2.LAB_TEST_uid = act2.target_act_uid -- and the lab_test_uid must be the report_observation_uid for tst.report_refr_id
-
-					-- original source is tst's id
-					-- the target is tst.report_reft_uid
-					-- tst.report_refr_uid is the source for tst2.LAB_TEST_uid, which has type COMP, indicating that
-					-- it is a report_observation_uid
-					-- 
-
-						/*VS
-						data LAB_TEST1;
-						merge LAB_TEST1 R_Order_to_Result;
-						by LAB_TEST_uid;
-						*/
-
-
-
-
-						/* update root and parent of Result */
-
-
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -806,10 +768,11 @@ BEGIN
 						;
 
 
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -821,20 +784,6 @@ BEGIN
 
 			  IF OBJECT_ID('#LAB_TEST1_final_result', 'U') IS NOT NULL 
 			         drop table  #LAB_TEST1_final_result;
-
-						/*
-						select dimc.LAB_TEST_uid as LAB_TEST_uid_final_result,
-								tlt1.*,
-								coalesce(tlt1.[record_status_cd], trr.[record_status_cd]) as record_status_cd2,
-							   coalesce(tlt1.parent_test_pntr,trr.parent_test_pntr) as parent_test_pntr2, 
-							   coalesce(tlt1.root_ordered_test_pntr,trr.root_ordered_test_pntr) as root_ordered_test_pntr2
-						into #LAB_TEST1_final_result
-						from #LAB_TEST1_final_testuid DIMC
-											  LEFT OUTER JOIN   #LAB_TEST1_final tlt1 ON  tlt1.LAB_TEST_uid  =  dimc.LAB_TEST_uid
-											  LEFT OUTER JOIN   #R_Order_to_Result trr ON  trr.LAB_TEST_uid  =  dimc.LAB_TEST_uid
-						;				
-
-						*/
 
 
 						select dimc.LAB_TEST_uid as LAB_TEST_uid_final_result,
@@ -858,10 +807,11 @@ BEGIN
 						-- create table Result_to_Order as
 
 
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -871,32 +821,29 @@ BEGIN
 			SET @PROC_STEP_NAME = ' GENERATING #Result_to_Order '; 
 
 
+				-- gets the order (parent, also happens to be the root parents) for a record with type 'Result'
 			  IF OBJECT_ID('#Result_to_Order', 'U') IS NOT NULL 
 			         drop table  #Result_to_Order;
 
-						select 	tst.LAB_TEST_uid			as LAB_TEST_uid ,--label='Result_uid',
-								tst.report_observation_uid			as parent_test_pntr ,--label='Order_uid',
-								tst.report_observation_uid			as root_ordered_test_pntr ,--label='Order uid',
-								tst2.record_status_cd as record_status_cd --label='record_status_cd_for_result'
+						select 	tst.LAB_TEST_uid			as LAB_TEST_uid ,
+								tst.report_observation_uid			as parent_test_pntr ,
+								tst.report_observation_uid			as root_ordered_test_pntr ,
+								tst2.record_status_cd as record_status_cd 
 						into  #Result_to_Order
 						from 	#LAB_TEST1_final_result as tst,
-								#LAB_TEST1_final_result as tst2
+								dbo.nrt_observation as tst2
 							where tst.LAB_TEST_type in ('Result', 'Order_rslt')
-								and tst2.LAB_TEST_uid = tst.report_observation_uid
+								and tst2.observation_uid = tst.report_observation_uid
+								and tst.lab_test_uid != tst.report_observation_uid
 						;
 
 
-						/*
-						data LAB_TEST1;
-						merge LAB_TEST1 Result_to_Order;
-						by LAB_TEST_uid;
-						*/
 
-
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -919,10 +866,11 @@ BEGIN
 						;
 
 
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 				
 
 			COMMIT TRANSACTION;
@@ -962,11 +910,11 @@ BEGIN
 
 
 
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
-
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 			COMMIT TRANSACTION;
 
@@ -983,21 +931,18 @@ BEGIN
 
 
 						select tst.*,
-						 obs.cd_desc_text 'Root_Ordered_Test_Nm' 
+						 obs.cd_desc_txt 'Root_Ordered_Test_Nm' 
 						into #LAB_TEST2
 						from      #LAB_TEST1_final_order as tst
 							  left outer join dbo.nrt_observation as obs on  tst.root_ordered_test_pntr = obs.observation_uid
 						;
 
 
-						/******creating LAB_TEST column in LAB_TEST***/
-
-						-- create table LAB_TEST3 as 
-
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1010,7 +955,7 @@ BEGIN
 			  IF OBJECT_ID('#LAB_TEST3', 'U') IS NOT NULL 
 			         drop table  #LAB_TEST3;
 
-						select tst.*, obs.cd_desc_text 'Parent_Test_Nm' 
+						select tst.*, obs.cd_desc_txt 'Parent_Test_Nm' 
 						into #LAB_TEST3
 						from   #LAB_TEST2 as tst  
 	 							  left outer join dbo.nrt_observation as obs on tst.parent_test_pntr = obs.observation_uid
@@ -1018,10 +963,11 @@ BEGIN
 
 
  
-						  SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1046,22 +992,12 @@ BEGIN
 																	   and obs1.obs_domain_cd_st_1 = 'Order'  
 						;
 
-
-						/*Issue arose when the OID value was set to 4 for Result, R_Order & R_Result which resulted in 
-						Resulted test values not populating the line list lab report. This work around will get the value
-						of the Order Test OID and set the values of its children (Result, R_Result) to the same value. 
-						This fix will bring up the resulted values in the line list.
-						*/
-
-
-						-- create table order_test as 
-
 						
-
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1089,15 +1025,13 @@ BEGIN
 
 						/*note: When the OID is null that means this lab report is needing assignment of jurisdiction*/
 
-						-- create table LAB_TEST as
-
-      --select ' I AM HERE';
 
 						
-						 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1114,55 +1048,19 @@ BEGIN
 
 						select distinct
 								lab.*,
-								ord.oid as order_oid --VS
+								ord.oid as order_oid 
 						into #LAB_TEST
 						from #LAB_TEST4 lab
 							left join	#order_test ord	on lab.root_ordered_test_pntr=ord.root_ordered_test_pntr
 						;
 
-						/*Issue arrose where only the Order Test and not its related Result, R_Result were not showing. This
-						will resolve this isse by merging order test specific attribute values into the Result & R_Result records*/
+						
 
-						/* -- VS ********
-
-						data Merge_Order 
-						(keep = root_ordered_test_pntr 
-						ACCESSION_NBR
-						LAB_RPT_CREATED_BY
-						LAB_RPT_CREATED_DT
-						JURISDICTION_CD
-						JURISDICTION_NM
-						LAB_TEST_dt
-						specimen_collection_dt
-						LAB_RPT_RECEIVED_BY_PH_DT
-						LAB_RPT_LAST_UPDATE_DT
-						LAB_RPT_LAST_UPDATE_BY
-						ELR_IND
-						specimen_src
-						specimen_site
-						Specimen_desc
-						SPECIMEN_SITE_desc
-						LAB_RPT_LOCAL_ID
-						record_status_cd
-						);
-						set LAB_TEST;
-						Where LAB_TEST_Type = 'Order';
-
-
-						data Merge_Order;
-						set Merge_Order;
-						If record_status_cd = '' then record_status_cd = 'ACTIVE';
-							If record_status_cd = 'UNPROCESSED' then record_status_cd = 'ACTIVE';
-							If record_status_cd = 'UNPROCESSED_PREV_D' then record_status_cd = 'ACTIVE';
-							If record_status_cd = 'PROCESSED' then record_status_cd = 'ACTIVE';
-							If record_status_cd = 'LOG_DEL' then record_status_cd = 'INACTIVE';
+		SELECT @RowCount_no = @@ROWCOUNT;
 	
-						*/
-
-		SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1178,28 +1076,37 @@ BEGIN
 
 
 							select 	
-								root_ordered_test_pntr  as 	root_ordered_test_pntr_merge,
-								ACCESSION_NBR as ACCESSION_NBR_merge	,
-								LAB_RPT_CREATED_BY	as LAB_RPT_CREATED_BY_merge ,
-								LAB_RPT_CREATED_DT	,
-								JURISDICTION_CD	,
-								JURISDICTION_NM	,
-								LAB_TEST_dt	,
-								specimen_collection_dt	,
-								LAB_RPT_RECEIVED_BY_PH_DT	,
-								LAB_RPT_LAST_UPDATE_DT	,
-								LAB_RPT_LAST_UPDATE_BY	,
-								ELR_IND as ELR_IND1 	,
-								specimen_src	,
-								specimen_site	,
-								Specimen_desc	,
-								SPECIMEN_SITE_desc	,
-								LAB_RPT_LOCAL_ID	,
-								record_status_cd as record_status_cd_merge	
+								lt.root_ordered_test_pntr  as 	root_ordered_test_pntr_merge,
+								obs.accession_number as ACCESSION_NBR_merge	,
+								obs.add_user_id	as LAB_RPT_CREATED_BY_merge ,
+								obs.ADD_TIME	as LAB_RPT_CREATED_DT,
+								obs.JURISDICTION_CD	,
+								cast(null as [varchar](50)) as JURISDICTION_NM	,
+								obs.activity_to_time as LAB_TEST_dt	,
+								obs.effective_from_time	 	 	as specimen_collection_dt	,
+								obs.rpt_to_state_time  		 	as LAB_RPT_RECEIVED_BY_PH_DT	,
+								obs.LAST_CHG_TIME 			 	as LAB_RPT_LAST_UPDATE_DT,
+								obs.LAST_CHG_USER_ID		 	as LAB_RPT_LAST_UPDATE_BY,
+								obs.electronic_ind			 	as ELR_IND1 	,
+								mat.material_cd						 as specimen_src	,
+								obs.target_site_cd			 	as specimen_site	,
+								mat.material_desc				 as Specimen_desc	,
+								obs.target_site_desc_txt  	 	as SPECIMEN_SITE_desc	,
+								obs.local_id				 	as lab_rpt_local_id	,
+								obs.record_status_cd as record_status_cd_merge,
+								COALESCE(obs2.program_jurisdiction_oid, obs.program_jurisdiction_oid, lt.order_oid) as order_oid
 							into #Merge_Order 
-							from #LAB_TEST	
-							Where LAB_TEST_Type = 'Order'	
+							from #LAB_TEST lt	
+							left join dbo.nrt_observation obs
+								on lt.root_ordered_test_pntr = obs.observation_uid
+							left join dbo.nrt_observation obs2
+								on obs.report_observation_uid = obs2.observation_uid and obs.ctrl_cd_display_form = 'LabReportMorb'
+							left join dbo.nrt_observation_material mat
+								on obs.observation_uid = mat.act_uid
 								;	
+
+							if @debug  = 'true' SELECT 'lab_test' as nm, * FROM #LAB_TEST;
+							if @debug  = 'true' SELECT 'merge_order' as nm, * FROM #Merge_Order;
 
 
 
@@ -1213,7 +1120,19 @@ BEGIN
 							 set  record_status_cd_merge = 'INACTIVE'
 							 where  record_status_cd_merge = 'LOG_DEL' 
 							 ;
-	
+
+							 update #Merge_Order
+							 set  order_oid = NULL
+							 where  order_oid = 4
+							 ;
+
+							update #Merge_Order
+						set jurisdiction_nm = (
+						select code_short_desc_txt 
+						from nbs_srte..jurisdiction_code where code= #Merge_Order.Jurisdiction_cd and code_set_nm = 'S_JURDIC_C'
+						)
+						where Jurisdiction_cd is not null
+						;
 
 						   update #LAB_TEST
 								set record_status_cd = record_status_cd_for_result_drug
@@ -1252,8 +1171,8 @@ BEGIN
 									SPECIMEN_SITE_desc	,
 									LAB_RPT_LOCAL_ID	,
 									record_status_cd_for_result	,
-									record_status_cd_for_result_drug	
-									;
+									record_status_cd_for_result_drug,
+									order_oid;
 								
 	
 							update #LAB_TEST
@@ -1277,21 +1196,16 @@ BEGIN
 
 
 
-						/*
-						data LAB_TEST;
-							MERGE Merge_Order LAB_TEST;
-							BY root_ordered_test_pntr;  
-						*/
-
-
-
-								 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
+
+
 
             BEGIN TRANSACTION; 
 			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
@@ -1311,10 +1225,11 @@ BEGIN
 
 						
 	
-			SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1328,7 +1243,7 @@ BEGIN
 			  IF OBJECT_ID('#LAB_TEST_final', 'U') IS NOT NULL 
 			         drop table  #LAB_TEST_final ;
 
- 		
+					
 							   select  lt1.*,lto.*, ltmi.* 
 									into  #LAB_TEST_final
  									from  #LAB_TEST_final_root_ordered_test_pntr lt1
@@ -1355,16 +1270,15 @@ BEGIN
 
 
 		
-						-- create table L_LAB_TEST_N  AS 
-
-
-							 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
+
 
             BEGIN TRANSACTION; 
 			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
@@ -1404,11 +1318,11 @@ BEGIN
 
 		
 
-      SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+      SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1430,16 +1344,11 @@ BEGIN
 
 		
 
-						--%DBLOAD (L_LAB_TEST, L_LAB_TEST_N);
-						/*proc sort data = rdb..LAB_TEST tagsort;
-						By root_ordered_Test_pntr LAB_TEST_pntr;
-						*/
-
-			 SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     
-			 INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1455,7 +1364,6 @@ BEGIN
 						
 
 
-						-- create table D_LAB_TEST_N AS 
 							SELECT distinct  lt.* , ltn.[LAB_TEST_KEY]
 							INTO #D_LAB_TEST_N
 							  FROM #LAB_TEST_final  lt, 
@@ -1463,15 +1371,6 @@ BEGIN
 							 WHERE lt.LAB_TEST_UID=ltn.LAB_TEST_UID
 						;
 
-						/*
-						PROC SORT DATA=D_LAB_TEST_N NODUPKEY OUT=D_LAB_TEST_N; BY LAB_TEST_key; 
-						DATA D_LAB_TEST_N;
-						SET D_LAB_TEST_N;
-						RDB_LAST_REFRESH_TIME=DATETIME();
-
-						%checkerr;
-						%DBLOAD (LAB_TEST, D_LAB_TEST_N);
-						*/
 
 								 UPDATE  #D_LAB_TEST_N  SET JURISdiction_nm = NULL  where JURISdiction_nm = '' ;
  
@@ -1488,10 +1387,11 @@ BEGIN
   								 UPDATE  #D_LAB_TEST_N  SET REASON_FOR_TEST_CD = NULL  where REASON_FOR_TEST_CD = '' ;
   
   
-			SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB_modern.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1501,7 +1401,7 @@ BEGIN
 			SET @PROC_STEP_NAME = 'insert into rdb_modern..LAB_TEST'; 
 
 
-
+			if @debug = 'true' RETURN;
 
 				   insert into rdb_modern..LAB_TEST
 						 (
@@ -1582,7 +1482,7 @@ BEGIN
 						,rtrim( cast( ELR_IND AS varchar(50)))
 						  ,[LAB_RPT_UID]
 						,rtrim( cast( LAB_TEST_CD_DESC AS varchar(2000)))
-						,rtrim( cast( INTERPRETATION_FLG AS varchar(20)))
+						,rtrim( cast( INTERPRETATION_CD AS varchar(20)))
 						  ,[LAB_RPT_RECEIVED_BY_PH_DT]
 						  ,[LAB_RPT_CREATED_BY_MERGE]
 						,rtrim( cast( REASON_FOR_TEST_DESC AS varchar(4000)))
@@ -1652,10 +1552,11 @@ BEGIN
 
 
 
-			SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1708,7 +1609,7 @@ BEGIN
 							;
 	
 	                      
-			                SELECT @ROWCOUNT_NO = @@ROWCOUNT;
+			                SELECT @RowCount_no = @@ROWCOUNT;
 
 							update #Lab_Rpt_User_Comment
 							set  record_status_cd = 'ACTIVE'
@@ -1736,11 +1637,10 @@ BEGIN
 							  where [USER_RPT_COMMENTS] = ''
 							  ;
    
-
-            
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1774,10 +1674,11 @@ BEGIN
 						  ;
 
 						  
-			SELECT @ROWCOUNT_NO = @@ROWCOUNT;
-		     INSERT INTO RDB.[DBO].[JOB_FLOW_LOG] 
-				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
-				VALUES(@BATCH_ID,'D_LABTEST','RDB.D_LABTEST','START',  @PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
 
 			COMMIT TRANSACTION;
@@ -1904,8 +1805,8 @@ BEGIN
 			  IF OBJECT_ID('#order_test', 'U') IS NOT NULL   
  			                   drop table  #order_test ;
 
-			  --IF OBJECT_ID('#LAB_TEST', 'U') IS NOT NULL   
- 		  --        	         drop table  #LAB_TEST ;
+			  IF OBJECT_ID('#LAB_TEST', 'U') IS NOT NULL   
+ 		          	         drop table  #LAB_TEST ;
 
 			  IF OBJECT_ID('#Merge_Order', 'U') IS NOT NULL 
 			         drop table  #Merge_Order ;
@@ -1913,8 +1814,8 @@ BEGIN
 			  IF OBJECT_ID('#LAB_TEST_final_root_ordered_test_pntr', 'U') IS NOT NULL 
 			         drop table  #LAB_TEST_final_root_ordered_test_pntr;
 
-			  --IF OBJECT_ID('#LAB_TEST_final', 'U') IS NOT NULL 
-			   --      drop table  #LAB_TEST_final ;
+			  IF OBJECT_ID('#LAB_TEST_final', 'U') IS NOT NULL 
+			         drop table  #LAB_TEST_final ;
 
 			  IF OBJECT_ID('#L_LAB_TEST_N', 'U') IS NOT NULL 
 			         drop table  #L_LAB_TEST_N;
@@ -1941,8 +1842,8 @@ BEGIN
 						   VALUES
 						   (
 						   @batch_id,
-						   'D_LabTest'
-						   ,'rdb_modern.D_LabTest'
+						   'D_LAB_TEST'
+						   ,'D_LAB_TEST'
 						   ,'COMPLETE'
 						   ,@Proc_Step_no
 						   ,@Proc_Step_name
