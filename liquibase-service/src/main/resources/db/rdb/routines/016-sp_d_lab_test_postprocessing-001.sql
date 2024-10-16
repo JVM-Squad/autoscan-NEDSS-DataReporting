@@ -1396,12 +1396,56 @@ BEGIN
 
 			COMMIT TRANSACTION;
 
+
+			BEGIN TRANSACTION; 
+			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
+			SET @PROC_STEP_NAME = ' GENERATING #D_LAB_TEST_U '; 
+
+
+			  IF OBJECT_ID('#D_LAB_TEST_U', 'U') IS NOT NULL 
+			         drop table  #D_LAB_TEST_U;
+
+						
+
+
+							SELECT distinct  lt.*
+							INTO #D_LAB_TEST_U
+							  FROM #LAB_TEST_final  lt 
+							 WHERE lt.LAB_TEST_UID IN (select LAB_TEST_UID FROM rdb_modern.dbo.LAB_TEST)
+						;
+
+
+								 UPDATE  #D_LAB_TEST_U  SET JURISdiction_nm = NULL  where JURISdiction_nm = '' ;
+ 
+								 UPDATE  #D_LAB_TEST_U  SET [ACCESSION_NBR_merge] = NULL  where [ACCESSION_NBR_merge] = '' ;
+
+								 UPDATE  #D_LAB_TEST_U  SET [SPECIMEN_DESC] = NULL  where [SPECIMEN_DESC] = '' ;
+   
+								 UPDATE  #D_LAB_TEST_U  SET [SPECIMEN_SRC] = NULL  where [SPECIMEN_SRC] = '' ;
+    
+								 UPDATE  #D_LAB_TEST_U  SET [CLINICAL_INFORMATION] = NULL  where [CLINICAL_INFORMATION] = '' ;
+  
+								 UPDATE  #D_LAB_TEST_U  SET REASON_FOR_TEST_DESC = NULL  where REASON_FOR_TEST_DESC = '' ;
+  
+  								 UPDATE  #D_LAB_TEST_U  SET REASON_FOR_TEST_CD = NULL  where REASON_FOR_TEST_CD = '' ;
+  
+  
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
+
+
+			COMMIT TRANSACTION;
+
+			if @debug = 'true' RETURN;
+
             BEGIN TRANSACTION; 
 			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
 			SET @PROC_STEP_NAME = 'insert into rdb_modern..LAB_TEST'; 
 
 
-			if @debug = 'true' RETURN;
 
 				   insert into rdb_modern..LAB_TEST
 						 (
@@ -1561,15 +1605,112 @@ BEGIN
 
 			COMMIT TRANSACTION;
 
+			BEGIN TRANSACTION; 
+			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
+			SET @PROC_STEP_NAME = 'insert into rdb_modern..LAB_TEST'; 
+
+
+
+				   UPDATE 
+				   	lt 
+				   SET
+						 lt.[LAB_TEST_STATUS] = dltu.LAB_TEST_STATUS
+						  ,lt.[LAB_RPT_LOCAL_ID] = dltu.LAB_RPT_LOCAL_ID
+						  ,lt.[TEST_METHOD_CD] = dltu.TEST_METHOD_CD
+						  ,lt.[TEST_METHOD_CD_DESC] = dltu.TEST_METHOD_CD_DESC
+						  ,lt.[LAB_RPT_SHARE_IND] = dltu.LAB_RPT_SHARE_IND
+						  ,lt.[LAB_TEST_CD] = dltu.LAB_TEST_CD
+						  ,lt.[ELR_IND] = dltu.ELR_IND
+						  ,lt.[LAB_RPT_UID] = dltu.LAB_RPT_UID
+						  ,lt.[LAB_TEST_CD_DESC] = dltu.LAB_TEST_CD_DESC
+						  ,lt.[INTERPRETATION_FLG] = dltu.INTERPRETATION_CD
+						  ,lt.[LAB_RPT_RECEIVED_BY_PH_DT] = dltu.LAB_RPT_RECEIVED_BY_PH_DT
+						  ,lt.[LAB_RPT_CREATED_BY] = dltu.LAB_RPT_CREATED_BY_MERGE
+						  ,lt.[REASON_FOR_TEST_DESC] = dltu.REASON_FOR_TEST_DESC
+						  ,lt.[REASON_FOR_TEST_CD] = dltu.REASON_FOR_TEST_CD
+						  ,lt.[LAB_RPT_LAST_UPDATE_BY] = dltu.LAB_RPT_LAST_UPDATE_BY
+						  ,lt.[LAB_TEST_DT] = dltu.LAB_TEST_DT
+						  ,lt.[LAB_RPT_CREATED_DT] = dltu.LAB_RPT_CREATED_DT
+						  ,lt.[LAB_TEST_TYPE] = dltu.LAB_TEST_TYPE
+						  ,lt.[LAB_RPT_LAST_UPDATE_DT] = dltu.LAB_RPT_LAST_UPDATE_DT
+						  ,lt.[JURISDICTION_CD] = dltu.JURISDICTION_CD
+						  ,lt.[LAB_TEST_CD_SYS_CD] = dltu.LAB_TEST_CD_SYS_CD
+						  ,lt.[LAB_TEST_CD_SYS_NM] = dltu.LAB_TEST_CD_SYS_NM
+						  ,lt.[JURISDICTION_NM] = dltu.JURISDICTION_NM
+						  ,lt.[OID] = dltu.order_OID
+						  ,lt.[ALT_LAB_TEST_CD] = dltu.ALT_LAB_TEST_CD
+						  ,lt.[LAB_RPT_STATUS] = dltu.LAB_RPT_STATUS
+						  ,lt.[DANGER_CD_DESC] = dltu.DANGER_CD_DESC
+						  ,lt.ALT_LAB_TEST_CD_DESC = dltu.ALT_LAB_TEST_CD_DESC
+						  ,lt.[ACCESSION_NBR] = dltu.ACCESSION_NBR_MERGE
+						  ,lt.[SPECIMEN_SRC] = dltu.SPECIMEN_SRC
+						  ,lt.[PRIORITY_CD] = dltu.PRIORITY_CD
+						  ,lt.[ALT_LAB_TEST_CD_SYS_CD] = dltu.ALT_LAB_TEST_CD_SYS_CD
+						  ,lt.[ALT_LAB_TEST_CD_SYS_NM] = dltu.ALT_LAB_TEST_CD_SYS_NM
+						  ,lt.[SPECIMEN_SITE] = dltu.SPECIMEN_SITE
+						  ,lt.[SPECIMEN_DETAILS] = dltu.SPECIMEN_DETAILS
+						  ,lt.[DANGER_CD] = dltu.DANGER_CD
+						  ,lt.[SPECIMEN_COLLECTION_VOL] = dltu.SPECIMEN_COLLECTION_VOL
+						  ,lt.[SPECIMEN_COLLECTION_VOL_UNIT] = dltu.SPECIMEN_COLLECTION_VOL_UNIT
+						  ,lt.[SPECIMEN_DESC] = dltu.SPECIMEN_DESC
+						  ,lt.[SPECIMEN_SITE_DESC] = dltu.SPECIMEN_SITE_DESC
+						  ,lt.[CLINICAL_INFORMATION] = dltu.CLINICAL_INFORMATION
+						  ,lt.[ROOT_ORDERED_TEST_PNTR] = dltu.ROOT_ORDERED_TEST_PNTR
+						  ,lt.[PARENT_TEST_PNTR] = dltu.PARENT_TEST_PNTR
+						  ,lt.[LAB_TEST_PNTR] = dltu.LAB_TEST_PNTR
+						  ,lt.[SPECIMEN_ADD_TIME] = dltu.SPECIMEN_ADD_TIME
+						  ,lt.[SPECIMEN_LAST_CHANGE_TIME] = dltu.SPECIMEN_LAST_CHANGE_TIME
+						  ,lt.[SPECIMEN_COLLECTION_DT] = dltu.SPECIMEN_COLLECTION_DT
+						  ,lt.[SPECIMEN_NM] = dltu.SPECIMEN_NM
+						  ,lt.[ROOT_ORDERED_TEST_NM] = dltu.ROOT_ORDERED_TEST_NM
+						  ,lt.[PARENT_TEST_NM] = dltu.PARENT_TEST_NM
+						  ,lt.[TRANSCRIPTIONIST_NAME] = dltu.TRANSCRIPTIONIST_NAME
+						  ,lt.[TRANSCRIPTIONIST_ID] = dltu.TRANSCRIPTIONIST_ID
+						  ,lt.[TRANSCRIPTIONIST_ASS_AUTH_CD] = dltu.TRANSCRIPTIONIST_ASS_AUTH_CD
+						  ,lt.[TRANSCRIPTIONIST_ASS_AUTH_TYPE] = dltu.TRANSCRIPTIONIST_ASS_AUTH_TYPE
+						  ,lt.[ASSISTANT_INTERPRETER_NAME] = dltu.ASSISTANT_INTERPRETER_NAME
+						  ,lt.[ASSISTANT_INTERPRETER_ID] = dltu.ASSISTANT_INTERPRETER_ID
+						  ,lt.[ASSISTANT_INTER_ASS_AUTH_CD] = dltu.ASSISTANT_INTER_ASS_AUTH_CD
+						  ,lt.[ASSISTANT_INTER_ASS_AUTH_TYPE] = dltu.ASSISTANT_INTER_ASS_AUTH_TYPE
+						  ,lt.[RESULT_INTERPRETER_NAME] = dltu.RESULT_INTERPRETER_NAME
+						  ,lt.[RECORD_STATUS_CD] = dltu.RECORD_STATUS_CD
+						  ,lt.[RDB_LAST_REFRESH_TIME] = GETDATE()
+						  ,lt.[CONDITION_CD] = dltu.CONDITION_CD
+						  ,lt.[PROCESSING_DECISION_CD] = dltu.PROCESSING_DECISION_CD
+						  ,lt.[PROCESSING_DECISION_DESC] = dltu.PROCESSING_DECISION_DESC
+					FROM rdb_modern..LAB_TEST lt, #D_LAB_TEST_U dltu
+					WHERE lt.lab_test_uid = dltu.lab_test_uid
+						  ;
+
+
+						/*-------------------------------------------------------
+
+							Lab_Report_User_Comment Dimension
+
+							Note: Comments under the Order Test object (LAB214)
+						---------------------------------------------------------*/ 
+
+
+
+
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
+
+
+			COMMIT TRANSACTION;
+
             BEGIN TRANSACTION; 
 			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
-			SET @PROC_STEP_NAME = ' GENERATING #Lab_Rpt_User_Comment '; 
+			SET @PROC_STEP_NAME = ' GENERATING #Lab_Rpt_User_Comment_N '; 
 
 
-			  IF OBJECT_ID('#Lab_Rpt_User_Comment', 'U') IS NOT NULL 
-			                      drop table  #Lab_Rpt_User_Comment;
+			  IF OBJECT_ID('#Lab_Rpt_User_Comment_N', 'U') IS NOT NULL 
+			                      drop table  #Lab_Rpt_User_Comment_N;
 
-								CREATE TABLE #Lab_Rpt_User_Comment (
+								CREATE TABLE #Lab_Rpt_User_Comment_N (
 									[LAB_COMMENT_id]  [int] IDENTITY(1,1) NOT NULL,
         							[LAB_TEST_Key] [bigint]  NULL,
 									[LAB_TEST_uid] [bigint] NULL,
@@ -1584,7 +1725,7 @@ BEGIN
 								;
 
 
-							INSERT INTO #Lab_Rpt_User_Comment
+							INSERT INTO #Lab_Rpt_User_Comment_N
 							select 	distinct tdltn.LAB_TEST_Key,
 									tdltn.lab_rpt_uid as LAB_TEST_uid,
 									lab214.activity_to_time	'COMMENTS_FOR_ELR_DT' ,
@@ -1611,28 +1752,28 @@ BEGIN
 	                      
 			                SELECT @RowCount_no = @@ROWCOUNT;
 
-							update #Lab_Rpt_User_Comment
+							update #Lab_Rpt_User_Comment_N
 							set  record_status_cd = 'ACTIVE'
 							 where  record_status_cd in ( '' ,	'UNPROCESSED',	'PROCESSED' )
 							 ;
 
-							update #Lab_Rpt_User_Comment
+							update #Lab_Rpt_User_Comment_N
 							 set  record_status_cd = 'INACTIVE'
 							 where  record_status_cd = 'LOG_DEL' 
 							 ;
 	
-							   UPDATE #Lab_Rpt_User_Comment 
+							   UPDATE #Lab_Rpt_User_Comment_N
 										   SET USER_COMMENT_KEY= [LAB_COMMENT_id] + coalesce((SELECT MAX(USER_COMMENT_KEY) FROM rdb_modern.dbo.Lab_Rpt_User_Comment),1)
 		
 
-							delete from #LAB_RPT_USER_COMMENT 
+							delete from #LAB_RPT_USER_COMMENT_N 
 							  where LAB_TEST_KEY= null;
 
-							UPDATE #Lab_Rpt_User_Comment 
+							UPDATE #Lab_Rpt_User_Comment_N
 							  set RDB_LAST_REFRESH_TIME=getdate();
    
    
-							UPDATE #Lab_Rpt_User_Comment 
+							UPDATE #Lab_Rpt_User_Comment_N
 							  set [USER_RPT_COMMENTS]= null
 							  where [USER_RPT_COMMENTS] = ''
 							  ;
@@ -1670,7 +1811,7 @@ BEGIN
 							  ,rtrim( cast( [RECORD_STATUS_CD] AS varchar(8)))
 							  ,[LAB_TEST_UID]
 							  ,[RDB_LAST_REFRESH_TIME]
-						  FROM #LAB_RPT_USER_COMMENT
+						  FROM #LAB_RPT_USER_COMMENT_N
 						  ;
 
 						  
@@ -1683,46 +1824,108 @@ BEGIN
 
 			COMMIT TRANSACTION;
 
+			BEGIN TRANSACTION; 
+			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
+			SET @PROC_STEP_NAME = ' GENERATING #Lab_Rpt_User_Comment_U '; 
 
-			 IF OBJECT_ID('#updated_observation_List', 'U') IS NOT NULL 
-			         drop table  #updated_observation_List;
 
-			  IF OBJECT_ID('#updated_LAB_TEST_list', 'U') IS NOT NULL 
-			         drop table  #updated_LAB_TEST_list;
+			  IF OBJECT_ID('#Lab_Rpt_User_Comment_U', 'U') IS NOT NULL 
+			                      drop table  #Lab_Rpt_User_Comment_U;
 
-			  IF OBJECT_ID('#updated_LAB_RPT_USER_COMMENT', 'U') IS NOT NULL 
-			         drop table  #updated_LAB_RPT_USER_COMMENT;
+								CREATE TABLE #Lab_Rpt_User_Comment_U (
+									[LAB_COMMENT_id]  [int] IDENTITY(1,1) NOT NULL,
+									[LAB_TEST_uid] [bigint] NULL,
+									[COMMENTS_FOR_ELR_DT] [datetime] NULL,
+									[USER_COMMENT_CREATED_BY] [bigint] NULL,
+									[USER_RPT_COMMENTS] [varchar](8000) NULL,
+									[RECORD_STATUS_CD] [varchar](8) NOT NULL,
+									[observation_uid] [bigint] NOT NULL,
+									[RDB_LAST_REFRESH_TIME] [datetime] NULL
+								) ON [PRIMARY]
+								;
 
-			  IF OBJECT_ID('#updt_Test_Result_Grouping_LIST', 'U') IS NOT NULL 
-			         drop table  #updt_Test_Result_Grouping_LIST ;
 
-			  IF OBJECT_ID('#updt_Lab_Result_Val_list', 'U') IS NOT NULL 
-			         drop table  #updt_Lab_Result_Val_list;
+							INSERT INTO #Lab_Rpt_User_Comment_U
+							select 	distinct 
+									tdltn.lab_rpt_uid as LAB_TEST_uid,
+									lab214.activity_to_time	'COMMENTS_FOR_ELR_DT' ,
+									lab214.add_user_id		'USER_COMMENT_CREATED_BY' ,
+									REPLACE(REPLACE(ovt.ovt_value_txt, CHAR(13), ' '), CHAR(10), ' ')	'USER_RPT_COMMENTS',--TRANSLATE(ovt.value_txt,' ' ,'0D0A'x)	'USER_RPT_COMMENTS' ,
+									tdltn.record_status_cd        'RECORD_STATUS_CD' ,
+									lab214.observation_uid,
+									getdate()
+							from 	#D_LAB_TEST_U	    as tdltn,
+									dbo.nrt_observation		as obs,
+									dbo.nrt_observation		as lab214,
+									dbo.nrt_observation_txt 	as ovt
+							where   ovt.ovt_value_txt is not null
+									and obs.observation_uid IN (SELECT value FROM STRING_SPLIT(tdltn.followup_observation_uid, ','))
+									and obs.obs_domain_cd_st_1 = 'C_Order'
+									and lab214.observation_uid IN (SELECT value FROM STRING_SPLIT(tdltn.followup_observation_uid, ','))
+									and lab214.obs_domain_cd_st_1 = 'C_Result'
+									and tdltn.followup_observation_uid is not null
+									and lab214.observation_uid = ovt.observation_uid
+		
+							;
+	
+	                      
+			                SELECT @RowCount_no = @@ROWCOUNT;
 
-			  IF OBJECT_ID('#updated_LAB_TEST_result_list', 'U') IS NOT NULL 
-			         drop table  #updated_LAB_TEST_result_list;
+							update #Lab_Rpt_User_Comment_U
+							set  record_status_cd = 'ACTIVE'
+							 where  record_status_cd in ( '' ,	'UNPROCESSED',	'PROCESSED' )
+							 ;
 
-			  IF OBJECT_ID('#updT_Result_Comment_Grp_LIST', 'U') IS NOT NULL 
-			         drop table  #updT_Result_Comment_Grp_LIST;
+							update #Lab_Rpt_User_Comment_U
+							 set  record_status_cd = 'INACTIVE'
+							 where  record_status_cd = 'LOG_DEL' 
+							 ;
+		
+   
+							UPDATE #Lab_Rpt_User_Comment_U
+							  set [USER_RPT_COMMENTS]= null
+							  where [USER_RPT_COMMENTS] = ''
+							  ;
+   
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
 
-			  IF OBJECT_ID('#updt_Lab_Result_Comment_list', 'U') IS NOT NULL 
-			         drop table  #updt_Lab_Result_Comment_list;
 
-			  IF OBJECT_ID('#updated_LAB_TEST_list', 'U') IS NOT NULL 
-			         drop table  #updated_LAB_TEST_list;
+			COMMIT TRANSACTION;
+
+            BEGIN TRANSACTION; 
+			SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
+			SET @PROC_STEP_NAME = 'UPDATING rdb_modern..Lab_Rpt_User_Comment'; 
+
+
+
+							UPDATE 
+							lruc
+							SET
+							  lruc.[USER_RPT_COMMENTS] = lrucu.USER_RPT_COMMENTS
+							  ,lruc.[COMMENTS_FOR_ELR_DT] = lrucu.COMMENTS_FOR_ELR_DT
+							  ,lruc.[USER_COMMENT_CREATED_BY] = lrucu.USER_COMMENT_CREATED_BY
+							  ,lruc.[RECORD_STATUS_CD] = lrucu.RECORD_STATUS_CD
+							  ,lruc.[LAB_TEST_UID] = lrucu.LAB_TEST_UID
+							  ,lruc.[RDB_LAST_REFRESH_TIME] = lrucu.RDB_LAST_REFRESH_TIME
+						  FROM rdb_modern.dbo.Lab_Rpt_User_Comment lruc, #LAB_RPT_USER_COMMENT_U lrucu
+						  WHERE lruc.lab_test_uid = lrucu.lab_test_uid
+						  ;
+
+						  
+			SELECT @RowCount_no = @@ROWCOUNT;
+	
+		    INSERT INTO [dbo].[job_flow_log]
+                (batch_id,[Dataflow_Name],[package_Name] ,[Status_Type],[step_number],[step_name],[row_count])
+                VALUES(@batch_id,'D_LAB_TEST','D_LAB_TEST','START',@Proc_Step_no,@Proc_Step_Name,@RowCount_no);
+
+
+			COMMIT TRANSACTION;
 
 			  IF OBJECT_ID('#s_edx_document1', 'U') IS NOT NULL 
 			         drop table  #s_edx_document1;
-
-
-			  IF OBJECT_ID('#merged_provider', 'U') IS NOT NULL 
-			         drop table  #merged_provider;
-
-			  IF OBJECT_ID('#filter_participants', 'U') IS NOT NULL 
-			         drop table   #filter_participants ;
-
-			  IF OBJECT_ID('#participants', 'U') IS NOT NULL 
-			         drop table    #participants ;
 
 			  IF OBJECT_ID('#LAB_TESTinit_a', 'U') IS NOT NULL 
 			         drop table  #LAB_TESTinit_a;
