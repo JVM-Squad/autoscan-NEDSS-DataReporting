@@ -1,34 +1,5 @@
 IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_observation' and xtype = 'U')
     BEGIN
-        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'ctrl_cd_display_form' AND object_id = Object_ID(N'nrt_observation'))
-            BEGIN
-                ALTER TABLE nrt_observation
-                    ADD ctrl_cd_display_form varchar(20);
-            END;
-
-        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'obs_domain_cd_st_1' AND object_id = Object_ID(N'nrt_observation'))
-            BEGIN
-                ALTER TABLE nrt_observation
-                    ADD obs_domain_cd_st_1 varchar(20);
-            END;
-
-        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'processing_decision_cd' AND object_id = Object_ID(N'nrt_observation'))
-            BEGIN
-                ALTER TABLE nrt_observation
-                    ADD processing_decision_cd varchar(20);
-            END;
-
-        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'cd' AND object_id = Object_ID(N'nrt_observation'))
-            BEGIN
-                ALTER TABLE nrt_observation
-                    ADD cd varchar(50);
-            END;
-
-        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'shared_ind' AND object_id = Object_ID(N'nrt_observation'))
-            BEGIN
-                ALTER TABLE nrt_observation
-                    ADD shared_ind char(1);
-            END;
 
         IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'status_cd' AND object_id = Object_ID(N'nrt_observation'))
             BEGIN
@@ -208,7 +179,7 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_observation' and xtype = '
         IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'assistant_interpreter_last_nm' AND object_id = Object_ID(N'nrt_observation'))
             BEGIN
                 ALTER TABLE nrt_observation
-                    ADD transcriptionist_last_nm varchar(50);
+                    ADD assistant_interpreter_last_nm varchar(50);
             END;
 
         IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'result_interpreter_id' AND object_id = Object_ID(N'nrt_observation'))
@@ -246,4 +217,48 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_observation' and xtype = '
                 ALTER TABLE nrt_observation
                     ADD morb_hosp_reporter_id bigint;
             END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'accession_number'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD accession_number varchar(199);
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'morb_hosp_id'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD morb_hosp_id bigint;
+
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'transcriptionist_id_assign_auth'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD transcriptionist_id_assign_auth varchar(199);
+
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'transcriptionist_auth_type'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD transcriptionist_auth_type varchar(100);
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'assistant_interpreter_id_assign_auth'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD assistant_interpreter_id_assign_auth varchar(199);
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'assistant_interpreter_auth_type'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD assistant_interpreter_auth_type varchar(100);
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns   WHERE Name = N'priority_cd'   AND Object_ID = Object_ID(N'nrt_observation'))
+            BEGIN
+                ALTER TABLE nrt_observation
+                    ADD priority_cd varchar(20);
+            END;
+
     END;
