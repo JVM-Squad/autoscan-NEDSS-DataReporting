@@ -797,98 +797,51 @@ SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 			 l101
 			 SET
 			l101.[CASE_LAB_CONFIRMED_IND] = rtrim(substring(tli2.CASE_LAB_CONFIRMED_IND ,1,8))
-				,l101.[EIP_ACTUAL_SHIP_DATE] = EIP_ACTUAL_SHIP_DATE
-				,l101.[EIP_EXPECTED_SHIP_DATE] = EIP_ACTUAL_SHIP_DATE
+				,l101.[EIP_ACTUAL_SHIP_DATE] = tli2.EIP_ACTUAL_SHIP_DATE
+				,l101.[EIP_EXPECTED_SHIP_DATE] = tli2.EIP_ACTUAL_SHIP_DATE
 				,l101.[EIP_ISO_IND] = rtrim(substring(tli2.EIP_ISO_IND ,1,8))
 				,l101.[EIP_SHIP_LOCATION] = rtrim(substring(tli2.EIP_SHIP_LOCATION ,1,100))
 				,l101.[EIP_SPEC_ACTUAL_RESHIP_DATE] = tli2.EIP_SPEC_ACTUAL_RESHIP_DATE
 				,l101.[EIP_SPEC_AVAIL_IND] = rtrim(substring(tli2.EIP_SPEC_AVAIL_IND ,1,50))
 				,l101.[EIP_SPEC_EXPECTED_RESHIP_DATE] = tli2.EIP_SPEC_EXPECTED_RESHIP_DATE
-				,l101.[EIP_SPEC_NO_REASON] = 
-				,l101.[EIP_SPEC_NO_REASON_OTH]
-				,l101.[EIP_SPEC_RESHIP_IND]
-				,l101.[EIP_SPEC_RESHIP_REASON]
-				,l101.[EIP_SPEC_RESHIP_REASON_OTH]
-				,l101.[EVENT_DATE]
-				,l101.[ISO_NO_RECEIVED_REASON]
-				,l101.[ISO_NO_RECEIVED_REASON_OTH]
-				,l101.[ISO_RECEIVED_DATE]
-				,l101.[ISO_RECEIVED_IND]
-				,l101.[ISO_STATEID_NUM]
-				,l101.[LAB_RPT_LOCAL_ID]
-				,l101.[NARMS_ACTUAL_SHIP_DATE]
-				,l101.[NARMS_EXPECTED_SHIP_DATE]
-				,l101.[NARMS_ISO_IND]
-				,l101.[NARMS_ISO_SENT_IND]
-				,l101.[NARMS_NO_SENT_REASON]
-				,l101.[NARMS_STATEID_NUM]
-				,l101.[PATIENT_STATUS]
-				,l101.[PFGE_PULSENET_ENZYME1]
-				,l101.[PFGE_PULSENET_ENZYME2]
-				,l101.[PFGE_PULSENET_ENZYME3]
-				,l101.[PFGE_PULSENET_SENT]
-				,l101.[PFGE_STATELAB_ENZYME1]
-				,l101.[PFGE_STATELAB_ENZYME2]
-				,l101.[PFGE_STATELAB_ENZYME3]
-				,l101.[PROGRAM_JURISDICTION_OID]
-				,l101.[PULSENET_ISO_IND]
-				,l101.[RECORD_STATUS_CD]
-				,l101.[RESULTED_LAB_TEST_CD_DESC]
-				,l101.[RESULTED_LAB_TEST_KEY]
-				,l101.[SPECIMEN_COLLECTION_DT]
-				,l101.[SPECIMEN_SRC_DESC]
-				,l101.[SPECIMEN_SRC_CD]
-				,l101.[TRACK_ISO_IND]
-				,l101.[ISO_SENT_CDC_IND]
-				,l101.[REPORTING_FACILITY_UID]
-				,l101.[RDB_LAST_REFRESH_TIME]
-
-			SELECT  rtrim(substring(CASE_LAB_CONFIRMED_IND ,1,8)) 
-						,EIP_ACTUAL_SHIP_DATE
-						,EIP_ACTUAL_SHIP_DATE
-						, rtrim(substring(EIP_ISO_IND ,1,8)) 
-						, rtrim(substring(EIP_SHIP_LOCATION ,1,100)) 
-						,EIP_SPEC_ACTUAL_RESHIP_DATE
-						, rtrim(substring(EIP_SPEC_AVAIL_IND ,1,50)) 
-						,EIP_SPEC_EXPECTED_RESHIP_DATE
-						, rtrim(substring(EIP_SPEC_NO_REASON ,1,100)) 
-						, rtrim(substring(EIP_SPEC_NO_REASON_OTH ,1,100)) 
-						, rtrim(substring(EIP_SPEC_RESHIP_IND ,1,8)) 
-						, rtrim(substring(EIP_SPEC_RESHIP_REASON ,1,100)) 
-						, rtrim(substring(EIP_SPEC_RESHIP_REASON_OTH ,1,100)) 
-						,EVENT_DATE
-						, rtrim(substring(ISO_NO_RECEIVED_REASON ,1,100)) 
-						, rtrim(substring(ISO_NO_RECEIVED_REASON_OTH ,1,100)) 
-						,ISO_RECEIVED_DATE
-						, rtrim(substring(ltrim(rtrim(ISO_RECEIVED_IND) ),1,8)) 
-						, rtrim(substring(ISO_STATEID_NUM ,1,100)) 
-						, rtrim(substring(LAB_RPT_LOCAL_ID ,1,50)) 
-						,NARMS_ACTUAL_SHIP_DATE
-						,NARMS_EXPECTED_SHIP_DATE
-						, rtrim(substring(NARMS_ISO_IND ,1,8)) 
-						, rtrim(substring(NARMS_ISO_SENT_IND ,1,8)) 
-						, rtrim(substring(NARMS_NO_SENT_REASON ,1,100)) 
-						, rtrim(substring(NARMS_STATEID_NUM ,1,100)) 
-						, rtrim(substring(PATIENT_STATUS ,1,100)) 
-						, rtrim(substring(PFGE_PULSENET_ENZYME1 ,1,100)) 
-						, rtrim(substring(PFGE_PULSENET_ENZYME2 ,1,100)) 
-						, rtrim(substring(PFGE_PULSENET_ENZYME3 ,1,100)) 
-						, rtrim(substring(PFGE_PULSENET_SENT ,1,8)) 
-						, rtrim(substring(PFGE_STATELAB_ENZYME1 ,1,100)) 
-						, rtrim(substring(PFGE_STATELAB_ENZYME2 ,1,100)) 
-						, rtrim(substring(PFGE_STATELAB_ENZYME3 ,1,100)) 
-						,PROGRAM_JURISDICTION_OID
-						, rtrim(substring(PULSENET_ISO_IND ,1,8)) 
-						, rtrim(substring(RECORD_STATUS_CD ,1,8)) 
-						, rtrim(substring(RESULTED_LAB_TEST_CD_DESC ,1,100)) 
-						,RESULTED_LAB_TEST_KEY
-						,SPECIMEN_COLLECTION_DT
-						, rtrim(substring(SPECIMEN_SRC_DESC ,1,100)) 
-						, rtrim(substring(SPECIMEN_SRC_CD ,1,100)) 
-						, rtrim(substring(TRACK_ISO_IND ,1,8)) 
-						, rtrim(substring(ltrim(rtrim(ISO_SENT_CDC_IND)) ,1,8)) 
-						,REPORTING_FACILITY_UID
-						,RDB_LAST_REFRESH_TIME
+				,l101.[EIP_SPEC_NO_REASON] = rtrim(substring(tli2.EIP_SPEC_NO_REASON ,1,100)) 
+				,l101.[EIP_SPEC_NO_REASON_OTH] =  rtrim(substring(tli2.EIP_SPEC_NO_REASON_OTH ,1,100))
+				,l101.[EIP_SPEC_RESHIP_IND] = rtrim(substring(tli2.EIP_SPEC_RESHIP_IND ,1,8))
+				,l101.[EIP_SPEC_RESHIP_REASON] = rtrim(substring(tli2.EIP_SPEC_RESHIP_REASON ,1,100))
+				,l101.[EIP_SPEC_RESHIP_REASON_OTH] = rtrim(substring(tli2.EIP_SPEC_RESHIP_REASON_OTH ,1,100))
+				,l101.[EVENT_DATE] = tli2.EVENT_DATE
+				,l101.[ISO_NO_RECEIVED_REASON] = rtrim(substring(tli2.ISO_NO_RECEIVED_REASON ,1,100))
+				,l101.[ISO_NO_RECEIVED_REASON_OTH] = rtrim(substring(tli2.ISO_NO_RECEIVED_REASON_OTH ,1,100))
+				,l101.[ISO_RECEIVED_DATE] = tli2.ISO_RECEIVED_DATE
+				,l101.[ISO_RECEIVED_IND] = rtrim(substring(ltrim(rtrim(tli2.ISO_RECEIVED_IND) ),1,8)) 
+				,l101.[ISO_STATEID_NUM] = rtrim(substring(tli2.ISO_STATEID_NUM ,1,100))
+				,l101.[LAB_RPT_LOCAL_ID] = rtrim(substring(tli2.LAB_RPT_LOCAL_ID ,1,50))
+				,l101.[NARMS_ACTUAL_SHIP_DATE] = tli2.NARMS_ACTUAL_SHIP_DATE
+				,l101.[NARMS_EXPECTED_SHIP_DATE] = tli2.NARMS_EXPECTED_SHIP_DATE
+				,l101.[NARMS_ISO_IND] = rtrim(substring(tli2.NARMS_ISO_IND ,1,8)) 
+				,l101.[NARMS_ISO_SENT_IND] = rtrim(substring(tli2.NARMS_ISO_SENT_IND ,1,8)) 
+				,l101.[NARMS_NO_SENT_REASON] = rtrim(substring(tli2.NARMS_NO_SENT_REASON ,1,100))
+				,l101.[NARMS_STATEID_NUM] = rtrim(substring(tli2.NARMS_STATEID_NUM ,1,100))
+				,l101.[PATIENT_STATUS] = rtrim(substring(tli2.PATIENT_STATUS ,1,100))
+				,l101.[PFGE_PULSENET_ENZYME1] = rtrim(substring(tli2.PFGE_PULSENET_ENZYME1 ,1,100))
+				,l101.[PFGE_PULSENET_ENZYME2] = rtrim(substring(tli2.PFGE_PULSENET_ENZYME2 ,1,100))
+				,l101.[PFGE_PULSENET_ENZYME3] = rtrim(substring(tli2.PFGE_PULSENET_ENZYME3 ,1,100)) 
+				,l101.[PFGE_PULSENET_SENT] = rtrim(substring(tli2.PFGE_PULSENET_SENT ,1,8))
+				,l101.[PFGE_STATELAB_ENZYME1] = rtrim(substring(tli2.PFGE_STATELAB_ENZYME1 ,1,100))
+				,l101.[PFGE_STATELAB_ENZYME2] = rtrim(substring(tli2.PFGE_STATELAB_ENZYME2 ,1,100))
+				,l101.[PFGE_STATELAB_ENZYME3] = rtrim(substring(tli2.PFGE_STATELAB_ENZYME3 ,1,100))
+				,l101.[PROGRAM_JURISDICTION_OID] = tli2.PROGRAM_JURISDICTION_OID
+				,l101.[PULSENET_ISO_IND] = rtrim(substring(tli2.PULSENET_ISO_IND ,1,8))
+				,l101.[RECORD_STATUS_CD] = rtrim(substring(tli2.RECORD_STATUS_CD ,1,8))
+				,l101.[RESULTED_LAB_TEST_CD_DESC] = rtrim(substring(tli2.RESULTED_LAB_TEST_CD_DESC ,1,100)) 
+				,l101.[RESULTED_LAB_TEST_KEY] = tli2.RESULTED_LAB_TEST_KEY
+				,l101.[SPECIMEN_COLLECTION_DT] = tli2.SPECIMEN_COLLECTION_DT
+				,l101.[SPECIMEN_SRC_DESC] = rtrim(substring(tli2.SPECIMEN_SRC_DESC ,1,100))
+				,l101.[SPECIMEN_SRC_CD] = rtrim(substring(tli2.SPECIMEN_SRC_CD ,1,100)) 
+				,l101.[TRACK_ISO_IND] = rtrim(substring(tli2.TRACK_ISO_IND ,1,8)) 
+				,l101.[ISO_SENT_CDC_IND] = rtrim(substring(ltrim(rtrim(tli2.ISO_SENT_CDC_IND)) ,1,8))
+				,l101.[REPORTING_FACILITY_UID] = tli2.REPORTING_FACILITY_UID
+				,l101.[RDB_LAST_REFRESH_TIME] = tli2.RDB_LAST_REFRESH_TIME
 			FROM rdb_modern..lab101 l101, (SELECT * FROM #tmp_LAB101_INIT2 WHERE DML_IND = 'UPDATE') as tli2
 			WHERE l101.RESULTED_LAB_TEST_KEY = tli2.RESULTED_LAB_TEST_KEY
 			;
