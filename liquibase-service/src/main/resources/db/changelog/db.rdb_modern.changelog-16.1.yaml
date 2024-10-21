@@ -389,5 +389,5 @@ databaseChangeLog:
       author: liquibase
       changes:
         - sqlFile:
-            path: 018-sp_d_lab_test_postprocession-001.sql
+            path: 018-sp_d_lab_test_postprocessing-001.sql
             splitStatements: false
