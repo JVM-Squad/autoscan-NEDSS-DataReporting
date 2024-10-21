@@ -1,6 +1,6 @@
 CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
-  @lab_test_uids VARCHAR,
-  @BATCH_ID INT)
+  @lab_test_uids NVARCHAR(MAX),
+  @debug bit = 'false')
  as
 
   BEGIN
@@ -19,7 +19,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
     
 	SET @Proc_Step_no = 1;
 	SET @Proc_Step_Name = 'SP_Start';
-
+	DECLARE @batch_id bigint;
+    SET @batch_id = cast((format(GETDATE(), 'yyMMddHHmmss')) AS bigint);
 	
 		   BEGIN TRANSACTION;
 
@@ -55,12 +56,17 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
 										  lrv.LAB_RESULT_TXT_VAL, lt.PARENT_TEST_PNTR, 
 										  lt.RECORD_STATUS_CD, lt.OID, lt.LAB_RPT_LOCAL_ID, lt.LAB_RPT_UID
 					into #tmp_ISOLATE_TRACKING_INIT
-					FROM         rdb_modern..LAB_RESULT_VAL lrv,
-								 rdb_modern..TEST_RESULT_GROUPING trg,
-								 rdb_modern..LAB_TEST lt,
-								 rdb_modern..LAB_TEST_RESULT ltr   
+					FROM         
+								-- rdb_modern..LAB_RESULT_VAL lrv,
+								--  rdb_modern..TEST_RESULT_GROUPING trg,
+								--  rdb_modern..LAB_TEST lt,
+								--  rdb_modern..LAB_TEST_RESULT ltr   
+								 rdb..LAB_RESULT_VAL lrv,
+								 rdb..TEST_RESULT_GROUPING trg,
+								 rdb..LAB_TEST lt,
+								 rdb..LAB_TEST_RESULT ltr   
 					WHERE
-						lt.LAB_TEST_KEY IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
+						lt.LAB_TEST_UID IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
 						and  lrv.TEST_RESULT_GRP_KEY = trg.TEST_RESULT_GRP_KEY 
 						and  lt.LAB_TEST_KEY = ltr.LAB_TEST_KEY 
 						and  trg.TEST_RESULT_GRP_KEY = ltr.TEST_RESULT_GRP_KEY
@@ -68,7 +74,9 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
 					and lt.lab_test_type = 'I_Result'
 					order by LAB_RPT_UID
 					;
-
+					
+					if @debug = 'true' SELECT @Proc_Step_Name, * FROM (SELECT value FROM STRING_SPLIT(@lab_test_uids, ',')) a;
+					if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_ISOLATE_TRACKING_INIT;
 
 
 					/*TO GET RESULTED TEST DETAILS(ORGANISM NAME)
@@ -115,18 +123,23 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
 					LAB_TEST_I_result.LAB_RPT_UID as LAB_RPT_UID_result, 
 					LAB_TEST_I_result.LAB_RPT_LOCAL_ID
 				into #tmp_RESULTED_TEST_DETAIL1
-				from rdb_modern..lab_test resulted_test 
-					left join RDB_modern..LAB_TEST AS LAB_TEST_I_ORDER ON  resulted_test.LAB_RPT_UID=LAB_TEST_I_ORDER.PARENT_TEST_PNTR
-					left  join RDB_modern..LAB_TEST AS LAB_TEST_I_RESULT ON LAB_TEST_I_ORDER.LAB_RPT_UID=LAB_TEST_I_RESULT.PARENT_TEST_PNTR
+				from 
+					-- rdb_modern..lab_test resulted_test 
+					-- left join RDB_modern..LAB_TEST AS LAB_TEST_I_ORDER ON  resulted_test.LAB_RPT_UID=LAB_TEST_I_ORDER.PARENT_TEST_PNTR
+					-- left  join RDB_modern..LAB_TEST AS LAB_TEST_I_RESULT ON LAB_TEST_I_ORDER.LAB_RPT_UID=LAB_TEST_I_RESULT.PARENT_TEST_PNTR
+					rdb..lab_test resulted_test 
+					left join RDB..LAB_TEST AS LAB_TEST_I_ORDER ON  resulted_test.LAB_RPT_UID=LAB_TEST_I_ORDER.PARENT_TEST_PNTR
+					left  join RDB..LAB_TEST AS LAB_TEST_I_RESULT ON LAB_TEST_I_ORDER.LAB_RPT_UID=LAB_TEST_I_RESULT.PARENT_TEST_PNTR
 				WHERE LAB_TEST_I_RESULT.LAB_TEST_TYPE = 'I_Result'
 					AND  LAB_TEST_I_ORDER.LAB_TEST_TYPE = 'I_Order'
 					and resulted_test.LAB_TEST_TYPE = 'Result'
-					and resulted_test.LAB_TEST_KEY IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
+					and LAB_TEST_I_RESULT.LAB_TEST_UID IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
 				--VS --AND resulted_test.RDB_LAST_REFRESH_TIME >= @batch_start_time	AND resulted_test.RDB_LAST_REFRESH_TIME <  @batch_end_time
 				ORDER BY LAB_RPT_UID
 				;
 
-          
+				if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_RESULTED_TEST_DETAIL1;
+
 
 				--CREATE TABLE RESULTED_TEST_DETAILS AS
 
@@ -137,7 +150,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
 				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
 				VALUES(@BATCH_ID,'LAB101_DATAMART','rdb_modern.LAB101_DATAMART','START',@PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);  
 
-
+			COMMIT TRANSACTION;
 
 
 			BEGIN TRANSACTION;
@@ -199,6 +212,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_D_LAB101_postprocessing_COPY(
 			LEFT JOIN #tmp_RESULTED_TEST_DETAIL1 AS RESULTED_TEST_DETAIL1 ON TRACK.LAB_RPT_UID=RESULTED_TEST_DETAIL1.LAB_RPT_UID
 		   ;
 
+			if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_RESULTED_TEST_DETAILS;
 
 /*
 PROC SORT DATA=RESULTED_TEST_DETAILS;
@@ -236,19 +250,25 @@ RUN;
 					SELECT       lrv.TEST_RESULT_VAL_CD_DESC AS LAB330, 
 								 lt.LAB_RPT_LOCAL_ID
 					into #tmp_ISOLATE_TRACKING_LAB330_INIT
-					FROM         rdb_modern..LAB_RESULT_VAL lrv,
-								 rdb_modern..TEST_RESULT_GROUPING trg,
-								 rdb_modern..LAB_TEST lt,
-								 rdb_modern..LAB_TEST_RESULT ltr    
+					FROM         
+								--  rdb_modern..LAB_RESULT_VAL lrv,
+								--  rdb_modern..TEST_RESULT_GROUPING trg,
+								--  rdb_modern..LAB_TEST lt,
+								--  rdb_modern..LAB_TEST_RESULT ltr
+								 rdb..LAB_RESULT_VAL lrv,
+								 rdb..TEST_RESULT_GROUPING trg,
+								 rdb..LAB_TEST lt,
+								 rdb..LAB_TEST_RESULT ltr        
 			     
 					WHERE     
 										  lrv.TEST_RESULT_GRP_KEY = trg.TEST_RESULT_GRP_KEY 
 					and                      lt.LAB_TEST_KEY = ltr.LAB_TEST_KEY 
 					and                      trg.TEST_RESULT_GRP_KEY =ltr.TEST_RESULT_GRP_KEY
 					and lt.LAB_TEST_CD ='LAB330'
-					and lt.LAB_TEST_KEY IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
+					and lt.LAB_TEST_UID IN (SELECT value FROM STRING_SPLIT(@lab_test_uids, ','))
 					order by LAB_RPT_LOCAL_ID
 					;
+					if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_ISOLATE_TRACKING_LAB330_INIT;
 
 					/*   --VS
 					DATA RESULTED_TEST_DpdETAILS;
@@ -465,6 +485,7 @@ RUN;
 
 					*/
 
+			if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_RESULTED_TEST_DETAILS_final;
 
   		     SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -491,13 +512,18 @@ RUN;
 			FROM #tmp_RESULTED_TEST_DETAILS_FINAL AS TRACK_INFO
 			LEFT outer JOIN #tmp_ISOLATE_TRACKING_LAB330_INIT AS LAB330 	ON TRACK_INFO.LAB_RPT_LOCAL_ID=LAB330.LAB_RPT_LOCAL_ID
 			;
+
 	
+			if @debug = 'true' SELECT @Proc_Step_Name, * FROM #tmp_ISOLATE_TRACKING_WITH_LAB330;
+
 
   		     SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
 		     INSERT INTO rdb_modern.[DBO].[JOB_FLOW_LOG] 
 				(BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
 				VALUES(@BATCH_ID,'LAB101_DATAMART','rdb_modern.LAB101_DATAMART','START',@PROC_STEP_NO,@PROC_STEP_NAME,@ROWCOUNT_NO);  
+
+
 
 			COMMIT TRANSACTION;
 		
@@ -659,7 +685,11 @@ RUN;
 	END AS DML_IND
   INTO #TMP_LAB101_INIT2 
   FROM #tmp_LAB101_INIT AS L101
-  	LEFT JOIN rdb_modern..LAB100 L100
+  	-- LEFT JOIN rdb_modern..LAB100 L100
+	--    ON L101.RESULTED_LAB_TEST_KEY = L100.RESULTED_LAB_TEST_KEY
+	-- LEFT JOIN rdb_modern..LAB101 L101_TGT
+	-- 	ON L101.RESULTED_LAB_TEST_KEY = L101_TGT.RESULTED_LAB_TEST_KEY
+		LEFT JOIN rdb..LAB100 L100
 	   ON L101.RESULTED_LAB_TEST_KEY = L100.RESULTED_LAB_TEST_KEY
 	LEFT JOIN rdb_modern..LAB101 L101_TGT
 		ON L101.RESULTED_LAB_TEST_KEY = L101_TGT.RESULTED_LAB_TEST_KEY
@@ -673,6 +703,7 @@ SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
 			COMMIT TRANSACTION;
 
+	-- if @debug = 'true' RETURN;
 	BEGIN TRANSACTION;
 
 			SET @PROC_STEP_NO = @PROC_STEP_NO+1;
