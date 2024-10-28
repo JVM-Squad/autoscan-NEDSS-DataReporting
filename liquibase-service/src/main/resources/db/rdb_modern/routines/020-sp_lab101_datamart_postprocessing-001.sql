@@ -8,8 +8,6 @@ BEGIN
     DECLARE @RowCount_no INT;
     DECLARE @Proc_Step_no FLOAT = 0;
     DECLARE @Proc_Step_Name VARCHAR(200) = '';
-    DECLARE @batch_start_time datetime2(7) = null;
-    DECLARE @batch_end_time datetime2(7) = null;
 
     BEGIN TRY
 
@@ -28,12 +26,6 @@ BEGIN
 
         COMMIT TRANSACTION;
 
-
-        SELECT @batch_start_time = batch_start_dttm,
-               @batch_end_time = batch_end_dttm
-        FROM [dbo].[job_batch_log]
-        WHERE type_code = 'MasterETL'
-          AND status_type = 'start';
 
 
         -- get just LAB_TEST's with I_RESULT that are coming in through @lab_test_uids
