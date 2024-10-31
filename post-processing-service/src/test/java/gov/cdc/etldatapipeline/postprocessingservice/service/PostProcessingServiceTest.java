@@ -233,6 +233,8 @@ class PostProcessingServiceTest {
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"Result\",\"ctrl_cd_display_form\": \"LabReport\"}}'",
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"R_Order\",\"ctrl_cd_display_form\": \"LabReportMorb\"}}'",
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"R_Result\",\"ctrl_cd_display_form\": \"LabReport\"}}'",
+            "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"I_Order\",\"ctrl_cd_display_form\": null}}'",
+            "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"I_Result\",\"ctrl_cd_display_form\": null}}'"
     })
     void testPostProcessObservationLab(String payload) {
         String topic = "dummy_observation";
@@ -250,11 +252,12 @@ class PostProcessingServiceTest {
         verify(postProcRepositoryMock).executeStoredProcForLabTest(expectedObsIdsString);
         verify(postProcRepositoryMock).executeStoredProcForLabTestResult(expectedObsIdsString);
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(6, logs.size());
+        assertEquals(10, logs.size());
         assertTrue(logs.get(2).getFormattedMessage().contains("sp_d_lab_test_postprocessing"));
-        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
         assertTrue(logs.get(4).getFormattedMessage().contains("sp_d_labtest_result_postprocessing"));
-        assertTrue(logs.get(5).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertTrue(logs.get(6).getFormattedMessage().contains("sp_lab100_datamart_postprocessing"));
+        assertTrue(logs.get(8).getFormattedMessage().contains("sp_lab101_datamart_postprocessing"));
+        assertTrue(logs.get(9).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @ParameterizedTest
@@ -263,8 +266,7 @@ class PostProcessingServiceTest {
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"Order\",\"ctrl_cd_display_form\": \"NoReport\"}}'",
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"NoOrderOrResult\",\"ctrl_cd_display_form\": \"LabReport\"}}'",
             "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": null,\"ctrl_cd_display_form\": \"LabReport\"}}'",
-            "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"C_Result\",\"ctrl_cd_display_form\": \"LabComment\"}}'",
-            "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"Result\",\"ctrl_cd_display_form\": null}}'"
+            "'{\"payload\":{\"observation_uid\":123, \"obs_domain_cd_st_1\": \"C_Result\",\"ctrl_cd_display_form\": \"LabComment\"}}'"
     })
     void testPostProcessObservationNoReport(String payload) {
         String topic = "dummy_observation";
@@ -406,6 +408,7 @@ class PostProcessingServiceTest {
 
     @ParameterizedTest
     @CsvSource({
+            "'{\"payload\":{\"public_health_case_uid\":123,\"rdb_table_name_list\":null}}'",
             "'{\"payload\":{\"patient_uid\":123}}'",
             "'{\"payload\":{invalid}'"
     })

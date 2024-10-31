@@ -260,6 +260,11 @@ public class PostProcessingService {
                                     postProcRepository::executeStoredProcForLabTest, "sp_d_lab_test_postprocessing");
                             processTopic(keyTopic, entity.getName(), labIds,
                                     postProcRepository::executeStoredProcForLabTestResult, "sp_d_labtest_result_postprocessing");
+
+                            processTopic(keyTopic, entity.getName(), labIds,
+                                    postProcRepository::executeStoredProcForLab100Datamart, "sp_lab100_datamart_postprocessing");
+                            processTopic(keyTopic, entity.getName(), labIds,
+                                    postProcRepository::executeStoredProcForLab101Datamart, "sp_lab101_datamart_postprocessing");
                         }
                         break;
                     default:
@@ -312,13 +317,14 @@ public class PostProcessingService {
                 }
             } else if (topic.endsWith(Entity.OBSERVATION.getName())) {
                 String domainCd = objectMapper.readTree(payload).get(PAYLOAD).path("obs_domain_cd_st_1").asText();
-                String ctrlCd = objectMapper.readTree(payload).get(PAYLOAD).path("ctrl_cd_display_form").asText();
+                String ctrlCd = Optional.ofNullable(objectMapper.readTree(payload).get(PAYLOAD).get("ctrl_cd_display_form"))
+                        .filter(node -> !node.isNull()).map(JsonNode::asText).orElse(null);
 
                 if (MORB_REPORT.equals(ctrlCd)) {
                     if ("Order".equals(domainCd)) {
                         return ctrlCd;
                     }
-                } else if (assertMatches(ctrlCd, LAB_REPORT, LAB_REPORT_MORB) &&
+                } else if (assertMatches(ctrlCd, LAB_REPORT, LAB_REPORT_MORB, null) &&
                         assertMatches(domainCd, "Order", "Result", "R_Order", "R_Result", "I_Order", "I_Result", "Order_rslt")) {
                     return LAB_REPORT;
                 }
