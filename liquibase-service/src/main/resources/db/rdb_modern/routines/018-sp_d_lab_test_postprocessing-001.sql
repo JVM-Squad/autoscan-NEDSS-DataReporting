@@ -2322,7 +2322,6 @@ BEGIN
         SELECT lt.LAB_TEST_UID
         FROM dbo.L_LAB_TEST lt;
 
-        -- keep this update statement since it is key related
         UPDATE #L_LAB_TEST_N
         SET LAB_TEST_KEY = LAB_TEST_ID + coalesce((SELECT MAX(LAB_TEST_KEY) FROM dbo.L_LAB_TEST), 0)
 
@@ -2932,17 +2931,6 @@ BEGIN
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
-        -- I don't think these are necessary, these changes are already done in a temp table above
-        -- -- can just be turned into case statements
-        -- update #Lab_Rpt_User_Comment_N
-        -- set record_status_cd = 'ACTIVE'
-        -- where record_status_cd in ('', 'UNPROCESSED', 'PROCESSED');
-
-        -- update #Lab_Rpt_User_Comment_N
-        -- set record_status_cd = 'INACTIVE'
-        -- where record_status_cd = 'LOG_DEL';
-
-        -- keeping this update statement, since it is used for setting the key
         UPDATE #Lab_Rpt_User_Comment_N
         SET USER_COMMENT_KEY= [LAB_COMMENT_id] +
                               coalesce((SELECT MAX(USER_COMMENT_KEY) FROM dbo.Lab_Rpt_User_Comment), 1)
@@ -3048,16 +3036,6 @@ BEGIN
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
-        -- -- case statement
-        -- update #Lab_Rpt_User_Comment_U
-        -- set record_status_cd = 'ACTIVE'
-        -- where record_status_cd in ('', 'UNPROCESSED', 'PROCESSED');
-
-        -- -- case statement
-        -- update #Lab_Rpt_User_Comment_U
-        -- set record_status_cd = 'INACTIVE'
-        -- where record_status_cd = 'LOG_DEL';
-
 
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
@@ -3074,7 +3052,6 @@ BEGIN
             @PROC_STEP_NAME = 'UPDATING dbo.Lab_Rpt_User_Comment';
 
 
-        -- fix update transformations to match the ones in the insert
         UPDATE
             lruc
         SET lruc.[USER_RPT_COMMENTS]       = rtrim(cast(lrucu.USER_RPT_COMMENTS AS varchar(2000)))
