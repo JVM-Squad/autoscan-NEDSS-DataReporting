@@ -2758,14 +2758,6 @@ BEGIN
         FROM #D_LAB_TEST_N;
 
 
-/*-------------------------------------------------------
-
-    Lab_Report_User_Comment Dimension
-
-    Note: Comments under the Order Test object (LAB214)
----------------------------------------------------------*/
-
-
         SELECT @RowCount_no = @@ROWCOUNT;
 
         INSERT INTO [dbo].[job_flow_log]
