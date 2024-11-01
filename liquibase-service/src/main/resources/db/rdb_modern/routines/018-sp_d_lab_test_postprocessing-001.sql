@@ -2072,7 +2072,6 @@ BEGIN
             SELECT 'merge_order' as nm, *
             FROM #Merge_Order;
 
-        -- all of the updates below can be case statements
 
         alter table #LAB_TEST
             drop
