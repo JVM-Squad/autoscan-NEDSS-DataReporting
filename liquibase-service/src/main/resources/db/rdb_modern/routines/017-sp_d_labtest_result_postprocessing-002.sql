@@ -21,7 +21,7 @@ BEGIN
      */
 
     DECLARE @batch_id bigint;
-    SET @batch_id = cast((format(GETDATE(), 'yyMMddHHmmss')) AS bigint);
+    SET @batch_id = CAST((format(GETDATE(), 'yyMMddHHmmss')) AS bigint);
     DECLARE @RowCount_no INT ;
     DECLARE @Proc_Step_no FLOAT = 0 ;
     DECLARE @Proc_Step_Name VARCHAR(200) = '' ;
@@ -63,7 +63,7 @@ BEGIN
                lab_test_type, -- for TMP_Result_And_R_Result
                elr_ind -- for TMP_Result_And_R_Result
         INTO #TMP_D_LAB_TEST_N
-        FROM LAB_TEST
+        FROM LAB_TEST with (nolock)
         WHERE lab_test_uid IN (SELECT value FROM string_split(@pLabResultList, ','))
 
 
@@ -86,10 +86,10 @@ BEGIN
         INTO #TMP_lab_test_resultInit
         FROM  #TMP_D_LAB_TEST_N AS tst
                   /* Morb report */
-                  LEFT JOIN nrt_observation no2 ON tst.lab_test_uid = no2.observation_uid
-                  LEFT JOIN Morbidity_Report	as morb
+                  LEFT JOIN nrt_observation no2 with (nolock) ON tst.lab_test_uid = no2.observation_uid
+                  LEFT JOIN Morbidity_Report as morb with (nolock)
                             ON no2.report_observation_uid = morb.morb_rpt_uid
-                  LEFT JOIN Morbidity_report_event morb_event on
+                  LEFT JOIN Morbidity_report_event morb_event with (nolock) on
             morb_event.morb_rpt_key= morb.morb_rpt_key;
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_lab_test_resultInit',* FROM #TMP_lab_test_resultInit;
@@ -142,46 +142,47 @@ BEGIN
             tst.record_status_cd AS record_status_cd2,
             cast ( NULL AS  bigint) RESULT_COMMENT_GRP_KEY
         INTO #TMP_Lab_Test_Result1
-        FROM #TMP_lab_test_resultInit AS tst
-                 LEFT JOIN dbo.nrt_observation no2 ON tst.lab_test_uid = no2.observation_uid
-            /*get specimen collector*/
-                 LEFT JOIN d_provider AS per4
-                           ON no2.specimen_collector_id = per4.provider_uid
-            /*get copy_to_provider key*/
-                 LEFT JOIN d_provider AS per5
-                           ON no2.specimen_collector_id = per5.provider_uid
-            /*get lab_test_technician*/
-                 LEFT JOIN d_provider AS per6
-                           ON no2.lab_test_technician_id = per6.provider_uid
+        FROM #TMP_lab_test_resultInit AS tst with (nolock)
+                 LEFT JOIN dbo.nrt_observation AS no2 with (nolock) ON tst.lab_test_uid = no2.observation_uid
+                 LEFT JOIN dbo.nrt_observation AS no3 with (nolock) ON tst.Root_Ordered_Test_Pntr = no3.observation_uid
+            /*get specimen collector: Associated to Root Order*/
+                 LEFT JOIN d_provider AS per4 with (nolock)
+                           ON no3.specimen_collector_id = per4.provider_uid
+            /*get copy_to_provider key: Associated to Root Order*/
+                 LEFT JOIN d_provider AS per5 with (nolock)
+                           ON no3.specimen_collector_id = per5.provider_uid
+            /*get lab_test_technician: Associated to Root Order*/
+                 LEFT JOIN d_provider AS per6 with (nolock)
+                           ON no3.lab_test_technician_id = per6.provider_uid
             /* Ordering Provider */
-                 LEFT JOIN	d_provider 	AS prv
+                 LEFT JOIN	d_provider 	AS prv with (nolock)
                               ON no2.ordering_person_id = prv.provider_uid
             /* Reporting_Lab*/
-                 LEFT JOIN d_Organization	AS org
+                 LEFT JOIN d_Organization	AS org with (nolock)
                            ON no2.author_organization_id = org.Organization_uid
             /* Ordering Facility */
-                 LEFT JOIN d_Organization	AS org2
+                 LEFT JOIN d_Organization	AS org2 with (nolock)
                            ON no2.ordering_organization_id = org2.Organization_uid
 
-            /* Conditon, it's just program area */
+            /* Condition it's just program area */
 
             /*IF we add a program area to the Lab_Report Dimension we probably don't
             even need a condition dimension.  Even though it's OK with the Dimension Modeling
             principle for adding a prog_area_cd row to the condition, it sure will cause
             some confusion among users.  There's no "disease" ON the input.
             */
-                 LEFT JOIN	Condition	AS con
+                 LEFT JOIN	Condition	AS con with (nolock)
                               ON	no2.prog_area_cd  = con.program_area_cd
                                   AND con.condition_cd IS NULL
             /*LDF_GRP_KEY*/
             --LEFT JOIN ldf_group AS ldf_g 	ON tst.Lab_test_UID = ldf_g.business_object_uid --VS
-                 LEFT JOIN ldf_group AS ldf_g 	ON tst.Lab_test_UID = ldf_g.ldf_group_key
+                 LEFT JOIN ldf_group AS ldf_g  with (nolock)	ON tst.Lab_test_UID = ldf_g.ldf_group_key
 
             /* Lab_Rpt_Dt */ --VS	LEFT JOIN rdb_datetable 		as dat
-                 LEFT JOIN rdb_date AS dat 	ON  DATEADD(d,0,DATEDIFF(d,0,[lab_rpt_created_dt])) = dat.DATE_MM_DD_YYYY
-            /* PHC */
-                 LEFT JOIN dbo.nrt_investigation_observation ninv ON ninv.observation_id = tst.lab_test_uid
-                 LEFT JOIN investigation AS inv ON ninv.public_health_case_uid = inv.case_uid;
+                 LEFT JOIN rdb_date AS dat  with (nolock)	ON  DATEADD(d,0,DATEDIFF(d,0,[lab_rpt_created_dt])) = dat.DATE_MM_DD_YYYY
+            /* PHC: Using NRT nrt_investigation_observation which captures observation-investigation mapping  */
+                 LEFT JOIN nrt_investigation_observation ninv with (nolock) ON ninv.observation_id = tst.lab_test_uid
+                 LEFT JOIN investigation AS inv with (nolock) ON ninv.public_health_case_uid = inv.case_uid;
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_Lab_Test_Result1',* FROM #TMP_Lab_Test_Result1;
@@ -231,6 +232,7 @@ BEGIN
         IF OBJECT_ID('#TMP_Lab_Result_Comment', 'U') IS NOT NULL
             DROP TABLE #TMP_Lab_Result_Comment ;
 
+        /*Notes: Inner Join specified*/
         SELECT
             lab104.lab_test_uid,
             REPLACE(REPLACE(ovt.ovt_value_txt, CHAR(13), ' '), CHAR(10), ' ')	'LAB_RESULT_COMMENTS'  , -- asLab_Result_Comments,
@@ -239,7 +241,7 @@ BEGIN
         INTO #TMP_Lab_Result_Comment
         FROM
             #TMP_Result_And_R_Result		AS lab104
-                INNER JOIN nrt_observation_txt AS ovt ON ovt.observation_uid =  lab104.lab_test_uid
+                INNER JOIN nrt_observation_txt AS ovt with (nolock) ON ovt.observation_uid =  lab104.lab_test_uid
         WHERE 	ovt.ovt_value_txt IS NOT NULL
           AND ovt.ovt_txt_type_cd = 'N'
           AND ovt.ovt_seq <>  0;
@@ -302,14 +304,17 @@ BEGIN
 
 
         UPDATE #TMP_New_Lab_Result_Comment
-        SET lab_result_comments = ( SELECT v_lab_result_val_txt
+        SET lab_result_comments = ( SELECT CASE WHEN v_lab_result_val_txt = '#x20;' THEN NULL
+                                                ELSE v_lab_result_val_txt END AS v_lab_result_val_txt
                                     FROM  #TMP_New_Lab_Result_Comment_grouped tnl
                                     WHERE tnl.lab_test_uid = #TMP_New_Lab_Result_Comment.lab_test_uid);
 
 
+        /*
         UPDATE #TMP_New_Lab_Result_Comment
         SET [LAB_RESULT_COMMENTS] = NULL
         WHERE [LAB_RESULT_COMMENTS] = '#x20;';
+        */
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_New_Lab_Result_Comment_grouped', * FROM #TMP_New_Lab_Result_Comment_grouped;
@@ -345,10 +350,15 @@ BEGIN
         INSERT INTO #TMP_New_Lab_Result_Comment_FINAL
         SELECT distinct [lab_test_uid]
                       ,NULL
-                      ,[LAB_RESULT_COMMENTS]
+                      ,CASE WHEN [LAB_RESULT_COMMENTS] LIKE  '%.&#x20;%' THEN REPLACE([LAB_RESULT_COMMENTS],'&#x20;',' ')
+                            ELSE  [LAB_RESULT_COMMENTS]
+            END AS LAB_RESULT_COMMENTS
                       ,NULL
-                      ,[record_status_cd]
-                      , NULL
+                      ,CASE WHEN record_status_cd = 'LOG_DEL' THEN 'INACTIVE'
+                            WHEN record_status_cd IN ('', 'UNPROCESSED', 'PROCESSED') THEN 'ACTIVE'
+                            ELSE 'ACTIVE'
+            END AS record_status_cd
+                      ,GETDATE()
         FROM #TMP_New_Lab_Result_Comment;
 
 
@@ -379,7 +389,7 @@ BEGIN
 
 
         /*
-        UPDATE #TMP_New_Lab_Result_Comment_FINAL
+ 		UPDATE #TMP_New_Lab_Result_Comment_FINAL
         SET [LAB_RESULT_COMMENT_KEY]= Lab_Result_Comment_Key_id
             + COALESCE((SELECT MAX(Lab_Result_Comment_Key) FROM Lab_Result_Comment),1);
 
@@ -387,6 +397,19 @@ BEGIN
 
         UPDATE #TMP_New_Lab_Result_Comment_FINAL
         SET Result_Comment_Grp_Key = [LAB_RESULT_COMMENT_KEY];
+
+
+        UPDATE #TMP_New_Lab_Result_Comment_FINAL
+        SET [LAB_RESULT_COMMENTS] = (REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([LAB_RESULT_COMMENTS],
+                                                                                             '&#x09;', CHAR(9)),
+                                                                                     '&#x0A;', CHAR(10)),
+                                                                             '&#x0D;', CHAR(13)),
+                                                                     '&#x20;', CHAR(32)),
+                                                             '&amp;', CHAR(38)),
+                                                     '&lt;', CHAR(60)),
+                                             '&gt;', CHAR(62)));
+
+
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_New_Lab_Result_Comment', * FROM #TMP_New_Lab_Result_Comment;
@@ -424,7 +447,6 @@ BEGIN
         IF @pDebug = 'true' SELECT 'DEBUG: tmp_Result_Comment_Group',* FROM #tmp_Result_Comment_Group;
 
 
-
         UPDATE #TMP_lab_test_result1
         SET [RESULT_COMMENT_GRP_KEY] = ( SELECT [RESULT_COMMENT_GRP_KEY]
                                          FROM #tmp_Result_Comment_Group trcg
@@ -434,7 +456,6 @@ BEGIN
         UPDATE #TMP_lab_test_result1
         SET [RESULT_COMMENT_GRP_KEY] = 1
         WHERE [RESULT_COMMENT_GRP_KEY] IS NULL;
-
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -494,17 +515,20 @@ BEGIN
         INSERT INTO #TMP_Lab_Result_Val
         SELECT
             rslt.lab_test_uid,
-            REPLACE(REPLACE(otxt.ovt_value_txt, CHAR(13), ' '), CHAR(10), ' ') 		'LAB_RESULT_TXT_VAL'  , -- AS Lab_Result_Txt_Val,
+            NULLIF(trim(REPLACE(REPLACE(otxt.ovt_value_txt, CHAR(13), ' '), CHAR(10), ' ')), '') AS 'LAB_RESULT_TXT_VAL',
             otxt.ovt_seq			'LAB_RESULT_TXT_SEQ'  , -- AS Lab_Result_Txt_Seq,
             onum.ovn_comparator_cd_1,
             onum.ovn_numeric_value_1,
             onum.ovn_separator_cd,
             onum.ovn_numeric_value_2,
-            onum.ovn_numeric_unit_cd    	'Result_Units'  , -- asResult_Units,
+            CASE WHEN rtrim(onum.ovn_numeric_unit_cd) = '' THEN NULL
+                 ELSE onum.ovn_numeric_unit_cd  END AS 'Result_Units',  -- as Result_Units,
             SUBSTRING(onum.ovn_low_range,1,20)					'REF_RANGE_FRM'  , -- AS Ref_Range_Frm,
             SUBSTRING(onum.ovn_high_range,1,20)				'REF_RANGE_TO'  , -- AS Ref_Range_To,
-            code.ovc_code						'TEST_RESULT_VAL_CD'  , -- AS Test_result_val_cd,
-            code.ovc_display_name				'TEST_RESULT_VAL_CD_DESC'  , -- AS Test_result_val_cd_desc,
+            CASE WHEN rtrim(code.ovc_code) = '' THEN NULL
+                 ELSE code.ovc_code END AS 'TEST_RESULT_VAL_CD', -- AS Test_result_val_cd,
+            CASE WHEN rtrim(code.ovc_display_name) = '' THEN NULL
+                 ELSE code.ovc_display_name END AS 'TEST_RESULT_VAL_CD_DESC', -- AS Test_result_val_cd_desc,
             code.ovc_CODE_SYSTEM_CD			'TEST_RESULT_VAL_CD_SYS_CD'  , -- AS Test_result_val_cd_sys_cd,
             code.ovc_CODE_SYSTEM_DESC_TXT	'TEST_RESULT_VAL_CD_SYS_NM'  , -- AS Test_result_val_cd_sys_nm,
             code.ovc_ALT_CD						'ALT_RESULT_VAL_CD'  , -- AS Alt_result_val_cd,
@@ -513,22 +537,31 @@ BEGIN
             code.ovc_ALT_CD_SYSTEM_DESC_TXT	'ALT_RESULT_VAL_CD_SYSTEM_NM'  , -- AS Alt_result_val_cd_sys_nm,
             ndate.ovd_from_date 'FROM_TIME'  , -- AS from_time,
             ndate.ovd_to_date 'TO_TIME'  , -- AS to_time,
-            rslt.record_status_cd,
-            NULL,
-            NULL,
-            NULL,
-            NULL
+            CASE WHEN record_status_cd = 'LOG_DEL' THEN 'INACTIVE'
+                 WHEN record_status_cd IN ('', 'UNPROCESSED', 'PROCESSED') THEN 'ACTIVE'
+                 ELSE 'ACTIVE'
+                END AS record_status_cd,
+            NULL, --test_result_grp_key
+            CASE WHEN onum.ovn_numeric_value_1 IS NOT NULL AND onum.ovn_numeric_value_2 IS NULL THEN rtrim(COALESCE(onum.ovn_comparator_cd_1,''))+rtrim(format(ovn_numeric_value_1,'0.#########'))
+                 WHEN onum.ovn_numeric_value_1 IS NOT NULL AND onum.ovn_numeric_value_2 IS NOT NULL THEN rtrim(COALESCE(rtrim(COALESCE(onum.ovn_comparator_cd_1,''))+rtrim(format(ovn_numeric_value_1,'0.#########')),'')) + rtrim((COALESCE(onum.ovn_separator_cd,''))) + rtrim(format(onum.ovn_numeric_value_2,'0.#########'))
+                 WHEN onum.ovn_numeric_value_1 IS NULL AND onum.ovn_numeric_value_2 IS NOT NULL THEN rtrim(COALESCE(NULL,'')) + rtrim((COALESCE(onum.ovn_separator_cd,''))) + rtrim(format(onum.ovn_numeric_value_2,'0.#########'))
+                 ELSE NULL END AS Numeric_Result,
+            NULL, --Test_Result_Val_Key
+            NULL --lab_result_txt_val1
         FROM #TMP_Result_And_R_Result		as rslt
-                 LEFT JOIN nrt_observation_txt	as otxt 		ON rslt.lab_test_uid = otxt.observation_uid
+                 LEFT JOIN nrt_observation_txt	as otxt  with (nolock)	ON rslt.lab_test_uid = otxt.observation_uid
             AND ((otxt.ovt_txt_type_cd IS NULL) OR (rslt.ELR_IND = 'Y' AND otxt.ovt_txt_type_cd <>  'N'))
             --AND otxt.OBS_VALUE_TXT_SEQ =1
             /*
             Commented out because an ELR Test Result can have zero to many text result values
             AND otxt.OBS_VALUE_TXT_SEQ =1
             */
-                 LEFT JOIN nrt_observation_numeric	as onum 	ON rslt.lab_test_uid = onum.observation_uid
-                 LEFT JOIN nrt_observation_coded		as code		ON rslt.lab_test_uid = code.observation_uid
-                 LEFT JOIN nrt_observation_date		as ndate 	ON rslt.lab_test_uid = ndate.observation_uid;
+                 LEFT JOIN nrt_observation_numeric	as onum  with (nolock)	ON rslt.lab_test_uid = onum.observation_uid
+                 LEFT JOIN nrt_observation_coded		as code	 with (nolock)	ON rslt.lab_test_uid = code.observation_uid
+                 LEFT JOIN nrt_observation_date		as ndate  with (nolock)	ON rslt.lab_test_uid = ndate.observation_uid
+
+        --LEFT JOIN (SELECT *, ROW_NUMBER() OVER (PARTITION BY observation_uid ORDER BY refresh_datetime DESC) AS cr
+        --	FROM nrt_observation_coded with (nolock)) code on rslt.lab_test_uid = code.observation_uid and code.cr=1;
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_Lab_Result_Val',* FROM #TMP_Lab_Result_Val;
@@ -572,12 +605,10 @@ BEGIN
                  LEFT JOIN #tmp_id_assignment id ON tmp_val.lab_test_uid = id.lab_test_uid
         WHERE tmp_val.test_result_grp_key IS NULL;
 
-
-        UPDATE #TMP_Lab_Result_Val
+        /*
+     UPDATE #TMP_Lab_Result_Val
         SET Lab_Result_Txt_Val = NULL
         WHERE ltrim(rtrim(Lab_Result_Txt_Val)) = '';
-
-        IF @pDebug = 'true' SELECT 'DEBUG: TMP_Lab_Result_Val GROUP KEY',* FROM #TMP_Lab_Result_Val;
 
 
         UPDATE #TMP_Lab_Result_Val
@@ -589,7 +620,10 @@ BEGIN
         SET	Numeric_Result = rtrim(COALESCE(Numeric_Result,'')) + rtrim((COALESCE(separator_cd,'')))
             + rtrim(format(numeric_value_2,'0.#########') )
         WHERE  NUMERIC_VALUE_2 IS not NULL;
+        */
 
+
+        IF @pDebug = 'true' SELECT 'DEBUG: TMP_Lab_Result_Val GROUP KEY',* FROM #TMP_Lab_Result_Val;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -653,11 +687,12 @@ BEGIN
 
 
         UPDATE #TMP_Lab_Result_Val
-        SET lab_result_txt_val = ( SELECT v_lab_result_val_txt
+        SET lab_result_txt_val = ( SELECT NULLIF(v_lab_result_val_txt,'') AS v_lab_result_val_txt
                                    FROM  #TMP_New_Lab_Result_Val tnl
                                    WHERE tnl.lab_test_uid = #TMP_Lab_Result_Val.lab_test_uid);
 
 
+        /*
         UPDATE #TMP_Lab_Result_Val
         SET record_status_cd = 'ACTIVE'
         WHERE record_status_cd IN ( '' ,'UNPROCESSED' ,'PROCESSED' )
@@ -686,6 +721,7 @@ BEGIN
         UPDATE #TMP_Lab_Result_Val
         SET Lab_Result_Txt_Val = NULL
         WHERE ltrim(rtrim(Lab_Result_Txt_Val)) = '';
+        */
 
 
         DELETE
@@ -810,8 +846,8 @@ BEGIN
         INTO #TMP_Lab_Test_Result3
         FROM 	#TMP_Lab_Test_Result2 AS tst
                     /*Get patient id for root observation ids*/
-                    LEFT JOIN nrt_observation no2 ON no2.observation_uid = tst.root_ordered_test_pntr
-                    LEFT JOIN d_patient AS psn
+                    LEFT JOIN nrt_observation no2 with (nolock) ON no2.observation_uid = tst.root_ordered_test_pntr
+                    LEFT JOIN d_patient AS psn with (nolock)
                               ON no2.patient_id = psn.patient_uid
                                   AND psn.patient_key <> 1;
 
@@ -820,10 +856,10 @@ BEGIN
 
         UPDATE #TMP_Lab_Test_Result3
         SET
-            PATIENT_KEY=morb_patient_key,
-            Condition_Key=morb_Condition_Key,
+            PATIENT_KEY = morb_patient_key,
+            Condition_Key = morb_Condition_Key,
             Investigation_Key = morb_Investigation_Key,
-            REPORTING_LAB_KEY= MORB_RPT_SRC_ORG_KEY
+            REPORTING_LAB_KEY = MORB_RPT_SRC_ORG_KEY
         WHERE morb_rpt_key>1;
 
 
@@ -845,8 +881,8 @@ BEGIN
                         COALESCE(org.Organization_key,1) AS Performing_lab_key
         INTO    #TMP_Lab_Test_Result
         FROM 	#TMP_Lab_Test_Result3 AS tst
-                    LEFT JOIN nrt_observation AS no2 ON no2.observation_uid= tst.lab_test_uid
-                    LEFT JOIN d_Organization  AS org
+                    LEFT JOIN nrt_observation AS no2 with (nolock) ON no2.observation_uid= tst.lab_test_uid
+                    LEFT JOIN d_Organization  AS org with (nolock)
                               ON no2.performing_organization_id = org.Organization_uid
                                   AND org.Organization_key <> 1;
 
@@ -889,7 +925,7 @@ BEGIN
         SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
         SET @PROC_STEP_NAME = 'UPDATE LAB_RESULT_VAL ';
 
-        /*Foreign Key*/
+
         UPDATE LAB_RESULT_VAL
         SET
             [NUMERIC_RESULT]	 = 	SUBSTRING(tmp.NUMERIC_RESULT ,1,50),
@@ -912,8 +948,9 @@ BEGIN
             [LAB_TEST_UID]	 = 	tmp.LAB_TEST_UID,
             [RDB_LAST_REFRESH_TIME]	 = 	GETDATE()
         FROM #TMP_LAB_RESULT_VAL_FINAL tmp
-                 INNER JOIN LAB_RESULT_VAL val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
-            AND val.TEST_RESULT_GRP_KEY = tmp.TEST_RESULT_GRP_KEY;
+                 INNER JOIN LAB_RESULT_VAL val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+            AND val.TEST_RESULT_GRP_KEY = tmp.TEST_RESULT_GRP_KEY
+            AND val.TEST_RESULT_VAL_KEY = val.TEST_RESULT_VAL_KEY;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -931,17 +968,18 @@ BEGIN
         SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
         SET @PROC_STEP_NAME = 'UPDATE TEST_RESULT_GROUPING';
 
-
+        --No downstream update of RDB_LAST_REFRESH_TIME.
         UPDATE TEST_RESULT_GROUPING
         SET
+            [TEST_RESULT_GRP_KEY] = tmp.TEST_RESULT_GRP_KEY,
+            [LAB_TEST_UID] = tmp.LAB_TEST_UID,
             [RDB_LAST_REFRESH_TIME] = CAST( NULL AS datetime)
         FROM #TMP_TEST_RESULT_GROUPING tmp
-                 INNER JOIN TEST_RESULT_GROUPING g ON g.LAB_TEST_UID = tmp.LAB_TEST_UID
+                 INNER JOIN TEST_RESULT_GROUPING g with (nolock) ON g.LAB_TEST_UID = tmp.LAB_TEST_UID
             AND g.TEST_RESULT_GRP_KEY = tmp.TEST_RESULT_GRP_KEY;
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_TEST_RESULT_GROUPING',* FROM #TMP_TEST_RESULT_GROUPING;
-        IF @pDebug = 'true' SELECT 'DEBUG: TMP_LAB_RESULT_VAL_FINAL',* FROM #TMP_LAB_RESULT_VAL_FINAL;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -960,7 +998,7 @@ BEGIN
         SET @PROC_STEP_NO =  @PROC_STEP_NO + 1 ;
         SET @PROC_STEP_NAME = 'GENERATING TEST_RESULT_GROUPING ';
 
-
+        --No downstream update of RDB_LAST_REFRESH_TIME.
         INSERT INTO TEST_RESULT_GROUPING
         ([TEST_RESULT_GRP_KEY]
         ,[LAB_TEST_UID]
@@ -969,12 +1007,8 @@ BEGIN
                 ,tmp.[LAB_TEST_UID],
                CAST( NULL AS datetime) AS [RDB_LAST_REFRESH_TIME]
         FROM #TMP_TEST_RESULT_GROUPING tmp
-                 LEFT JOIN TEST_RESULT_GROUPING g ON g.LAB_TEST_UID = tmp.LAB_TEST_UID
-        WHERE g.LAB_TEST_UID IS NULL;
-
-
-        IF @pDebug = 'true' SELECT 'DEBUG: TMP_TEST_RESULT_GROUPING',* FROM #TMP_TEST_RESULT_GROUPING;
-        IF @pDebug = 'true' SELECT 'DEBUG: TMP_LAB_RESULT_VAL_FINAL',* FROM #TMP_LAB_RESULT_VAL_FINAL;
+                 LEFT JOIN TEST_RESULT_GROUPING g with (nolock) ON g.LAB_TEST_UID = tmp.LAB_TEST_UID
+        WHERE g.LAB_TEST_UID IS NULL AND g.TEST_RESULT_GRP_KEY IS NULL;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1037,8 +1071,8 @@ BEGIN
              ,tmp.LAB_TEST_UID
              , GETDATE()
         FROM #TMP_LAB_RESULT_VAL_FINAL tmp
-                 LEFT JOIN LAB_RESULT_VAL val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
-        WHERE val.LAB_TEST_UID IS NULL;
+                 LEFT JOIN LAB_RESULT_VAL val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+        WHERE val.LAB_TEST_UID IS NULL and val.TEST_RESULT_VAL_KEY IS NULL;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1059,10 +1093,13 @@ BEGIN
 
         UPDATE [RESULT_COMMENT_GROUP]
         SET
+            [RESULT_COMMENT_GRP_KEY] = tmp.RESULT_COMMENT_GRP_KEY,
+            [LAB_TEST_UID] = tmp.LAB_TEST_UID,
             [RDB_LAST_REFRESH_TIME] = GETDATE()
         FROM #TMP_RESULT_COMMENT_GROUP tmp
                  INNER JOIN RESULT_COMMENT_GROUP val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
             AND val.RESULT_COMMENT_GRP_KEY = tmp.RESULT_COMMENT_GRP_KEY;
+
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_RESULT_COMMENT_GROUP Update', * FROM #TMP_RESULT_COMMENT_GROUP;
@@ -1094,13 +1131,13 @@ BEGIN
              , tmp.[LAB_TEST_UID]
              , GETDATE()
         FROM #TMP_RESULT_COMMENT_GROUP tmp
-                 LEFT JOIN RESULT_COMMENT_GROUP val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
-        WHERE val.LAB_TEST_UID IS NULL;
+                 LEFT JOIN RESULT_COMMENT_GROUP val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+        WHERE val.LAB_TEST_UID IS NULL and val.RESULT_COMMENT_GRP_KEY IS NULL;
 
 
         IF @pDebug = 'true' SELECT 'DEBUG: TMP_RESULT_COMMENT_GROUP', * FROM #TMP_RESULT_COMMENT_GROUP;
 
-
+        /*
         UPDATE #TMP_New_Lab_Result_Comment_FINAL
         SET record_status_cd = 'ACTIVE'
         WHERE record_status_cd IN ( '' ,'UNPROCESSED' ,'PROCESSED' )
@@ -1124,13 +1161,15 @@ BEGIN
                                                                      '&#x20;', CHAR(32)),
                                                              '&amp;', CHAR(38)),
                                                      '&lt;', CHAR(60)),
-                                             '&gt;', CHAR(62)));
+    '&gt;', CHAR(62)));
 
 
 
 
         UPDATE #TMP_New_Lab_Result_Comment_FINAL
         SET [RDB_LAST_REFRESH_TIME] = GETDATE();
+
+        */
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1156,7 +1195,7 @@ BEGIN
             [RECORD_STATUS_CD] = SUBSTRING(tmp.RECORD_STATUS_CD ,1,8),
             [RDB_LAST_REFRESH_TIME] = tmp.[RDB_LAST_REFRESH_TIME]
         FROM #TMP_New_Lab_Result_Comment_FINAL tmp
-                 INNER JOIN Lab_Result_Comment val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+                 INNER JOIN Lab_Result_Comment val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
             AND val.LAB_RESULT_COMMENT_KEY = tmp.LAB_RESULT_COMMENT_KEY;
 
 
@@ -1192,12 +1231,13 @@ BEGIN
              , SUBSTRING(tmp.RECORD_STATUS_CD ,1,8)
              , tmp.[RDB_LAST_REFRESH_TIME]
         FROM #TMP_New_Lab_Result_Comment_FINAL tmp
-                 LEFT JOIN Lab_Result_Comment val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
-        WHERE val.LAB_TEST_UID IS NULL;
+                 LEFT JOIN Lab_Result_Comment val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+        WHERE val.LAB_TEST_UID IS NULL AND val.LAB_RESULT_COMMENT_KEY IS NULL;
 
 
         DELETE FROM #TMP_Lab_Test_Result WHERE lab_test_key IS NULL;
 
+        /*
         UPDATE #TMP_Lab_Test_Result
         SET record_status_cd = 'ACTIVE'
         WHERE record_status_cd IN ( '' ,'UNPROCESSED' ,'PROCESSED' )
@@ -1206,6 +1246,7 @@ BEGIN
         UPDATE #TMP_Lab_Test_Result
         SET record_status_cd = 'INACTIVE'
         WHERE record_status_cd = 'LOG_DEL';
+        */
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1244,7 +1285,7 @@ BEGIN
             [RECORD_STATUS_CD]	 =	SUBSTRING(tmp.RECORD_STATUS_CD ,1,8),
             [RDB_LAST_REFRESH_TIME]	 =	GETDATE()
         FROM #TMP_LAB_TEST_RESULT tmp
-                 INNER JOIN LAB_TEST_RESULT val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+                 INNER JOIN LAB_TEST_RESULT val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
             AND val.RESULT_COMMENT_GRP_KEY = tmp.RESULT_COMMENT_GRP_KEY
             AND val.TEST_RESULT_GRP_KEY = tmp.TEST_RESULT_GRP_KEY;
 
@@ -1309,7 +1350,7 @@ BEGIN
              , SUBSTRING(tmp.RECORD_STATUS_CD ,1,8)
              , GETDATE() AS [RDB_LAST_REFRESH_TIME]
         FROM #TMP_LAB_TEST_RESULT tmp
-                 LEFT JOIN LAB_TEST_RESULT val ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
+                 LEFT JOIN LAB_TEST_RESULT val with (nolock) ON val.LAB_TEST_UID = tmp.LAB_TEST_UID
             AND val.LAB_TEST_KEY = tmp.LAB_TEST_KEY
         WHERE val.LAB_TEST_UID IS NULL AND val.LAB_TEST_KEY IS NULL;
 

@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE dbo.sp_hepatitis_datamart_postprocessing
+CREATE OR ALTER PROCEDURE [dbo].[sp_hepatitis_datamart_postprocessing]
     @phc_id nvarchar(max),
     @pat_ids nvarchar(max) = '',
     @debug bit = 'false'
@@ -92,11 +92,11 @@ BEGIN
                  INNER JOIN	 dbo.INVESTIGATION WITH(NOLOCK)		 ON INVESTIGATION.INVESTIGATION_KEY = F_PAGE_CASE.INVESTIGATION_KEY
                  LEFT JOIN	 dbo.HEPATITIS_DATAMART hd WITH(NOLOCK) ON F_PAGE_CASE.INVESTIGATION_KEY = hd.INVESTIGATION_KEY
         WHERE   (hd.INVESTIGATION_KEY IS NULL
-            or  (INVESTIGATION.CASE_UID IN (SELECT value FROM STRING_SPLIT(@phc_id, ','))))
+            OR  (INVESTIGATION.CASE_UID IN (SELECT value FROM STRING_SPLIT(@phc_id, ','))))
           AND INVESTIGATION.RECORD_STATUS_CD = 'ACTIVE'
         ORDER BY F_PAGE_CASE.INVESTIGATION_KEY;
 
-        if @debug ='true' select * from #TMP_F_PAGE_CASE;
+        IF @debug ='true' SELECT '#TMP_F_PAGE_CASE', * FROM #TMP_F_PAGE_CASE;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -126,6 +126,8 @@ BEGIN
                  INNER JOIN	 #TMP_F_PAGE_CASE AS T
                                 ON T.INVESTIGATION_KEY = PAGE_CASE.INVESTIGATION_KEY  ---(My Table)--Should it be F-Page or tmp_F_Page
         ORDER BY D_INV_ADMINISTRATIVE_KEY;
+
+        IF @debug ='true' SELECT 'TMP_F_INV_ADMINISTRATIVE', * FROM #TMP_F_INV_ADMINISTRATIVE;
 
 
         IF OBJECT_ID('#TMP_D_INV_ADMINISTRATIVE', 'U') IS NOT NULL
@@ -1103,9 +1105,9 @@ BEGIN
              ,MIN(notif.rpt_sent_time) AS FIRSTNOTIFICATIONSENDDATE
         INTO #TMP_Notif
         FROM #TMP_Investigation AS I WITH(NOLOCK)
-                 JOIN NOTIFICATION_EVENT NE WITH(NOLOCK) ON NE.INVESTIGATION_KEY = I.INVESTIGATION_KEY
-                 JOIN nrt_notification_key NK WITH(NOLOCK)	ON NE.NOTIFICATION_KEY = NK.d_notification_key
-                 JOIN nrt_investigation_notification notif WITH(NOLOCK) ON notif.notification_uid= NK.notification_uid
+                 LEFT JOIN NOTIFICATION_EVENT NE WITH(NOLOCK) ON NE.INVESTIGATION_KEY = I.INVESTIGATION_KEY
+                 LEFT JOIN nrt_notification_key NK WITH(NOLOCK)	ON NE.NOTIFICATION_KEY = NK.d_notification_key
+                 LEFT JOIN nrt_investigation_notification notif WITH(NOLOCK) ON notif.notification_uid= NK.notification_uid
         WHERE notif.NOTIF_STATUS = 'COMPLETED' and notif.RPT_SENT_TIME IS NOT NULL
         GROUP BY I.INVESTIGATION_KEY
         ORDER BY I.INVESTIGATION_KEY;
@@ -1135,7 +1137,7 @@ BEGIN
         FROM #TMP_Investigation AS I WITH(NOLOCK)
                  LEFT JOIN CONFIRMATION_METHOD_GROUP CMG WITH(NOLOCK) ON CMG.INVESTIGATION_KEY = I.INVESTIGATION_KEY
                  LEFT JOIN NOTIFICATION_EVENT NE WITH(NOLOCK) ON NE.INVESTIGATION_KEY = I.INVESTIGATION_KEY
-                 LEFT JOIN nrt_investigation_observation NIO WITH(NOLOCK) ON nio.observation_id = i.case_uid
+                 LEFT JOIN nrt_investigation_observation NIO WITH(NOLOCK) ON nio.public_health_case_uid = i.case_uid
                  LEFT JOIN nrt_observation no2 WITH(NOLOCK) ON nio.observation_id = no2.observation_uid
                  LEFT JOIN nrt_notification_key nk WITH(NOLOCK)ON NE.notification_key = nk.d_notification_key
                  LEFT JOIN nrt_investigation_notification notif WITH(NOLOCK) ON notif.notification_uid= NK.notification_uid
@@ -1213,8 +1215,53 @@ BEGIN
             END;
 
         SELECT DISTINCT
-            TMP_F_PAGE_CASE.INVESTIGATION_KEY AS HEP_PAT_PROV_INV_KEY, P.PROVIDER_LOCAL_ID, P.PROVIDER_FIRST_NAME AS PHYSICIAN_FIRST_NM, P.PROVIDER_MIDDLE_NAME AS PHYSICIAN_MIDDLE_NM, P.PROVIDER_LAST_NAME AS PHYSICIAN_LAST_NM, CAST(NULL AS varchar(300)) AS PHYS_NAME, P.PROVIDER_CITY AS PHYS_CITY, P.PROVIDER_STATE AS PHYS_STATE, P.PROVIDER_COUNTY AS PHYS_COUNTY, CAST(NULL AS varchar(300)) AS PHYSICIAN_ADDRESS_USE_DESC, CAST(NULL AS varchar(300)) AS PHYSICIAN_ADDRESS_TYPE_DESC, P.PROVIDER_ADD_TIME, P.PROVIDER_LAST_CHANGE_TIME, P.PROVIDER_UID AS PHYSICIAN_UID, INVGTR.PROVIDER_FIRST_NAME AS INVESTIGATOR_FIRST_NM, INVGTR.PROVIDER_MIDDLE_NAME AS INVESTIGATOR_MIDDLE_NM, INVGTR.PROVIDER_LAST_NAME AS INVESTIGATOR_LAST_NM, CAST(NULL AS varchar(300)) AS INVESTIGATOR_NAME, INVGTR.PROVIDER_UID AS INVESTIGATOR_UID, REPTORG.ORGANIZATION_NAME AS RPT_SRC_SOURCE_NM, REPTORG.ORGANIZATION_COUNTY_CODE AS RPT_SRC_COUNTY_CD, REPTORG.ORGANIZATION_COUNTY AS RPT_SRC_COUNTY, REPTORG.ORGANIZATION_CITY AS RPT_SRC_CITY, REPTORG.ORGANIZATION_STATE AS RPT_SRC_STATE, CAST(NULL AS varchar(300)) AS REPORTING_SOURCE_ADDRESS_USE, CAST(NULL AS varchar(300)) AS REPORTING_SOURCE_ADDRESS_TYPE, REPTORG.ORGANIZATION_UID AS REPORTING_SOURCE_UID
-        INTO #TMP_HEP_PAT_PROV
+            TMP_F_PAGE_CASE.INVESTIGATION_KEY AS HEP_PAT_PROV_INV_KEY
+                      ,P.PROVIDER_LOCAL_ID
+                      ,RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)) AS PHYSICIAN_FIRST_NM
+                      ,P.PROVIDER_MIDDLE_NAME AS PHYSICIAN_MIDDLE_NM
+                      ,P.PROVIDER_LAST_NAME AS PHYSICIAN_LAST_NM
+                      ,CASE
+                           WHEN RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)) IS NOT NULL THEN
+                               CASE WHEN LEN(P.PROVIDER_MIDDLE_NAME) > 0 THEN RTRIM(LTRIM(CONCAT(P.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)), ' ',  P.PROVIDER_MIDDLE_NAME)))
+                                    ELSE CONCAT(P.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)), ' ',  P.PROVIDER_MIDDLE_NAME)
+                                   END
+                           ELSE CAST(NULL AS varchar(300)) END AS PHYS_NAME
+                      ,P.PROVIDER_CITY AS PHYS_CITY
+                      ,P.PROVIDER_STATE AS PHYS_STATE
+                      ,P.PROVIDER_COUNTY AS PHYS_COUNTY
+                      ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(P.PROVIDER_CITY)),RTRIM(LTRIM(P.PROVIDER_STATE)),RTRIM(LTRIM(P.PROVIDER_COUNTY))))>0 THEN 'Primary Work Place'
+                            ELSE NULL
+            END AS PHYSICIAN_ADDRESS_USE_DESC
+                      ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(REPTORG.ORGANIZATION_COUNTY)),RTRIM(LTRIM(REPTORG.ORGANIZATION_STATE)),RTRIM(LTRIM(REPTORG.ORGANIZATION_CITY))))>0 THEN 'Office'
+                            ELSE CAST(NULL AS varchar(300))
+            END AS PHYSICIAN_ADDRESS_TYPE_DESC
+                      ,P.PROVIDER_ADD_TIME
+                      ,P.PROVIDER_LAST_CHANGE_TIME
+                      ,P.PROVIDER_UID AS PHYSICIAN_UID
+                      ,RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)) AS INVESTIGATOR_FIRST_NM
+                      ,INVGTR.PROVIDER_MIDDLE_NAME AS INVESTIGATOR_MIDDLE_NM
+                      ,INVGTR.PROVIDER_LAST_NAME AS INVESTIGATOR_LAST_NM
+                      ,CASE
+                           WHEN RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)) IS NOT NULL THEN
+                               CASE WHEN LEN(INVGTR.PROVIDER_MIDDLE_NAME) > 0  THEN CONCAT(INVGTR.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)), ' ', INVGTR.PROVIDER_MIDDLE_NAME)
+                                    ELSE CONCAT(INVGTR.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)), ' ', INVGTR.PROVIDER_MIDDLE_NAME)
+                                   END
+                           ELSE CAST(NULL AS varchar(300)) END AS INVESTIGATOR_NAME
+                      ,INVGTR.PROVIDER_UID AS INVESTIGATOR_UID
+                      ,REPTORG.ORGANIZATION_NAME AS RPT_SRC_SOURCE_NM
+                      ,REPTORG.ORGANIZATION_COUNTY_CODE AS RPT_SRC_COUNTY_CD
+                      ,REPTORG.ORGANIZATION_COUNTY AS RPT_SRC_COUNTY
+                      ,REPTORG.ORGANIZATION_CITY AS RPT_SRC_CITY
+                      ,REPTORG.ORGANIZATION_STATE AS RPT_SRC_STATE
+                      ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(P.PROVIDER_CITY )), RTRIM(LTRIM(P.PROVIDER_STATE)),RTRIM(LTRIM(P.PROVIDER_COUNTY))))>0 THEN 'Primary Work Place'
+                            ELSE CAST(NULL AS varchar(300))
+            END AS REPORTING_SOURCE_ADDRESS_USE
+                      ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(REPTORG.ORGANIZATION_COUNTY)),RTRIM(LTRIM(REPTORG.ORGANIZATION_STATE)),RTRIM(LTRIM(REPTORG.ORGANIZATION_CITY))))>0 THEN 'Office'
+                            ELSE CAST(NULL AS varchar(300))
+            END AS REPORTING_SOURCE_ADDRESS_TYPE
+                      ,REPTORG.ORGANIZATION_UID AS REPORTING_SOURCE_UID
+        INTO
+            #TMP_HEP_PAT_PROV
         FROM dbo.F_PAGE_CASE AS PAGE_CASE WITH(NOLOCK)
                  INNER JOIN
              #TMP_F_PAGE_CASE TMP_F_PAGE_CASE
@@ -1233,81 +1280,96 @@ BEGIN
              ON PAGE_CASE.ORG_AS_REPORTER_KEY = REPTORG.ORGANIZATION_KEY
         ORDER BY HEP_PAT_PROV_INV_KEY;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYS_NAME = RTRIM(LTRIM(PHYSICIAN_first_nm));
+        /*
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYS_NAME = RTRIM(LTRIM(PHYSICIAN_first_nm));
 
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYS_NAME = CASE
-                            WHEN PHYS_NAME IS NOT NULL THEN CONCAT(PHYSICIAN_Last_nm, ', ', RTRIM(LTRIM(PHYSICIAN_first_nm)), ' ', PHYSICIAN_middle_nm)
-                            ELSE PHYS_NAME
-            END;
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYS_NAME = CASE
+                             WHEN PHYS_NAME IS NOT NULL THEN CONCAT(PHYSICIAN_Last_nm, ', ', RTRIM(LTRIM(PHYSICIAN_first_nm)), ' ', PHYSICIAN_middle_nm)
+                             ELSE PHYS_NAME
+             END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYS_NAME = CASE
-                            WHEN LEN(PHYSICIAN_middle_nm) > 0 THEN PHYS_NAME
-                            ELSE RTRIM(LTRIM(PHYS_NAME))
-            END;
 
-        ----5-17-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        SET INVESTIGATOR_NAME = RTRIM(LTRIM(INVESTIGATOR_FIRST_NM));
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYS_NAME = CASE
+                             WHEN LEN(PHYSICIAN_middle_nm) > 0 THEN PHYS_NAME
+                             ELSE RTRIM(LTRIM(PHYS_NAME))
+             END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        SET INVESTIGATOR_NAME = CASE
-                                    WHEN INVESTIGATOR_NAME IS NOT NULL THEN CONCAT(INVESTIGATOR_Last_nm, ', ', RTRIM(LTRIM(INVESTIGATOR_FIRST_NM)), ' ', INVESTIGATOR_MIDDLE_NM)
-                                    ELSE INVESTIGATOR_NAME
-            END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        SET INVESTIGATOR_NAME = CASE
-                                    WHEN LEN(INVESTIGATOR_middle_nm) > 0 THEN INVESTIGATOR_NAME
-                                    ELSE RTRIM(LTRIM(INVESTIGATOR_NAME))
-            END;
 
-        ----5-21-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        --SET PHYSICIAN_ADDRESS_USE_DESC =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
-        SET PHYSICIAN_ADDRESS_USE_DESC = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
+         ----5-17-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = RTRIM(LTRIM(INVESTIGATOR_FIRST_NM));
 
-        ---8-31-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYSICIAN_ADDRESS_USE_DESC = CASE
-                                             WHEN LEN(PHYSICIAN_ADDRESS_USE_DESC) > 0 THEN 'Primary Work Place'
-                                             ELSE NULL
-            END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        --SET PHYSICIAN_ADDRESS_TYPE_DESC =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
-        SET PHYSICIAN_ADDRESS_TYPE_DESC = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = CASE
+                                     WHEN INVESTIGATOR_NAME IS NOT NULL THEN CONCAT(INVESTIGATOR_Last_nm, ', ', RTRIM(LTRIM(INVESTIGATOR_FIRST_NM)), ' ', INVESTIGATOR_MIDDLE_NM)
+                                     ELSE INVESTIGATOR_NAME
+             END;
 
-        ---8-31-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYSICIAN_ADDRESS_TYPE_DESC = CASE
-                                              WHEN LEN(PHYSICIAN_ADDRESS_TYPE_DESC) > 0 THEN 'Office'
+
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = CASE
+                                     WHEN LEN(INVESTIGATOR_middle_nm) > 0 THEN INVESTIGATOR_NAME
+                                     ELSE RTRIM(LTRIM(INVESTIGATOR_NAME))
+             END;
+
+
+
+         ----5-21-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         --SET PHYSICIAN_ADDRESS_USE_DESC =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
+         SET PHYSICIAN_ADDRESS_USE_DESC = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
+
+
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYSICIAN_ADDRESS_USE_DESC = CASE
+                                              WHEN LEN(PHYSICIAN_ADDRESS_USE_DESC) > 0 THEN 'Primary Work Place'
                                               ELSE NULL
-            END;
+             END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        ---SET REPORTING_SOURCE_ADDRESS_USE =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
-        SET REPORTING_SOURCE_ADDRESS_USE = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
 
-        ---8-31-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        SET REPORTING_SOURCE_ADDRESS_USE = CASE
-                                               WHEN LEN(REPORTING_SOURCE_ADDRESS_USE) > 0 THEN 'Primary Work Place'
+
+         UPDATE #TMP_HEP_PAT_PROV
+         --SET PHYSICIAN_ADDRESS_TYPE_DESC =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
+         SET PHYSICIAN_ADDRESS_TYPE_DESC = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYSICIAN_ADDRESS_TYPE_DESC = CASE
+                                               WHEN LEN(PHYSICIAN_ADDRESS_TYPE_DESC) > 0 THEN 'Office'
                                                ELSE NULL
-            END;
+             END;
 
-        UPDATE #TMP_HEP_PAT_PROV
-        ---SET REPORTING_SOURCE_ADDRESS_TYPE =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
-        SET REPORTING_SOURCE_ADDRESS_TYPE = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
 
-        ---8-31-2021
-        UPDATE #TMP_HEP_PAT_PROV
-        SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
-                                                WHEN LEN(REPORTING_SOURCE_ADDRESS_TYPE) > 0 THEN 'office'
+         UPDATE #TMP_HEP_PAT_PROV
+         ---SET REPORTING_SOURCE_ADDRESS_USE =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
+         SET REPORTING_SOURCE_ADDRESS_USE = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET REPORTING_SOURCE_ADDRESS_USE = CASE
+                                                WHEN LEN(REPORTING_SOURCE_ADDRESS_USE) > 0 THEN 'Primary Work Place'
                                                 ELSE NULL
-            END;
+             END;
+
+
+         UPDATE #TMP_HEP_PAT_PROV
+         ---SET REPORTING_SOURCE_ADDRESS_TYPE =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
+         SET REPORTING_SOURCE_ADDRESS_TYPE = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+       SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
+                                                 WHEN LEN(REPORTING_SOURCE_ADDRESS_TYPE) > 0 THEN 'office'
+                                                 ELSE NULL
+             END;
+              */
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -1391,23 +1453,16 @@ BEGIN
                 DROP TABLE #TMP_METADATA_TEST;
             END;
 
-        --cte added to assist in filtering latest answers from page case answer table
-        WITH NRT_PCA_FILTERED_CTE AS (
-            SELECT
-                C.condition_key, M.block_nm, M.investigation_form_cd, M.act_uid, M.last_chg_time, M.question_identifier, max(M.last_chg_time) OVER (PARTITION BY act_uid ) max_last_chg_time
-            FROM
-                DBO.NRT_PAGE_CASE_ANSWER AS M WITH(NOLOCK)
-                    INNER JOIN
-                #TMP_CONDITION AS C
-                ON M.investigation_form_cd = C.disease_grp_desc ----(My table)
-            WHERE M.question_identifier IN( 'VAC103', 'VAC120' ) AND
-                M.block_nm IS NOT NULL
-        )
-        select
-            CONDITION_KEY, block_nm, investigation_form_cd, question_identifier
+
+        SELECT C.CONDITION_KEY, M.block_nm, M.investigation_form_cd, M.question_identifier
         INTO #TMP_METADATA_TEST
-        FROM NRT_PCA_FILTERED_CTE
-        WHERE max_last_chg_time = last_chg_time;
+        FROM RDB_MODERN.dbo.nrt_page_case_answer AS M WITH(NOLOCK)
+                 INNER JOIN
+             #TMP_CONDITION AS C
+             ON M.INVESTIGATION_FORM_CD = C.DISEASE_GRP_DESC
+        WHERE M.question_identifier IN ( 'VAC103', 'VAC120' ) AND
+            M.[block_nm] IS NOT NULL;
+
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1451,6 +1506,9 @@ BEGIN
                         BLOCK_NM IS NOT NULL
                 )
         ORDER BY PAGE_CASE_UID;
+
+        IF @debug = 'true' SELECT '#TMP_VAC_REPEAT', * FROM #TMP_VAC_REPEAT;
+
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -1496,7 +1554,7 @@ BEGIN
                     WHERE num <= 5 FOR XML PATH('')
                 ), 1, 1, '');
 
-        PRINT @cols;
+        IF @debug = 'true' PRINT @cols;
 
 
         CREATE TABLE #TMP_VAC_REPEAT_OUT_DATE_Pivot
@@ -1514,30 +1572,31 @@ BEGIN
         DECLARE @SqlCmd nvarchar(max)= '';
 
         SET @SqlCmd = '
-																								SELECT
-																								 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
-																									[1] as VACC_RECVD_DT_1,
-																									[2] as VACC_RECVD_DT_2,
-																									[3] as VACC_RECVD_DT_3,
-																									[4] as VACC_RECVD_DT_4,
-																									[5] as VACC_RECVD_DT_5
+						INSERT INTO #TMP_VAC_REPEAT_OUT_DATE_Pivot
+						SELECT
+						 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
+							[1] as VACC_RECVD_DT_1,
+							[2] as VACC_RECVD_DT_2,
+							[3] as VACC_RECVD_DT_3,
+							[4] as VACC_RECVD_DT_4,
+							[5] as VACC_RECVD_DT_5
 
-																								 Into #TMP_VAC_REPEAT_OUT_DATE_Pivot FROM
-																								(
-																								SELECT p.*
-																								 FROM
-																								 (
-																									SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccinationDate,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
-																									FROM #TMP_VAC_REPEAT
-																								 ) AS tbl
-																								 PIVOT
-																								 (
-																									MAX(VAC_VaccinationDate) FOR SEQNBR IN(' + @cols + ')
-																								 ) AS p)
-																								 as c
-																								 ';
+					    FROM
+						(
+						SELECT p.*
+						 FROM
+						 (
+							SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccinationDate,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
+							FROM #TMP_VAC_REPEAT
+						 ) AS tbl
+						 PIVOT
+						 (
+							MAX(VAC_VaccinationDate) FOR SEQNBR IN(' + @cols + ')
+						 ) AS p)
+						 as c
+						 ';
 
-        PRINT @SqlCmd;
+        IF @debug = 'true' PRINT @SqlCmd;
 
         EXEC sp_executesql @SqlCmd;
 
@@ -1608,7 +1667,7 @@ BEGIN
                     WHERE num <= 5 FOR XML PATH('')
                 ), 1, 1, '');
 
-        PRINT @col;
+        IF @debug = 'true' PRINT @col;
 
         CREATE TABLE #TMP_VAC_REPEAT_OUT_NUM_Pivot
         (
@@ -1625,30 +1684,30 @@ BEGIN
         DECLARE @SqlCmds nvarchar(max)= '';
 
         SET @SqlCmds = '
-																								SELECT
-																								 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
-																									[1] as VACC_DOSE_NBR_1,
-																									[2] as VACC_DOSE_NBR_2,
-																									[3] as VACC_DOSE_NBR_3,
-																									[4] as VACC_DOSE_NBR_4,
-																									[5] as VACC_DOSE_NBR_5
+							INSERT INTO #TMP_VAC_REPEAT_OUT_NUM_Pivot
+							SELECT
+							 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
+								[1] as VACC_DOSE_NBR_1,
+								[2] as VACC_DOSE_NBR_2,
+								[3] as VACC_DOSE_NBR_3,
+								[4] as VACC_DOSE_NBR_4,
+								[5] as VACC_DOSE_NBR_5
+							 FROM
+							(
+							SELECT p.*
+							 FROM
+							 (
+								SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccineDoseNum,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
+								FROM #TMP_VAC_REPEAT
+							 ) AS tbl
+							 PIVOT
+							 (
+								MAX(VAC_VaccineDoseNum) FOR SEQNBR IN(' + @col + ')
+							 ) AS p)
+							 as c
+							 ';
 
-																								 Into #TMP_VAC_REPEAT_OUT_NUM_Pivot FROM
-																								(
-																								SELECT p.*
-																								 FROM
-																								 (
-																									SELECT  D_INVESTIGATION_REPEAT_KEY,VAC_VaccineDoseNum,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
-																									FROM #TMP_VAC_REPEAT
-																								 ) AS tbl
-																								 PIVOT
-																								 (
-																									MAX(VAC_VaccineDoseNum) FOR SEQNBR IN(' + @col + ')
-																								 ) AS p)
-																								 as c
-																								 ';
-
-        PRINT @SqlCmds;
+        IF @debug = 'true' PRINT @SqlCmds;
 
         EXEC sp_executesql @SqlCmds;
 
@@ -1668,6 +1727,7 @@ BEGIN
                                  ELSE 'True'
             END;
 
+        IF @debug = 'true' SELECT '#TMP_VAC_REPEAT_OUT_NUM', * FROM #TMP_VAC_REPEAT_OUT_NUM;
 
         SELECT DISTINCT
             Page_Case_UId, D_INVESTIGATION_REPEAT_KEY, INVESTIGATION_KEY, VACC_DOSE_NBR_1, VACC_DOSE_NBR_2, VACC_DOSE_NBR_3, VACC_DOSE_NBR_4, VAC_DOSE_4_IND
@@ -1712,6 +1772,8 @@ BEGIN
                                 ELSE NULL
             END;
 
+        IF @debug = 'true' SELECT '#TMP_VAC_REPEAT_OUT_FINAL1', * FROM #TMP_VAC_REPEAT_OUT_FINAL1;
+
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
         INSERT INTO [DBO].[JOB_FLOW_LOG]( BATCH_ID, [DATAFLOW_NAME], [PACKAGE_NAME], [STATUS_TYPE], [STEP_NUMBER], [STEP_NAME], [ROW_COUNT] )
@@ -1732,7 +1794,19 @@ BEGIN
 
             END;
 
-        SELECT Page_Case_UId, D_INVESTIGATION_REPEAT_KEY, INVESTIGATION_KEY, VACC_DOSE_NBR_1, VACC_RECVD_DT_1, VACC_DOSE_NBR_2, VACC_RECVD_DT_2, VACC_DOSE_NBR_3, VACC_RECVD_DT_3, VACC_DOSE_NBR_4, VACC_RECVD_DT_4, VACC_GT_4_IND   ---------FinalIndicator
+        SELECT  Page_Case_UId,
+                D_INVESTIGATION_REPEAT_KEY,
+                INVESTIGATION_KEY,
+                VACC_DOSE_NBR_1,
+                VACC_RECVD_DT_1,
+                VACC_DOSE_NBR_2,
+                VACC_RECVD_DT_2,
+                VACC_DOSE_NBR_3,
+                VACC_RECVD_DT_3,
+                VACC_DOSE_NBR_4,
+                VACC_RECVD_DT_4,
+                VACC_GT_4_IND
+        ---------FinalIndicator
         INTO #TMP_VAC_REPEAT_OUT_FINAL
         FROM #TMP_VAC_REPEAT_OUT_FINAL1;
 
@@ -1819,7 +1893,11 @@ BEGIN
             L.HBV_NAT_DT, ----60
             L.HCV_RNA, ----61
             L.HCV_RNA_DT, ----62
-            L.HEP_D_TEST_IND, ----63
+            -- L.HEP_D_TEST_IND, ----63
+            CASE WHEN  L.HEP_D_TEST_IND IS NULL THEN NULL
+                 WHEN  L.HEP_D_TEST_IND = 'Yes' THEN 'Y'
+                 WHEN  L.HEP_D_TEST_IND = 'No' THEN 'N'
+                 ELSE 'U' END AS HEP_D_TEST_IND,
             L.HEP_A_IGM_ANTIBODY, ----64
             L.IGM_ANTI_HAV_DT, ----65
             L.HEP_B_IGM_ANTIBODY, ----66
@@ -1900,8 +1978,21 @@ BEGIN
             R.INCAR_TYPE_JAIL_IND, ----141
             R.INCAR_TYPE_PRISON_IND, ----142
             R.INCAR_TYPE_JUV_IND, ----143
-            R.LAST6PLUSMO_INCAR_PER, ----144
-            R.LAST6PLUSMO_INCAR_YR, ----145
+            --R.LAST6PLUSMO_INCAR_PER, ----144
+            CASE WHEN R.LAST6PLUSMO_INCAR_PER IS NOT NULL THEN
+                     CASE
+                         WHEN LAST6PLUSMO_INCAR_PER NOT LIKE N'%[^0-9.,-]%'  AND LAST6PLUSMO_INCAR_PER NOT LIKE '.'
+                             AND ISNUMERIC(LAST6PLUSMO_INCAR_PER) = 1  THEN LAST6PLUSMO_INCAR_PER
+                         ELSE 0 END
+                 ELSE LAST6PLUSMO_INCAR_PER
+                END AS LAST6PLUSMO_INCAR_PER,
+            --R.LAST6PLUSMO_INCAR_YR, ----145
+            CASE WHEN R.LAST6PLUSMO_INCAR_YR IS NOT NULL THEN
+                     CASE WHEN LAST6PLUSMO_INCAR_YR NOT LIKE N'%[^0-9.,-]%' AND LAST6PLUSMO_INCAR_YR NOT LIKE '.'
+                         AND ISNUMERIC(LAST6PLUSMO_INCAR_YR) = 1 THEN LAST6PLUSMO_INCAR_YR
+                          ELSE 0 END
+                 ELSE LAST6PLUSMO_INCAR_YR
+                END AS LAST6PLUSMO_INCAR_YR,
             R.OUTPAT_IV_INF_IND, ----146
             R.LTCARE_RESIDENT_IND, ----147
             R.LIFE_SEX_PRTNR_NBR, ----148
@@ -1936,7 +2027,10 @@ BEGIN
             VAC.VACC_RECVD_DT_3, -----177
             VAC.VACC_DOSE_NBR_4, -----178
             VAC.VACC_RECVD_DT_4, ---179
-            VAC.VACC_GT_4_IND, -----180
+            --VAC.VACC_GT_4_IND, -----180
+            CASE WHEN LEN(ISNULL(RTRIM(LTRIM(VAC.VACC_GT_4_IND)), '')) < 1 THEN 'False'
+                 ELSE VAC.VACC_GT_4_IND
+                END AS VACC_GT_4_IND,
             V.VACC_DOSE_RECVD_NBR, ----181
             V.VACC_LAST_RECVD_YR, -----182
             L.ANTI_HBSAG_TESTED_IND, ----183
@@ -1962,7 +2056,7 @@ BEGIN
             I.CASE_UID, ---203
             HP.INVESTIGATOR_UID, ---204
             HP.REPORTING_SOURCE_UID, ---205
-            CAST(NULL AS datetime) AS REFRESH_DATETIME, ---206
+            GETDATE() AS REFRESH_DATETIME, ---206
             P.PAT_BIRTH_COUNTRY,----207
             CAST(NULL AS varchar(2000)) AS EVENT_DATE_TYPE
         INTO #TMP_HEPATITIS_CASE_BASE
@@ -1981,44 +2075,47 @@ BEGIN
                  FULL OUTER JOIN  #TMP_D_INV_CLINICAL AS C WITH(NOLOCK)  ON I.INVESTIGATION_KEY = C.CLINICAL_INV_KEY
                  FULL OUTER JOIN  #TMP_VAC_REPEAT_OUT_FINAL AS VAC WITH(NOLOCK)  ON I.INVESTIGATION_KEY = VAC.INVESTIGATION_KEY;
 
+        --Revise (CDW): Evaluate LEFT JOIN for future performance enhancements.
 
-        if @debug = 'true' select * from #TMP_HEPATITIS_CASE_BASE;
+        IF @debug = 'true' SELECT '#TMP_HEPATITIS_CASE_BASE', * FROM #TMP_HEPATITIS_CASE_BASE;
 
 
         ---7/14/2021(since getting error converting varchar to int)
-        UPDATE #TMP_HEPATITIS_CASE_BASE
-        SET LAST6PLUSMO_INCAR_PER = CASE
-                                        WHEN LAST6PLUSMO_INCAR_PER NOT LIKE N'%[^0-9.,-]%' AND
-                                             LAST6PLUSMO_INCAR_PER NOT LIKE '.' AND
-                                             ISNUMERIC(LAST6PLUSMO_INCAR_PER) = 1 THEN LAST6PLUSMO_INCAR_PER
+        /*
+         UPDATE #TMP_HEPATITIS_CASE_BASE
+         SET LAST6PLUSMO_INCAR_PER = CASE
+                                         WHEN LAST6PLUSMO_INCAR_PER NOT LIKE N'%[^0-9.,-]%' AND
+                                              LAST6PLUSMO_INCAR_PER NOT LIKE '.' AND
+                                              ISNUMERIC(LAST6PLUSMO_INCAR_PER) = 1 THEN LAST6PLUSMO_INCAR_PER
+                                         ELSE 0
+             END
+         where LAST6PLUSMO_INCAR_PER is not null
+         ;
+
+
+
+         ------------  /*EXT_LAST6PLUSMO_INCAR_PER= INPUT(RSK_IncarcTimeMonths, comma20.)*/----20
+         UPDATE #TMP_HEPATITIS_CASE_BASE
+         SET LAST6PLUSMO_INCAR_YR = CASE
+                                        WHEN LAST6PLUSMO_INCAR_YR NOT LIKE N'%[^0-9.,-]%' AND
+                                             LAST6PLUSMO_INCAR_YR NOT LIKE '.' AND
+                                             ISNUMERIC(LAST6PLUSMO_INCAR_YR) = 1 THEN LAST6PLUSMO_INCAR_YR
                                         ELSE 0
-            END
-        where LAST6PLUSMO_INCAR_PER is not null
-        ;
+             END
+         where LAST6PLUSMO_INCAR_YR is not null
+         ;
 
 
-        ------------  /*EXT_LAST6PLUSMO_INCAR_PER= INPUT(RSK_IncarcTimeMonths, comma20.)*/----20
-        UPDATE #TMP_HEPATITIS_CASE_BASE
-        SET LAST6PLUSMO_INCAR_YR = CASE
-                                       WHEN LAST6PLUSMO_INCAR_YR NOT LIKE N'%[^0-9.,-]%' AND
-                                            LAST6PLUSMO_INCAR_YR NOT LIKE '.' AND
-                                            ISNUMERIC(LAST6PLUSMO_INCAR_YR) = 1 THEN LAST6PLUSMO_INCAR_YR
-                                       ELSE 0
-            END
-        where LAST6PLUSMO_INCAR_YR is not null
-        ;
+         ------------  /*EXT_LAST6PLUSMO_INCAR_PER= INPUT(RSK_IncarcTimeMonths, comma20.)*/----20
+         UPDATE #TMP_HEPATITIS_CASE_BASE
+         SET VACC_GT_4_IND = CASE
+                                 WHEN LEN(ISNULL(RTRIM(LTRIM(VACC_GT_4_IND)), '')) < 1 THEN 'False'
+                                 ELSE VACC_GT_4_IND
+             END;
 
-        ------------  /*EXT_LAST6PLUSMO_INCAR_PER= INPUT(RSK_IncarcTimeMonths, comma20.)*/----20
-        UPDATE #TMP_HEPATITIS_CASE_BASE
-        SET VACC_GT_4_IND = CASE
-                                WHEN LEN(ISNULL(RTRIM(LTRIM(VACC_GT_4_IND)), '')) < 1 THEN 'False'
-                                ELSE VACC_GT_4_IND
-            END;
+           */
 
 
-
-        DELETE FROM #TMP_HEPATITIS_CASE_BASE
-        WHERE PATIENT_UID IS NULL;
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -2028,19 +2125,27 @@ BEGIN
         COMMIT TRANSACTION;
 
         ------------------------------------------------------------------------------------------------------------------------------------------------------
-        UPDATE #TMP_HEPATITIS_CASE_BASE
-        SET REFRESH_DATETIME = GETDATE();
+        DELETE FROM #TMP_HEPATITIS_CASE_BASE
+        WHERE PATIENT_UID IS NULL;
+
+        /*
+
+         UPDATE #TMP_HEPATITIS_CASE_BASE
+         SET REFRESH_DATETIME = GETDATE();
+         */
 
 
         ------------------------------------------------------------------------------------------------------
         ----HEP_D_TEST_IND  to appear as N,Y U or Null--added on 5-19-2021
-        UPDATE #TMP_HEPATITIS_CASE_BASE ----5/20-2021
-        SET HEP_D_TEST_IND = CASE
-                                 WHEN HEP_D_TEST_IND IS NULL THEN NULL
-                                 WHEN HEP_D_TEST_IND = 'Yes' THEN 'Y'
-                                 WHEN HEP_D_TEST_IND = 'No' THEN 'N'
-                                 ELSE 'U'
-            END;
+        /*
+         UPDATE #TMP_HEPATITIS_CASE_BASE ----5/20-2021
+         SET HEP_D_TEST_IND = CASE
+                                  WHEN HEP_D_TEST_IND IS NULL THEN NULL
+                                  WHEN HEP_D_TEST_IND = 'Yes' THEN 'Y'
+                                  WHEN HEP_D_TEST_IND = 'No' THEN 'N'
+                                  ELSE 'U'
+             END;
+             */
 
 
         ---------------------------------------------------------Final Table 26 TMP_HEPATITIS_CASE_BASE------------------------------------------------------------------------------------------------
@@ -2050,11 +2155,213 @@ BEGIN
         SET @Proc_Step_no = 26;
 
         UPDATE [dbo].[HEPATITIS_DATAMART]
-        SET INNC_NOTIFICATION_DT = H.[INNC_NOTIFICATION_DT], CASE_RPT_MMWR_WEEK = H.[CASE_RPT_MMWR_WEEK], CASE_RPT_MMWR_YEAR = H.[CASE_RPT_MMWR_YEAR], HEP_D_INFECTION_IND = H.[HEP_D_INFECTION_IND], HEP_MEDS_RECVD_IND = H.[HEP_MEDS_RECVD_IND], HEP_C_TOTAL_ANTIBODY = H.[HEP_C_TOTAL_ANTIBODY], DIAGNOSIS_DT = H.[DIAGNOSIS_DT], DIE_FRM_THIS_ILLNESS_IND = H.[DIE_FRM_THIS_ILLNESS_IND], DISEASE_IMPORTED_IND = H.[DISEASE_IMPORTED_IND], EARLIEST_RPT_TO_CNTY = H.[EARLIEST_RPT_TO_CNTY], EARLIEST_RPT_TO_STATE_DT = H.[EARLIEST_RPT_TO_STATE_DT], BINATIONAL_RPTNG_CRIT = H.[BINATIONAL_RPTNG_CRIT], CHILDCARE_CASE_IND = H.[CHILDCARE_CASE_IND], CNTRY_USUAL_RESIDENCE = H.[CNTRY_USUAL_RESIDENCE], CT_BABYSITTER_IND = H.[CT_BABYSITTER_IND], CT_CHILDCARE_IND = H.[CT_CHILDCARE_IND], CT_HOUSEHOLD_IND = H.[CT_HOUSEHOLD_IND], HEP_CONTACT_IND = H.[HEP_CONTACT_IND], HEP_CONTACT_EVER_IND = H.[HEP_CONTACT_EVER_IND], OTHER_CONTACT_IND = H.[OTHER_CONTACT_IND], COM_SRC_OUTBREAK_IND = H.[COM_SRC_OUTBREAK_IND], CONTACT_TYPE_OTH = H.[CONTACT_TYPE_OTH], CT_PLAYMATE_IND = H.[CT_PLAYMATE_IND], SEXUAL_PARTNER_IND = H.[SEXUAL_PARTNER_IND], DNP_HOUSEHOLD_CT_IND = H.[DNP_HOUSEHOLD_CT_IND], HEP_A_EPLINK_IND = H.[HEP_A_EPLINK_IND], FEMALE_SEX_PRTNR_NBR = H.[FEMALE_SEX_PRTNR_NBR], FOODHNDLR_PRIOR_IND = H.[FOODHNDLR_PRIOR_IND], DNP_EMPLOYEE_IND = H.[DNP_EMPLOYEE_IND], STREET_DRUG_INJECTED = H.[STREET_DRUG_INJECTED], MALE_SEX_PRTNR_NBR = H.[MALE_SEX_PRTNR_NBR], OUTBREAK_IND = H.[OUTBREAK_IND], OBRK_FOODHNDLR_IND = H.[OBRK_FOODHNDLR_IND], FOOD_OBRK_FOOD_ITEM = H.[FOOD_OBRK_FOOD_ITEM], OBRK_NOFOODHNDLR_IND = H.[OBRK_NOFOODHNDLR_IND], OBRK_UNIDENTIFIED_IND = H.[OBRK_UNIDENTIFIED_IND], OBRK_WATERBORNE_IND = H.[OBRK_WATERBORNE_IND], STREET_DRUG_USED = H.[STREET_DRUG_USED],
-            SEX_PREF = H.[SEX_PREF], HSPTL_ADMISSION_DT = H.[HSPTL_ADMISSION_DT], HSPTL_DISCHARGE_DT = H.[HSPTL_DISCHARGE_DT], HSPTL_DURATION_DAYS = H.[HSPTL_DURATION_DAYS], HSPTLIZD_IND = H.[HSPTLIZD_IND], ILLNESS_ONSET_DT = H.[ILLNESS_ONSET_DT], INV_CASE_STATUS = H.[INV_CASE_STATUS], INV_COMMENTS = H.[INV_COMMENTS], INV_LOCAL_ID = H.[INV_LOCAL_ID], INV_RPT_DT = H.[INV_RPT_DT], INV_START_DT = H.[INV_START_DT], INVESTIGATION_STATUS = H.[INVESTIGATION_STATUS], JURISDICTION_NM = H.[JURISDICTION_NM], ALT_SGPT_RESULT = H.[ALT_SGPT_RESULT], ANTI_HBS_POS_REAC_IND = H.[ANTI_HBS_POS_REAC_IND], AST_SGOT_RESULT = H.[AST_SGOT_RESULT], HEP_E_ANTIGEN = H.[HEP_E_ANTIGEN], HBE_AG_DT = H.[HBE_AG_DT], HEP_B_SURFACE_ANTIGEN = H.[HEP_B_SURFACE_ANTIGEN], HBS_AG_DT = H.[HBS_AG_DT], HBV_NAT_DT = H.[HBV_NAT_DT], HCV_RNA = H.[HCV_RNA],
-            HCV_RNA_DT = H.[HCV_RNA_DT], HEP_D_TEST_IND = H.[HEP_D_TEST_IND], HEP_A_IGM_ANTIBODY = H.[HEP_A_IGM_ANTIBODY], IGM_ANTI_HAV_DT = H.[IGM_ANTI_HAV_DT], HEP_B_IGM_ANTIBODY = H.[HEP_B_IGM_ANTIBODY], IGM_ANTI_HBC_DT = H.[IGM_ANTI_HBC_DT], PREV_NEG_HEP_TEST_IND = H.[PREV_NEG_HEP_TEST_IND], ANTIHCV_SIGCUT_RATIO = H.[ANTIHCV_SIGCUT_RATIO], ANTIHCV_SUPP_ASSAY = H.[ANTIHCV_SUPP_ASSAY], SUPP_ANTI_HCV_DT = H.[SUPP_ANTI_HCV_DT], ALT_RESULT_DT = H.[ALT_RESULT_DT], AST_RESULT_DT = H.[AST_RESULT_DT], ALT_SGPT_RSLT_UP_LMT = H.[ALT_SGPT_RSLT_UP_LMT], AST_SGOT_RSLT_UP_LMT = H.[AST_SGOT_RSLT_UP_LMT], HEP_A_TOTAL_ANTIBODY = H.[HEP_A_TOTAL_ANTIBODY], TOTAL_ANTI_HAV_DT = H.[TOTAL_ANTI_HAV_DT], HEP_B_TOTAL_ANTIBODY = H.[HEP_B_TOTAL_ANTIBODY], TOTAL_ANTI_HBC_DT = H.[TOTAL_ANTI_HBC_DT], TOTAL_ANTI_HCV_DT = H.[TOTAL_ANTI_HCV_DT],
-            HEP_D_TOTAL_ANTIBODY = H.[HEP_D_TOTAL_ANTIBODY], TOTAL_ANTI_HDV_DT = H.[TOTAL_ANTI_HDV_DT], HEP_E_TOTAL_ANTIBODY = H.[HEP_E_TOTAL_ANTIBODY], TOTAL_ANTI_HEV_DT = H.[TOTAL_ANTI_HEV_DT], VERIFIED_TEST_DT = H.[VERIFIED_TEST_DT], LEGACY_CASE_ID = H.[LEGACY_CASE_ID], DIABETES_IND = H.[DIABETES_IND], DIABETES_DX_DT = H.[DIABETES_DX_DT], PREGNANCY_DUE_DT = H.[PREGNANCY_DUE_DT], PAT_JUNDICED_IND = H.[PAT_JUNDICED_IND], PAT_PREV_AWARE_IND = H.[PAT_PREV_AWARE_IND], HEP_CARE_PROVIDER = H.[HEP_CARE_PROVIDER], TEST_REASON = H.[TEST_REASON], TEST_REASON_OTH = H.[TEST_REASON_OTH], SYMPTOMATIC_IND = H.[SYMPTOMATIC_IND], MTH_BORN_OUTSIDE_US = H.[MTH_BORN_OUTSIDE_US], MTH_ETHNICITY = H.[MTH_ETHNICITY], MTH_HBS_AG_PRIOR_POS = H.[MTH_HBS_AG_PRIOR_POS], MTH_POS_AFTER = H.[MTH_POS_AFTER], MTH_POS_TEST_DT = H.[MTH_POS_TEST_DT], MTH_RACE = H.[MTH_RACE], MTH_BIRTH_COUNTRY = H.[MTH_BIRTH_COUNTRY], NOT_SUBMIT_DT = H.[NOT_SUBMIT_DT], PAT_REPORTED_AGE = H.[PAT_REPORTED_AGE], PAT_REPORTED_AGE_UNIT = H.[PAT_REPORTED_AGE_UNIT], PAT_CITY = H.[PAT_CITY], PAT_COUNTRY = H.[PAT_COUNTRY], PAT_COUNTY = H.[PAT_COUNTY], PAT_CURR_GENDER = H.[PAT_CURR_GENDER], PAT_DOB = H.[PAT_DOB], PAT_ETHNICITY = H.[PAT_ETHNICITY], PAT_FIRST_NM = H.[PAT_FIRST_NM], PAT_LAST_NM = H.[PAT_LAST_NM], PAT_LOCAL_ID = H.[PAT_LOCAL_ID], PAT_MIDDLE_NM = H.[PAT_MIDDLE_NM], PAT_PREGNANT_IND = H.[PAT_PREGNANT_IND], PAT_RACE = H.[PAT_RACE], PAT_STATE = H.[PAT_STATE], PAT_STREET_ADDR_1 = H.[PAT_STREET_ADDR_1], PAT_STREET_ADDR_2 = H.[PAT_STREET_ADDR_2], PAT_ZIP_CODE = H.[PAT_ZIP_CODE], RPT_SRC_SOURCE_NM = H.[RPT_SRC_SOURCE_NM], RPT_SRC_STATE = H.[RPT_SRC_STATE], RPT_SRC_CD_DESC = H.[RPT_SRC_CD_DESC], BLD_EXPOSURE_IND = H.[BLD_EXPOSURE_IND], BLD_RECVD_IND = H.[BLD_RECVD_IND], BLD_RECVD_DT = H.[BLD_RECVD_DT], MED_DEN_BLD_CT_FRQ = H.[MED_DEN_BLD_CT_FRQ], MED_DEN_EMPLOYEE_IND = H.[MED_DEN_EMPLOYEE_IND], MED_DEN_EMP_EVER_IND = H.[MED_DEN_EMP_EVER_IND], CLOTFACTOR_PRIOR_1987 = H.[CLOTFACTOR_PRIOR_1987], BLD_CONTAM_IND = H.[BLD_CONTAM_IND], DEN_WORK_OR_SURG_IND = H.[DEN_WORK_OR_SURG_IND], HEMODIALYSIS_IND = H.[HEMODIALYSIS_IND], LT_HEMODIALYSIS_IND = H.[LT_HEMODIALYSIS_IND], HSPTL_PRIOR_ONSET_IND = H.[HSPTL_PRIOR_ONSET_IND], EVER_INJCT_NOPRSC_DRG = H.[EVER_INJCT_NOPRSC_DRG], INCAR_24PLUSHRS_IND = H.[INCAR_24PLUSHRS_IND], INCAR_6PLUS_MO_IND = H.[INCAR_6PLUS_MO_IND], EVER_INCAR_IND = H.[EVER_INCAR_IND], INCAR_TYPE_JAIL_IND = H.[INCAR_TYPE_JAIL_IND], INCAR_TYPE_PRISON_IND = H.[INCAR_TYPE_PRISON_IND],
-            INCAR_TYPE_JUV_IND = H.[INCAR_TYPE_JUV_IND], LAST6PLUSMO_INCAR_PER = H.[LAST6PLUSMO_INCAR_PER], LAST6PLUSMO_INCAR_YR = H.[LAST6PLUSMO_INCAR_YR], OUTPAT_IV_INF_IND = H.[OUTPAT_IV_INF_IND], LTCARE_RESIDENT_IND = H.[LTCARE_RESIDENT_IND], LIFE_SEX_PRTNR_NBR = H.[LIFE_SEX_PRTNR_NBR], BLD_EXPOSURE_OTH = H.[BLD_EXPOSURE_OTH], PIERC_PRIOR_ONSET_INd = H.[PIERC_PRIOR_ONSET_IND], PIERC_PERF_LOC_OTH = H.[PIERC_PERF_LOC_OTH], PIERC_PERF_LOC = H.[PIERC_PERF_LOC], PUB_SAFETY_BLD_CT_FRQ = H.[PUB_SAFETY_BLD_CT_FRQ], PUB_SAFETY_WORKER_IND = H.[PUB_SAFETY_WORKER_IND], STD_TREATED_IND = H.[STD_TREATED_IND], STD_LAST_TREATMENT_YR = H.[STD_LAST_TREATMENT_YR], NON_ORAL_SURGERY_IND = H.[NON_ORAL_SURGERY_IND], TATT_PRIOR_ONSET_IND = H.[TATT_PRIOR_ONSET_IND], TATTOO_PERF_LOC = H.[TATTOO_PERF_LOC], TATT_PRIOR_LOC_OTH = H.[TATT_PRIOR_LOC_OTH], BLD_TRANSF_PRIOR_1992 = H.[BLD_TRANSF_PRIOR_1992], ORGN_TRNSP_PRIOR_1992 = H.[ORGN_TRNSP_PRIOR_1992], TRANSMISSION_MODE = H.[TRANSMISSION_MODE], HOUSEHOLD_TRAVEL_IND = H.[HOUSEHOLD_TRAVEL_IND], TRAVEL_OUT_USACAN_IND = H.[TRAVEL_OUT_USACAN_IND], TRAVEL_OUT_USACAN_LOC = H.[TRAVEL_OUT_USACAN_LOC], HOUSEHOLD_TRAVEL_LOC = H.[HOUSEHOLD_TRAVEL_LOC], TRAVEL_REASON = H.[TRAVEL_REASON], IMM_GLOB_RECVD_IND = H.[IMM_GLOB_RECVD_IND], GLOB_LAST_RECVD_YR = H.[GLOB_LAST_RECVD_YR], VACC_RECVD_IND = H.[VACC_RECVD_IND], VACC_DOSE_NBR_1 = H.[VACC_DOSE_NBR_1], VACC_RECVD_DT_1 = H.[VACC_RECVD_DT_1], VACC_DOSE_NBR_2 = H.[VACC_DOSE_NBR_2], VACC_RECVD_DT_2 = H.[VACC_RECVD_DT_2], VACC_DOSE_NBR_3 = H.[VACC_DOSE_NBR_3], VACC_RECVD_DT_3 = H.[VACC_RECVD_DT_3], VACC_DOSE_NBR_4 = H.[VACC_DOSE_NBR_4], VACC_RECVD_DT_4 = H.[VACC_RECVD_DT_4], VACC_GT_4_IND = H.[VACC_GT_4_IND], VACC_DOSE_RECVD_NBR = H.[VACC_DOSE_RECVD_NBR], VACC_LAST_RECVD_YR = H.[VACC_LAST_RECVD_YR], ANTI_HBSAG_TESTED_IND = H.[ANTI_HBSAG_TESTED_IND], CONDITION_CD = H.[CONDITION_CD], EVENT_DATE = H.[EVENT_DATE], IMPORT_FROM_CITY = H.[IMPORT_FROM_CITY], IMPORT_FROM_COUNTRY = H.[IMPORT_FROM_COUNTRY], IMPORT_FROM_COUNTY = H.[IMPORT_FROM_COUNTY], IMPORT_FROM_STATE = H.[IMPORT_FROM_STATE], INVESTIGATION_KEY = H.[INVESTIGATION_KEY], INVESTIGATOR_NAME = H.[INVESTIGATOR_NAME], PAT_ELECTRONIC_IND = H.[PAT_ELECTRONIC_IND], PHYS_CITY = H.[PHYS_CITY], PHYS_COUNTY = H.[PHYS_COUNTY], PHYS_NAME = H.[PHYS_NAME], PHYS_STATE = H.[PHYS_STATE], PROGRAM_JURISDICTION_OID = H.[PROGRAM_JURISDICTION_OID], RPT_SRC_CITY = H.[RPT_SRC_CITY], RPT_SRC_COUNTY = H.[RPT_SRC_COUNTY], RPT_SRC_COUNTY_CD = H.[RPT_SRC_COUNTY_CD], PHYSICIAN_UID = H.[PHYSICIAN_UID], PATIENT_UID = H.[PATIENT_UID], CASE_UID = H.[CASE_UID], INVESTIGATOR_UID = H.[INVESTIGATOR_UID], REPORTING_SOURCE_UID = H.[REPORTING_SOURCE_UID], REFRESH_DATETIME = H.[REFRESH_DATETIME], PAT_BIRTH_COUNTRY = H.[PAT_BIRTH_COUNTRY]
+        SET
+            INNC_NOTIFICATION_DT = H.[INNC_NOTIFICATION_DT],
+            CASE_RPT_MMWR_WEEK = H.[CASE_RPT_MMWR_WEEK],
+            CASE_RPT_MMWR_YEAR = H.[CASE_RPT_MMWR_YEAR],
+            HEP_D_INFECTION_IND = H.[HEP_D_INFECTION_IND],
+            HEP_MEDS_RECVD_IND = H.[HEP_MEDS_RECVD_IND],
+            HEP_C_TOTAL_ANTIBODY = H.[HEP_C_TOTAL_ANTIBODY],
+            DIAGNOSIS_DT = H.[DIAGNOSIS_DT],
+            DIE_FRM_THIS_ILLNESS_IND = H.[DIE_FRM_THIS_ILLNESS_IND],
+            DISEASE_IMPORTED_IND = H.[DISEASE_IMPORTED_IND],
+            EARLIEST_RPT_TO_CNTY = H.[EARLIEST_RPT_TO_CNTY],
+            EARLIEST_RPT_TO_STATE_DT = H.[EARLIEST_RPT_TO_STATE_DT],
+            BINATIONAL_RPTNG_CRIT = H.[BINATIONAL_RPTNG_CRIT],
+            CHILDCARE_CASE_IND = H.[CHILDCARE_CASE_IND],
+            CNTRY_USUAL_RESIDENCE = H.[CNTRY_USUAL_RESIDENCE],
+            CT_BABYSITTER_IND = H.[CT_BABYSITTER_IND],
+            CT_CHILDCARE_IND = H.[CT_CHILDCARE_IND],
+            CT_HOUSEHOLD_IND = H.[CT_HOUSEHOLD_IND],
+            HEP_CONTACT_IND = H.[HEP_CONTACT_IND],
+            HEP_CONTACT_EVER_IND = H.[HEP_CONTACT_EVER_IND],
+            OTHER_CONTACT_IND = H.[OTHER_CONTACT_IND],
+            COM_SRC_OUTBREAK_IND = H.[COM_SRC_OUTBREAK_IND],
+            CONTACT_TYPE_OTH = H.[CONTACT_TYPE_OTH],
+            CT_PLAYMATE_IND = H.[CT_PLAYMATE_IND],
+            SEXUAL_PARTNER_IND = H.[SEXUAL_PARTNER_IND],
+            DNP_HOUSEHOLD_CT_IND = H.[DNP_HOUSEHOLD_CT_IND],
+            HEP_A_EPLINK_IND = H.[HEP_A_EPLINK_IND],
+            FEMALE_SEX_PRTNR_NBR = H.[FEMALE_SEX_PRTNR_NBR],
+            FOODHNDLR_PRIOR_IND = H.[FOODHNDLR_PRIOR_IND],
+            DNP_EMPLOYEE_IND = H.[DNP_EMPLOYEE_IND],
+            STREET_DRUG_INJECTED = H.[STREET_DRUG_INJECTED],
+            MALE_SEX_PRTNR_NBR = H.[MALE_SEX_PRTNR_NBR],
+            OUTBREAK_IND = H.[OUTBREAK_IND],
+            OBRK_FOODHNDLR_IND = H.[OBRK_FOODHNDLR_IND],
+            FOOD_OBRK_FOOD_ITEM = H.[FOOD_OBRK_FOOD_ITEM],
+            OBRK_NOFOODHNDLR_IND = H.[OBRK_NOFOODHNDLR_IND],
+            OBRK_UNIDENTIFIED_IND = H.[OBRK_UNIDENTIFIED_IND],
+            OBRK_WATERBORNE_IND = H.[OBRK_WATERBORNE_IND],
+            STREET_DRUG_USED = H.[STREET_DRUG_USED],
+            SEX_PREF = H.[SEX_PREF],
+            HSPTL_ADMISSION_DT = H.[HSPTL_ADMISSION_DT],
+            HSPTL_DISCHARGE_DT = H.[HSPTL_DISCHARGE_DT],
+            HSPTL_DURATION_DAYS = H.[HSPTL_DURATION_DAYS],
+            HSPTLIZD_IND = H.[HSPTLIZD_IND],
+            ILLNESS_ONSET_DT = H.[ILLNESS_ONSET_DT],
+            INV_CASE_STATUS = H.[INV_CASE_STATUS],
+            INV_COMMENTS = H.[INV_COMMENTS],
+            INV_LOCAL_ID = H.[INV_LOCAL_ID],
+            INV_RPT_DT = H.[INV_RPT_DT],
+            INV_START_DT = H.[INV_START_DT],
+            INVESTIGATION_STATUS = H.[INVESTIGATION_STATUS],
+            JURISDICTION_NM = H.[JURISDICTION_NM],
+            ALT_SGPT_RESULT = H.[ALT_SGPT_RESULT],
+            ANTI_HBS_POS_REAC_IND = H.[ANTI_HBS_POS_REAC_IND],
+            AST_SGOT_RESULT = H.[AST_SGOT_RESULT],
+            HEP_E_ANTIGEN = H.[HEP_E_ANTIGEN],
+            HBE_AG_DT = H.[HBE_AG_DT],
+            HEP_B_SURFACE_ANTIGEN = H.[HEP_B_SURFACE_ANTIGEN],
+            HBS_AG_DT = H.[HBS_AG_DT],
+            HBV_NAT_DT = H.[HBV_NAT_DT],
+            HCV_RNA = H.[HCV_RNA],
+            HCV_RNA_DT = H.[HCV_RNA_DT],
+            HEP_D_TEST_IND = H.[HEP_D_TEST_IND],
+            HEP_A_IGM_ANTIBODY = H.[HEP_A_IGM_ANTIBODY],
+            IGM_ANTI_HAV_DT = H.[IGM_ANTI_HAV_DT],
+            HEP_B_IGM_ANTIBODY = H.[HEP_B_IGM_ANTIBODY],
+            IGM_ANTI_HBC_DT = H.[IGM_ANTI_HBC_DT],
+            PREV_NEG_HEP_TEST_IND = H.[PREV_NEG_HEP_TEST_IND],
+            ANTIHCV_SIGCUT_RATIO = H.[ANTIHCV_SIGCUT_RATIO],
+            ANTIHCV_SUPP_ASSAY = H.[ANTIHCV_SUPP_ASSAY],
+            SUPP_ANTI_HCV_DT = H.[SUPP_ANTI_HCV_DT],
+            ALT_RESULT_DT = H.[ALT_RESULT_DT],
+            AST_RESULT_DT = H.[AST_RESULT_DT],
+            ALT_SGPT_RSLT_UP_LMT = H.[ALT_SGPT_RSLT_UP_LMT],
+            AST_SGOT_RSLT_UP_LMT = H.[AST_SGOT_RSLT_UP_LMT],
+            HEP_A_TOTAL_ANTIBODY = H.[HEP_A_TOTAL_ANTIBODY],
+            TOTAL_ANTI_HAV_DT = H.[TOTAL_ANTI_HAV_DT],
+            HEP_B_TOTAL_ANTIBODY = H.[HEP_B_TOTAL_ANTIBODY],
+            TOTAL_ANTI_HBC_DT = H.[TOTAL_ANTI_HBC_DT],
+            TOTAL_ANTI_HCV_DT = H.[TOTAL_ANTI_HCV_DT],
+            HEP_D_TOTAL_ANTIBODY = H.[HEP_D_TOTAL_ANTIBODY],
+            TOTAL_ANTI_HDV_DT = H.[TOTAL_ANTI_HDV_DT],
+            HEP_E_TOTAL_ANTIBODY = H.[HEP_E_TOTAL_ANTIBODY],
+            TOTAL_ANTI_HEV_DT = H.[TOTAL_ANTI_HEV_DT],
+            VERIFIED_TEST_DT = H.[VERIFIED_TEST_DT],
+            LEGACY_CASE_ID = H.[LEGACY_CASE_ID],
+            DIABETES_IND = H.[DIABETES_IND],
+            DIABETES_DX_DT = H.[DIABETES_DX_DT],
+            PREGNANCY_DUE_DT = H.[PREGNANCY_DUE_DT],
+            PAT_JUNDICED_IND = H.[PAT_JUNDICED_IND],
+            PAT_PREV_AWARE_IND = H.[PAT_PREV_AWARE_IND],
+            HEP_CARE_PROVIDER = H.[HEP_CARE_PROVIDER],
+            TEST_REASON = H.[TEST_REASON],
+            TEST_REASON_OTH = H.[TEST_REASON_OTH],
+            SYMPTOMATIC_IND = H.[SYMPTOMATIC_IND],
+            MTH_BORN_OUTSIDE_US = H.[MTH_BORN_OUTSIDE_US],
+            MTH_ETHNICITY = H.[MTH_ETHNICITY],
+            MTH_HBS_AG_PRIOR_POS = H.[MTH_HBS_AG_PRIOR_POS],
+            MTH_POS_AFTER = H.[MTH_POS_AFTER],
+            MTH_POS_TEST_DT = H.[MTH_POS_TEST_DT],
+            MTH_RACE = H.[MTH_RACE],
+            MTH_BIRTH_COUNTRY = H.[MTH_BIRTH_COUNTRY],
+            NOT_SUBMIT_DT = H.[NOT_SUBMIT_DT],
+            PAT_REPORTED_AGE = H.[PAT_REPORTED_AGE],
+            PAT_REPORTED_AGE_UNIT = H.[PAT_REPORTED_AGE_UNIT],
+            PAT_CITY = H.[PAT_CITY],
+            PAT_COUNTRY = H.[PAT_COUNTRY],
+            PAT_COUNTY = H.[PAT_COUNTY],
+            PAT_CURR_GENDER = H.[PAT_CURR_GENDER],
+            PAT_DOB = H.[PAT_DOB],
+            PAT_ETHNICITY = H.[PAT_ETHNICITY],
+            PAT_FIRST_NM = H.[PAT_FIRST_NM],
+            PAT_LAST_NM = H.[PAT_LAST_NM],
+            PAT_LOCAL_ID = H.[PAT_LOCAL_ID],
+            PAT_MIDDLE_NM = H.[PAT_MIDDLE_NM],
+            PAT_PREGNANT_IND = H.[PAT_PREGNANT_IND],
+            PAT_RACE = H.[PAT_RACE],
+            PAT_STATE = H.[PAT_STATE],
+            PAT_STREET_ADDR_1 = H.[PAT_STREET_ADDR_1],
+            PAT_STREET_ADDR_2 = H.[PAT_STREET_ADDR_2],
+            PAT_ZIP_CODE = H.[PAT_ZIP_CODE],
+            RPT_SRC_SOURCE_NM = H.[RPT_SRC_SOURCE_NM],
+            RPT_SRC_STATE = H.[RPT_SRC_STATE],
+            RPT_SRC_CD_DESC = H.[RPT_SRC_CD_DESC],
+            BLD_EXPOSURE_IND = H.[BLD_EXPOSURE_IND],
+            BLD_RECVD_IND = H.[BLD_RECVD_IND],
+            BLD_RECVD_DT = H.[BLD_RECVD_DT],
+            MED_DEN_BLD_CT_FRQ = H.[MED_DEN_BLD_CT_FRQ],
+            MED_DEN_EMPLOYEE_IND = H.[MED_DEN_EMPLOYEE_IND],
+            MED_DEN_EMP_EVER_IND = H.[MED_DEN_EMP_EVER_IND],
+            CLOTFACTOR_PRIOR_1987 = H.[CLOTFACTOR_PRIOR_1987],
+            BLD_CONTAM_IND = H.[BLD_CONTAM_IND],
+            DEN_WORK_OR_SURG_IND = H.[DEN_WORK_OR_SURG_IND],
+            HEMODIALYSIS_IND = H.[HEMODIALYSIS_IND],
+            LT_HEMODIALYSIS_IND = H.[LT_HEMODIALYSIS_IND],
+            HSPTL_PRIOR_ONSET_IND = H.[HSPTL_PRIOR_ONSET_IND],
+            EVER_INJCT_NOPRSC_DRG = H.[EVER_INJCT_NOPRSC_DRG],
+            INCAR_24PLUSHRS_IND = H.[INCAR_24PLUSHRS_IND],
+            INCAR_6PLUS_MO_IND = H.[INCAR_6PLUS_MO_IND],
+            EVER_INCAR_IND = H.[EVER_INCAR_IND],
+            INCAR_TYPE_JAIL_IND = H.[INCAR_TYPE_JAIL_IND],
+            INCAR_TYPE_PRISON_IND = H.[INCAR_TYPE_PRISON_IND],
+            INCAR_TYPE_JUV_IND = H.[INCAR_TYPE_JUV_IND],
+            LAST6PLUSMO_INCAR_PER = H.[LAST6PLUSMO_INCAR_PER],
+            LAST6PLUSMO_INCAR_YR = H.[LAST6PLUSMO_INCAR_YR],
+            OUTPAT_IV_INF_IND = H.[OUTPAT_IV_INF_IND],
+            LTCARE_RESIDENT_IND = H.[LTCARE_RESIDENT_IND],
+            LIFE_SEX_PRTNR_NBR = H.[LIFE_SEX_PRTNR_NBR],
+            BLD_EXPOSURE_OTH = H.[BLD_EXPOSURE_OTH],
+            PIERC_PRIOR_ONSET_INd = H.[PIERC_PRIOR_ONSET_IND],
+            PIERC_PERF_LOC_OTH = H.[PIERC_PERF_LOC_OTH],
+            PIERC_PERF_LOC = H.[PIERC_PERF_LOC],
+            PUB_SAFETY_BLD_CT_FRQ = H.[PUB_SAFETY_BLD_CT_FRQ],
+            PUB_SAFETY_WORKER_IND = H.[PUB_SAFETY_WORKER_IND],
+            STD_TREATED_IND = H.[STD_TREATED_IND],
+            STD_LAST_TREATMENT_YR = H.[STD_LAST_TREATMENT_YR],
+            NON_ORAL_SURGERY_IND = H.[NON_ORAL_SURGERY_IND],
+            TATT_PRIOR_ONSET_IND = H.[TATT_PRIOR_ONSET_IND],
+            TATTOO_PERF_LOC = H.[TATTOO_PERF_LOC],
+            TATT_PRIOR_LOC_OTH = H.[TATT_PRIOR_LOC_OTH],
+            BLD_TRANSF_PRIOR_1992 = H.[BLD_TRANSF_PRIOR_1992],
+            ORGN_TRNSP_PRIOR_1992 = H.[ORGN_TRNSP_PRIOR_1992],
+            TRANSMISSION_MODE = H.[TRANSMISSION_MODE],
+            HOUSEHOLD_TRAVEL_IND = H.[HOUSEHOLD_TRAVEL_IND],
+            TRAVEL_OUT_USACAN_IND = H.[TRAVEL_OUT_USACAN_IND],
+            TRAVEL_OUT_USACAN_LOC = H.[TRAVEL_OUT_USACAN_LOC],
+            HOUSEHOLD_TRAVEL_LOC = H.[HOUSEHOLD_TRAVEL_LOC],
+            TRAVEL_REASON = H.[TRAVEL_REASON],
+            IMM_GLOB_RECVD_IND = H.[IMM_GLOB_RECVD_IND],
+            GLOB_LAST_RECVD_YR = H.[GLOB_LAST_RECVD_YR],
+            VACC_RECVD_IND = H.[VACC_RECVD_IND],
+            VACC_DOSE_NBR_1 = H.[VACC_DOSE_NBR_1],
+            VACC_RECVD_DT_1 = H.[VACC_RECVD_DT_1],
+            VACC_DOSE_NBR_2 = H.[VACC_DOSE_NBR_2],
+            VACC_RECVD_DT_2 = H.[VACC_RECVD_DT_2],
+            VACC_DOSE_NBR_3 = H.[VACC_DOSE_NBR_3],
+            VACC_RECVD_DT_3 = H.[VACC_RECVD_DT_3],
+            VACC_DOSE_NBR_4 = H.[VACC_DOSE_NBR_4],
+            VACC_RECVD_DT_4 = H.[VACC_RECVD_DT_4],
+            VACC_GT_4_IND = H.[VACC_GT_4_IND],
+            VACC_DOSE_RECVD_NBR = H.[VACC_DOSE_RECVD_NBR],
+            VACC_LAST_RECVD_YR = H.[VACC_LAST_RECVD_YR],
+            ANTI_HBSAG_TESTED_IND = H.[ANTI_HBSAG_TESTED_IND],
+            CONDITION_CD = H.[CONDITION_CD],
+            EVENT_DATE = H.[EVENT_DATE],
+            IMPORT_FROM_CITY = H.[IMPORT_FROM_CITY],
+            IMPORT_FROM_COUNTRY = H.[IMPORT_FROM_COUNTRY],
+            IMPORT_FROM_COUNTY = H.[IMPORT_FROM_COUNTY],
+            IMPORT_FROM_STATE = H.[IMPORT_FROM_STATE],
+            INVESTIGATION_KEY = H.[INVESTIGATION_KEY],
+            INVESTIGATOR_NAME = H.[INVESTIGATOR_NAME],
+            PAT_ELECTRONIC_IND = H.[PAT_ELECTRONIC_IND],
+            PHYS_CITY = H.[PHYS_CITY],
+            PHYS_COUNTY = H.[PHYS_COUNTY],
+            PHYS_NAME = H.[PHYS_NAME],
+            PHYS_STATE = H.[PHYS_STATE],
+            PROGRAM_JURISDICTION_OID = H.[PROGRAM_JURISDICTION_OID],
+            RPT_SRC_CITY = H.[RPT_SRC_CITY],
+            RPT_SRC_COUNTY = H.[RPT_SRC_COUNTY],
+            RPT_SRC_COUNTY_CD = H.[RPT_SRC_COUNTY_CD],
+            PHYSICIAN_UID = H.[PHYSICIAN_UID],
+            PATIENT_UID = H.[PATIENT_UID],
+            CASE_UID = H.[CASE_UID],
+            INVESTIGATOR_UID = H.[INVESTIGATOR_UID],
+            REPORTING_SOURCE_UID = H.[REPORTING_SOURCE_UID],
+            REFRESH_DATETIME = H.[REFRESH_DATETIME],
+            PAT_BIRTH_COUNTRY = H.[PAT_BIRTH_COUNTRY]
         FROM #TMP_HEPATITIS_CASE_BASE H WITH(NOLOCK)
         WHERE H.[CASE_UID] = [dbo].[HEPATITIS_DATAMART].[CASE_UID] AND
             H.[PATIENT_UID] = [dbo].[HEPATITIS_DATAMART].[PATIENT_UID] AND
@@ -2519,7 +2826,7 @@ BEGIN
         SET ISD.EVENT_DATE = E.EVENT_DATE,
             ISD.EVENT_DATE_TYPE = E.EVENT_DATE_TYPE
         FROM dbo.[HEPATITIS_DATAMART] ISD
-                 INNER JOIN #TMP_Event E WITH (NOLOCK) ON E.INVESTIGATION_KEY=ISD.INVESTIGATION_KEY;
+                 LEFT OUTER JOIN #TMP_Event E WITH (NOLOCK) ON E.INVESTIGATION_KEY=ISD.INVESTIGATION_KEY;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -2542,7 +2849,7 @@ BEGIN
         UPDATE ISD
         SET ISD.INIT_NND_NOT_DT = NND.FIRSTNOTIFICATIONSENDDATE
         FROM dbo.[HEPATITIS_DATAMART] ISD
-                 JOIN #TMP_Notif NND with (nolock) ON ISD.INVESTIGATION_KEY = NND.INVESTIGATION_KEY;
+                 LEFT JOIN #TMP_Notif NND with (nolock) ON ISD.INVESTIGATION_KEY = NND.INVESTIGATION_KEY;
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
