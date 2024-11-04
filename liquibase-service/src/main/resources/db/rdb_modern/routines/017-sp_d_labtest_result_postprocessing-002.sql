@@ -164,7 +164,7 @@ BEGIN
                  LEFT JOIN d_Organization	AS org2 with (nolock)
                            ON no2.ordering_organization_id = org2.Organization_uid
 
-            /* Conditon, it's just program area */
+            /* Condition it's just program area */
 
             /*IF we add a program area to the Lab_Report Dimension we probably don't
             even need a condition dimension.  Even though it's OK with the Dimension Modeling

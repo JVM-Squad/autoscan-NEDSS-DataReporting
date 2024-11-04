@@ -1221,7 +1221,10 @@ BEGIN
                       ,P.PROVIDER_MIDDLE_NAME AS PHYSICIAN_MIDDLE_NM
                       ,P.PROVIDER_LAST_NAME AS PHYSICIAN_LAST_NM
                       ,CASE
-                           WHEN RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)) IS NOT NULL THEN CONCAT(P.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)), ' ',  P.PROVIDER_MIDDLE_NAME)
+                           WHEN RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)) IS NOT NULL THEN
+                               CASE WHEN LEN(P.PROVIDER_MIDDLE_NAME) > 0 THEN RTRIM(LTRIM(CONCAT(P.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)), ' ',  P.PROVIDER_MIDDLE_NAME)))
+                                    ELSE CONCAT(P.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(P.PROVIDER_FIRST_NAME)), ' ',  P.PROVIDER_MIDDLE_NAME)
+                                   END
                            ELSE CAST(NULL AS varchar(300)) END AS PHYS_NAME
                       ,P.PROVIDER_CITY AS PHYS_CITY
                       ,P.PROVIDER_STATE AS PHYS_STATE
@@ -1229,9 +1232,8 @@ BEGIN
                       ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(P.PROVIDER_CITY)),RTRIM(LTRIM(P.PROVIDER_STATE)),RTRIM(LTRIM(P.PROVIDER_COUNTY))))>0 THEN 'Primary Work Place'
                             ELSE NULL
             END AS PHYSICIAN_ADDRESS_USE_DESC
-                      --,CAST(NULL AS varchar(300)) AS PHYSICIAN_ADDRESS_TYPE_DESC
                       ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(REPTORG.ORGANIZATION_COUNTY)),RTRIM(LTRIM(REPTORG.ORGANIZATION_STATE)),RTRIM(LTRIM(REPTORG.ORGANIZATION_CITY))))>0 THEN 'Office'
-                            ELSE NULL
+                            ELSE CAST(NULL AS varchar(300))
             END AS PHYSICIAN_ADDRESS_TYPE_DESC
                       ,P.PROVIDER_ADD_TIME
                       ,P.PROVIDER_LAST_CHANGE_TIME
@@ -1240,7 +1242,10 @@ BEGIN
                       ,INVGTR.PROVIDER_MIDDLE_NAME AS INVESTIGATOR_MIDDLE_NM
                       ,INVGTR.PROVIDER_LAST_NAME AS INVESTIGATOR_LAST_NM
                       ,CASE
-                           WHEN RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)) IS NOT NULL THEN CONCAT(INVGTR.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)), ' ', INVGTR.PROVIDER_MIDDLE_NAME)
+                           WHEN RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)) IS NOT NULL THEN
+                               CASE WHEN LEN(INVGTR.PROVIDER_MIDDLE_NAME) > 0  THEN CONCAT(INVGTR.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)), ' ', INVGTR.PROVIDER_MIDDLE_NAME)
+                                    ELSE CONCAT(INVGTR.PROVIDER_LAST_NAME, ', ', RTRIM(LTRIM(INVGTR.PROVIDER_FIRST_NAME)), ' ', INVGTR.PROVIDER_MIDDLE_NAME)
+                                   END
                            ELSE CAST(NULL AS varchar(300)) END AS INVESTIGATOR_NAME
                       ,INVGTR.PROVIDER_UID AS INVESTIGATOR_UID
                       ,REPTORG.ORGANIZATION_NAME AS RPT_SRC_SOURCE_NM
@@ -1248,13 +1253,11 @@ BEGIN
                       ,REPTORG.ORGANIZATION_COUNTY AS RPT_SRC_COUNTY
                       ,REPTORG.ORGANIZATION_CITY AS RPT_SRC_CITY
                       ,REPTORG.ORGANIZATION_STATE AS RPT_SRC_STATE
-                      --,CAST(NULL AS varchar(300)) AS REPORTING_SOURCE_ADDRESS_USE
                       ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(P.PROVIDER_CITY )), RTRIM(LTRIM(P.PROVIDER_STATE)),RTRIM(LTRIM(P.PROVIDER_COUNTY))))>0 THEN 'Primary Work Place'
-                            ELSE NULL
+                            ELSE CAST(NULL AS varchar(300))
             END AS REPORTING_SOURCE_ADDRESS_USE
-                      --,CAST(NULL AS varchar(300)) AS REPORTING_SOURCE_ADDRESS_TYPE
                       ,CASE WHEN LEN(COALESCE(RTRIM(LTRIM(REPTORG.ORGANIZATION_COUNTY)),RTRIM(LTRIM(REPTORG.ORGANIZATION_STATE)),RTRIM(LTRIM(REPTORG.ORGANIZATION_CITY))))>0 THEN 'Office'
-                            ELSE NULL
+                            ELSE CAST(NULL AS varchar(300))
             END AS REPORTING_SOURCE_ADDRESS_TYPE
                       ,REPTORG.ORGANIZATION_UID AS REPORTING_SOURCE_UID
         INTO
@@ -1286,87 +1289,87 @@ BEGIN
                              WHEN PHYS_NAME IS NOT NULL THEN CONCAT(PHYSICIAN_Last_nm, ', ', RTRIM(LTRIM(PHYSICIAN_first_nm)), ' ', PHYSICIAN_middle_nm)
                              ELSE PHYS_NAME
              END;
-     */
-
-        UPDATE #TMP_HEP_PAT_PROV
-        SET PHYS_NAME = CASE
-                            WHEN LEN(PHYSICIAN_middle_nm) > 0 THEN PHYS_NAME
-                            ELSE RTRIM(LTRIM(PHYS_NAME))
-            END;
 
 
-        /*
-     ----5-17-2021
-     UPDATE #TMP_HEP_PAT_PROV
-     SET INVESTIGATOR_NAME = RTRIM(LTRIM(INVESTIGATOR_FIRST_NM));
-
-
-     UPDATE #TMP_HEP_PAT_PROV
-     SET INVESTIGATOR_NAME = CASE
-                                 WHEN INVESTIGATOR_NAME IS NOT NULL THEN CONCAT(INVESTIGATOR_Last_nm, ', ', RTRIM(LTRIM(INVESTIGATOR_FIRST_NM)), ' ', INVESTIGATOR_MIDDLE_NM)
-                                 ELSE INVESTIGATOR_NAME
-         END;
-           */
-
-        UPDATE #TMP_HEP_PAT_PROV
-        SET INVESTIGATOR_NAME = CASE
-                                    WHEN LEN(INVESTIGATOR_middle_nm) > 0 THEN INVESTIGATOR_NAME
-                                    ELSE RTRIM(LTRIM(INVESTIGATOR_NAME))
-            END;
-
-        /*
-
- ----5-21-2021
- UPDATE #TMP_HEP_PAT_PROV
- --SET PHYSICIAN_ADDRESS_USE_DESC =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
- SET PHYSICIAN_ADDRESS_USE_DESC = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYS_NAME = CASE
+                             WHEN LEN(PHYSICIAN_middle_nm) > 0 THEN PHYS_NAME
+                             ELSE RTRIM(LTRIM(PHYS_NAME))
+             END;
 
 
 
- ---8-31-2021
- UPDATE #TMP_HEP_PAT_PROV
- SET PHYSICIAN_ADDRESS_USE_DESC = CASE
-                                      WHEN LEN(PHYSICIAN_ADDRESS_USE_DESC) > 0 THEN 'Primary Work Place'
-                                      ELSE NULL
-     END;
+         ----5-17-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = RTRIM(LTRIM(INVESTIGATOR_FIRST_NM));
+
+
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = CASE
+                                     WHEN INVESTIGATOR_NAME IS NOT NULL THEN CONCAT(INVESTIGATOR_Last_nm, ', ', RTRIM(LTRIM(INVESTIGATOR_FIRST_NM)), ' ', INVESTIGATOR_MIDDLE_NM)
+                                     ELSE INVESTIGATOR_NAME
+             END;
+
+
+         UPDATE #TMP_HEP_PAT_PROV
+         SET INVESTIGATOR_NAME = CASE
+                                     WHEN LEN(INVESTIGATOR_middle_nm) > 0 THEN INVESTIGATOR_NAME
+                                     ELSE RTRIM(LTRIM(INVESTIGATOR_NAME))
+             END;
 
 
 
- UPDATE #TMP_HEP_PAT_PROV
- --SET PHYSICIAN_ADDRESS_TYPE_DESC =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
- SET PHYSICIAN_ADDRESS_TYPE_DESC = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
-
- ---8-31-2021
- UPDATE #TMP_HEP_PAT_PROV
- SET PHYSICIAN_ADDRESS_TYPE_DESC = CASE
-                                       WHEN LEN(PHYSICIAN_ADDRESS_TYPE_DESC) > 0 THEN 'Office'
-                                       ELSE NULL
-     END;
+         ----5-21-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         --SET PHYSICIAN_ADDRESS_USE_DESC =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
+         SET PHYSICIAN_ADDRESS_USE_DESC = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
 
 
- UPDATE #TMP_HEP_PAT_PROV
- ---SET REPORTING_SOURCE_ADDRESS_USE =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
- SET REPORTING_SOURCE_ADDRESS_USE = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
 
- ---8-31-2021
- UPDATE #TMP_HEP_PAT_PROV
- SET REPORTING_SOURCE_ADDRESS_USE = CASE
-                                        WHEN LEN(REPORTING_SOURCE_ADDRESS_USE) > 0 THEN 'Primary Work Place'
-                                        ELSE NULL
-     END;
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYSICIAN_ADDRESS_USE_DESC = CASE
+                                              WHEN LEN(PHYSICIAN_ADDRESS_USE_DESC) > 0 THEN 'Primary Work Place'
+                                              ELSE NULL
+             END;
 
 
- UPDATE #TMP_HEP_PAT_PROV
- ---SET REPORTING_SOURCE_ADDRESS_TYPE =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
- SET REPORTING_SOURCE_ADDRESS_TYPE = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
 
- ---8-31-2021
- UPDATE #TMP_HEP_PAT_PROV
-SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
-                                         WHEN LEN(REPORTING_SOURCE_ADDRESS_TYPE) > 0 THEN 'office'
-                                         ELSE NULL
-     END;
-      */
+         UPDATE #TMP_HEP_PAT_PROV
+         --SET PHYSICIAN_ADDRESS_TYPE_DESC =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
+         SET PHYSICIAN_ADDRESS_TYPE_DESC = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET PHYSICIAN_ADDRESS_TYPE_DESC = CASE
+                                               WHEN LEN(PHYSICIAN_ADDRESS_TYPE_DESC) > 0 THEN 'Office'
+                                               ELSE NULL
+             END;
+
+
+         UPDATE #TMP_HEP_PAT_PROV
+         ---SET REPORTING_SOURCE_ADDRESS_USE =concat_ws(' ',RTRIM(LTRIM(PHYS_CITY)),RTRIM(LTRIM(PHYS_STATE)),RTRIM(LTRIM(PHYS_COUNTY)))
+         SET REPORTING_SOURCE_ADDRESS_USE = concat(RTRIM(LTRIM(ISNULL(PHYS_CITY, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(PHYS_COUNTY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+         SET REPORTING_SOURCE_ADDRESS_USE = CASE
+                                                WHEN LEN(REPORTING_SOURCE_ADDRESS_USE) > 0 THEN 'Primary Work Place'
+                                                ELSE NULL
+             END;
+
+
+         UPDATE #TMP_HEP_PAT_PROV
+         ---SET REPORTING_SOURCE_ADDRESS_TYPE =concat_ws(' ',RTRIM(LTRIM(RPT_SRC_COUNTY)),RTRIM(LTRIM(RPT_SRC_STATE)),RTRIM(LTRIM(RPT_SRC_CITY)))
+         SET REPORTING_SOURCE_ADDRESS_TYPE = concat(RTRIM(LTRIM(ISNULL(RPT_SRC_COUNTY, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_STATE, ''))), ' ', RTRIM(LTRIM(ISNULL(RPT_SRC_CITY, ''))));
+
+         ---8-31-2021
+         UPDATE #TMP_HEP_PAT_PROV
+       SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
+                                                 WHEN LEN(REPORTING_SOURCE_ADDRESS_TYPE) > 0 THEN 'office'
+                                                 ELSE NULL
+             END;
+              */
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -1450,23 +1453,16 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
                 DROP TABLE #TMP_METADATA_TEST;
             END;
 
-        --cte added to assist in filtering latest answers from page case answer table
-        WITH NRT_PCA_FILTERED_CTE AS (
-            SELECT
-                C.condition_key, M.block_nm, M.investigation_form_cd, M.act_uid, M.last_chg_time, M.question_identifier, max(M.last_chg_time) OVER (PARTITION BY act_uid ) max_last_chg_time
-            FROM
-                DBO.NRT_PAGE_CASE_ANSWER AS M WITH(NOLOCK)
-                    INNER JOIN
-                #TMP_CONDITION AS C
-                ON M.investigation_form_cd = C.disease_grp_desc ----(My table)
-            WHERE M.question_identifier IN( 'VAC103', 'VAC120' ) AND
-                M.block_nm IS NOT NULL
-        )
-        select
-            CONDITION_KEY, block_nm, investigation_form_cd, question_identifier
+
+        SELECT C.CONDITION_KEY, M.block_nm, M.investigation_form_cd, M.question_identifier
         INTO #TMP_METADATA_TEST
-        FROM NRT_PCA_FILTERED_CTE
-        WHERE max_last_chg_time = last_chg_time;
+        FROM RDB_MODERN.dbo.nrt_page_case_answer AS M WITH(NOLOCK)
+                 INNER JOIN
+             #TMP_CONDITION AS C
+             ON M.INVESTIGATION_FORM_CD = C.DISEASE_GRP_DESC
+        WHERE M.question_identifier IN ( 'VAC103', 'VAC120' ) AND
+            M.[block_nm] IS NOT NULL;
+
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
@@ -1510,6 +1506,9 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
                         BLOCK_NM IS NOT NULL
                 )
         ORDER BY PAGE_CASE_UID;
+
+        IF @debug = 'true' SELECT '#TMP_VAC_REPEAT', * FROM #TMP_VAC_REPEAT;
+
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
 
@@ -1555,7 +1554,7 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
                     WHERE num <= 5 FOR XML PATH('')
                 ), 1, 1, '');
 
-        PRINT @cols;
+        IF @debug = 'true' PRINT @cols;
 
 
         CREATE TABLE #TMP_VAC_REPEAT_OUT_DATE_Pivot
@@ -1573,30 +1572,31 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
         DECLARE @SqlCmd nvarchar(max)= '';
 
         SET @SqlCmd = '
-																								SELECT
-																								 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
-																									[1] as VACC_RECVD_DT_1,
-																									[2] as VACC_RECVD_DT_2,
-																									[3] as VACC_RECVD_DT_3,
-																									[4] as VACC_RECVD_DT_4,
-																									[5] as VACC_RECVD_DT_5
+						INSERT INTO #TMP_VAC_REPEAT_OUT_DATE_Pivot
+						SELECT
+						 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
+							[1] as VACC_RECVD_DT_1,
+							[2] as VACC_RECVD_DT_2,
+							[3] as VACC_RECVD_DT_3,
+							[4] as VACC_RECVD_DT_4,
+							[5] as VACC_RECVD_DT_5
 
-																								 Into #TMP_VAC_REPEAT_OUT_DATE_Pivot FROM
-																								(
-																								SELECT p.*
-																								 FROM
-																								 (
-																									SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccinationDate,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
-																									FROM #TMP_VAC_REPEAT
-																								 ) AS tbl
-																								 PIVOT
-																								 (
-																									MAX(VAC_VaccinationDate) FOR SEQNBR IN(' + @cols + ')
-																								 ) AS p)
-																								 as c
-																								 ';
+					    FROM
+						(
+						SELECT p.*
+						 FROM
+						 (
+							SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccinationDate,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
+							FROM #TMP_VAC_REPEAT
+						 ) AS tbl
+						 PIVOT
+						 (
+							MAX(VAC_VaccinationDate) FOR SEQNBR IN(' + @cols + ')
+						 ) AS p)
+						 as c
+						 ';
 
-        PRINT @SqlCmd;
+        IF @debug = 'true' PRINT @SqlCmd;
 
         EXEC sp_executesql @SqlCmd;
 
@@ -1667,7 +1667,7 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
                     WHERE num <= 5 FOR XML PATH('')
                 ), 1, 1, '');
 
-        PRINT @col;
+        IF @debug = 'true' PRINT @col;
 
         CREATE TABLE #TMP_VAC_REPEAT_OUT_NUM_Pivot
         (
@@ -1684,30 +1684,30 @@ SET REPORTING_SOURCE_ADDRESS_TYPE = CASE
         DECLARE @SqlCmds nvarchar(max)= '';
 
         SET @SqlCmds = '
-																								SELECT
-																								 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
-																									[1] as VACC_DOSE_NBR_1,
-																									[2] as VACC_DOSE_NBR_2,
-																									[3] as VACC_DOSE_NBR_3,
-																									[4] as VACC_DOSE_NBR_4,
-																									[5] as VACC_DOSE_NBR_5
+							INSERT INTO #TMP_VAC_REPEAT_OUT_NUM_Pivot
+							SELECT
+							 D_INVESTIGATION_REPEAT_KEY,INVESTIGATION_KEY,Page_Case_UId,
+								[1] as VACC_DOSE_NBR_1,
+								[2] as VACC_DOSE_NBR_2,
+								[3] as VACC_DOSE_NBR_3,
+								[4] as VACC_DOSE_NBR_4,
+								[5] as VACC_DOSE_NBR_5
+							 FROM
+							(
+							SELECT p.*
+							 FROM
+							 (
+								SELECT D_INVESTIGATION_REPEAT_KEY,VAC_VaccineDoseNum,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
+								FROM #TMP_VAC_REPEAT
+							 ) AS tbl
+							 PIVOT
+							 (
+								MAX(VAC_VaccineDoseNum) FOR SEQNBR IN(' + @col + ')
+							 ) AS p)
+							 as c
+							 ';
 
-																								 Into #TMP_VAC_REPEAT_OUT_NUM_Pivot FROM
-																								(
-																								SELECT p.*
-																								 FROM
-																								 (
-																									SELECT  D_INVESTIGATION_REPEAT_KEY,VAC_VaccineDoseNum,SEQNBR,INVESTIGATION_KEY, Page_Case_UId
-																									FROM #TMP_VAC_REPEAT
-																								 ) AS tbl
-																								 PIVOT
-																								 (
-																									MAX(VAC_VaccineDoseNum) FOR SEQNBR IN(' + @col + ')
-																								 ) AS p)
-																								 as c
-																								 ';
-
-        PRINT @SqlCmds;
+        IF @debug = 'true' PRINT @SqlCmds;
 
         EXEC sp_executesql @SqlCmds;
 
