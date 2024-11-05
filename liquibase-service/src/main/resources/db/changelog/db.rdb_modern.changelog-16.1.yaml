@@ -403,7 +403,7 @@ databaseChangeLog:
   - changeSet:
       id: 54
       author: liquibase
-
+      runOnChange: true
       changes:
         - sqlFile:
             path: 013-sp_hepatitis_datamart_postprocessing-003.sql
