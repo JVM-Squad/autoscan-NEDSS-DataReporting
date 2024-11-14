@@ -117,7 +117,7 @@ class InvestigationDataProcessingTests {
         investigation.setObservationNotificationIds(invalidJSON);
         investigation.setInvestigationConfirmationMethod(invalidJSON);
         investigation.setInvestigationCaseAnswer(invalidJSON);
-        investigation.setCaseCntInfo(invalidJSON);
+        investigation.setInvestigationCaseCnt(invalidJSON);
         transformer.transformInvestigationData(investigation);
         transformer.processNotifications(invalidJSON);
 
