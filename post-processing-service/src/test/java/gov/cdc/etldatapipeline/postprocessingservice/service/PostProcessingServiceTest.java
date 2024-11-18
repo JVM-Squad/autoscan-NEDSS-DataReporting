@@ -162,6 +162,23 @@ class PostProcessingServiceTest {
     }
 
     @Test
+    void testPostProcessCaseManagementMessage() {
+        String topic = "dummy_case_management";
+        String key = "{\"payload\":{\"public_health_case_uid\":123,\"case_management_uid\":1001}}";
+
+        postProcessingServiceMock.postProcessMessage(topic, key, key);
+        postProcessingServiceMock.processCachedIds();
+
+        String expectedPublicHealthCaseIdsString = "123";
+        verify(investigationRepositoryMock).executeStoredProcForCaseManagement(expectedPublicHealthCaseIdsString);
+
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.CASE_MANAGEMENT.getStoredProcedure()));
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+    }
+
+    @Test
     void testPostProcessPageBuilder() {
         String topic = "dummy_investigation";
         String key = "{\"payload\":{\"public_health_case_uid\":123}}";
@@ -505,7 +522,6 @@ class PostProcessingServiceTest {
         InOrder inOrder = inOrder(postProcessingServiceMock);
         inOrder.verify(postProcessingServiceMock).processCachedIds();
         inOrder.verify(postProcessingServiceMock).processDatamartIds();
-
     }
 
     private List<InvestigationResult> getInvestigationResults(Long phcUid, Long patientKey) {
