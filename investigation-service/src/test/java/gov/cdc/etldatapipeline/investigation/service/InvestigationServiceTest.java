@@ -149,7 +149,7 @@ class InvestigationServiceTest {
         investigationKey.setPublicHealthCaseUid(investigation.getPublicHealthCaseUid());
         final InvestigationReporting reportingModel = constructInvestigationReporting(investigation.getPublicHealthCaseUid());
 
-        verify(kafkaTemplate, times(11)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
+        verify(kafkaTemplate, times(12)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
 
         String actualTopic = topicCaptor.getAllValues().get(9);
         String actualKey = keyCaptor.getAllValues().get(9);
@@ -190,6 +190,7 @@ class InvestigationServiceTest {
         investigation.setInvestigationCaseAnswer(readFileData(FILE_PATH_PREFIX + "InvestigationCaseAnswers.json"));
         investigation.setInvestigationNotifications(readFileData(FILE_PATH_PREFIX + "InvestigationNotification.json"));
         investigation.setInvestigationCaseCnt(readFileData(FILE_PATH_PREFIX + "CaseCountInfo.json"));
+        investigation.setInvestigationCaseManagement(readFileData(FILE_PATH_PREFIX + "CaseManagement.json"));
         return investigation;
     }
 
