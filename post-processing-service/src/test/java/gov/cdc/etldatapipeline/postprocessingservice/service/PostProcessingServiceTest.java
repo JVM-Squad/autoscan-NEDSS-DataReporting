@@ -344,6 +344,7 @@ class PostProcessingServiceTest {
         String patientKey = "{\"payload\":{\"patient_uid\":125}}";
         String investigationKey = "{\"payload\":{\"public_health_case_uid\":126}}";
         String notificationKey = "{\"payload\":{\"notification_uid\":127}}";
+        String caseManagementKey = "{\"payload\":{\"public_health_case_uid\":128,\"case_management_uid\":1001}}";
         String ldfKey = "{\"payload\":{\"ldf_uid\":127}}";
 
         String orgTopic = "dummy_organization";
@@ -352,6 +353,7 @@ class PostProcessingServiceTest {
         String invTopic = "dummy_investigation";
         String ntfTopic = "dummy_notification";
         String ldfTopic = "dummy_ldf_data";
+        String cmTopic = "dummy_case_management";
 
         postProcessingServiceMock.postProcessMessage(invTopic, investigationKey, investigationKey);
         postProcessingServiceMock.postProcessMessage(providerTopic, providerKey, providerKey);
@@ -359,6 +361,7 @@ class PostProcessingServiceTest {
         postProcessingServiceMock.postProcessMessage(ntfTopic, notificationKey, notificationKey);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey, orgKey);
         postProcessingServiceMock.postProcessMessage(ldfTopic, ldfKey, ldfKey);
+        postProcessingServiceMock.postProcessMessage(cmTopic, caseManagementKey, caseManagementKey);
         postProcessingServiceMock.processCachedIds();
 
         List<ILoggingEvent> logs = listAppender.list;
@@ -370,8 +373,10 @@ class PostProcessingServiceTest {
         assertTrue(topicLogList.get(2).contains(patientTopic));
         assertTrue(topicLogList.get(3).contains(invTopic));
         assertTrue(topicLogList.get(4).contains(invTopic));
+        assertTrue(topicLogList.get(5).contains(invTopic));
         assertTrue(topicLogList.get(6).contains(ntfTopic));
-        assertTrue(topicLogList.get(7).contains(ldfTopic));
+        assertTrue(topicLogList.get(7).contains(cmTopic));
+        assertTrue(topicLogList.get(8).contains(ldfTopic));
     }
 
     @Test
