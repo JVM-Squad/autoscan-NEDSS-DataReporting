@@ -653,8 +653,6 @@ BEGIN
                               answer_group_seq_nbr
               from dbo.v_rdb_ui_metadata_answers
               WHERE ACT_UID IN (SELECT value FROM STRING_SPLIT(@ix_uids, ','))) as metadata
-                 -- LEFT OUTER JOIN &STAGING_UIDS  on
-                 -- &STAGING_UIDS .&UID=PA. &ACT_UID
                  INNER JOIN NBS_SRTE.DBO.CODE_VALUE_GENERAL CVG
                             ON UPPER(CVG.CODE) = UPPER(DATA_TYPE)
         WHERE CVG.CODE_SET_NM = 'NBS_DATA_TYPE'
