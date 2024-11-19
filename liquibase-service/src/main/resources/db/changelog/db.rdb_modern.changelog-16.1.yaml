@@ -498,3 +498,31 @@ databaseChangeLog:
         - sqlFile:
             path: 011-create_nrt_investigation_observation-002.sql
             splitStatements: false
+  - changeSet:
+      id: 67
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 022-create_nrt_interview-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 68
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 022-create_nrt_interview_columns-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 69
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 022-create_nrt_interview_note-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 70
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 022-create_nrt_interview_answer-001.sql
+            splitStatements: false
