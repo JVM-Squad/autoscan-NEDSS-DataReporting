@@ -71,7 +71,7 @@ BEGIN
                            ON ix.interview_loc_cd = cvg4.code and
                               cvg4.code_set_nm in ('NBS_INTVW_LOC', 'NBS_INTVW_LOC_STDHIV')
         where interview_uid in (SELECT value FROM STRING_SPLIT(@ix_uids, ','));
-        -- JOIN WITH CODE VALUE GENERAL TO GET THE NAMES FOR THE CODES IN HERE
+
         if
             @debug = 'true'
             select @Proc_Step_Name as step, *
@@ -266,7 +266,6 @@ BEGIN
                INTERVIEW_UID,
                RECORD_STATUS_CD,
                NBS_QUESTION_UID,
-               -- String manipulation and transformations
                CASE
                    WHEN CHARINDEX('^', ANSWER_TXT) > 0
                        THEN SUBSTRING(ANSWER_TXT, CHARINDEX('^', ANSWER_TXT) + 1, LEN(ANSWER_TXT))
@@ -419,20 +418,6 @@ BEGIN
                                   FROM #coded_table_sn_merged),
              aggregated_answers AS (SELECT INTERVIEW_UID,
                                            NBS_QUESTION_UID,
-
-                                           -- Populate columns ANSWER_DESC1 through ANSWER_DESC10 using conditional aggregation
-                                           MAX(CASE WHEN rn = 1 THEN ANSWER_TXT1 END)  AS ANSWER_DESC1,
-                                           MAX(CASE WHEN rn = 2 THEN ANSWER_TXT1 END)  AS ANSWER_DESC2,
-                                           MAX(CASE WHEN rn = 3 THEN ANSWER_TXT1 END)  AS ANSWER_DESC3,
-                                           MAX(CASE WHEN rn = 4 THEN ANSWER_TXT1 END)  AS ANSWER_DESC4,
-                                           MAX(CASE WHEN rn = 5 THEN ANSWER_TXT1 END)  AS ANSWER_DESC5,
-                                           MAX(CASE WHEN rn = 6 THEN ANSWER_TXT1 END)  AS ANSWER_DESC6,
-                                           MAX(CASE WHEN rn = 7 THEN ANSWER_TXT1 END)  AS ANSWER_DESC7,
-                                           MAX(CASE WHEN rn = 8 THEN ANSWER_TXT1 END)  AS ANSWER_DESC8,
-                                           MAX(CASE WHEN rn = 9 THEN ANSWER_TXT1 END)  AS ANSWER_DESC9,
-                                           MAX(CASE WHEN rn = 10 THEN ANSWER_TXT1 END) AS ANSWER_DESC10,
-
-                                           -- Concatenate all values of ANSWER_TXT1 within each NBS_QUESTION_UID group
                                            STRING_AGG(TRIM(ANSWER_TXT1), ' | ')        AS ANSWER_DESC11
 
                                     FROM numbered_answers
@@ -442,16 +427,6 @@ BEGIN
         SELECT aa.INTERVIEW_UID,
                aa.NBS_QUESTION_UID,
                ctsm.RDB_COLUMN_NM,
-               ANSWER_DESC1,
-               ANSWER_DESC2,
-               ANSWER_DESC3,
-               ANSWER_DESC4,
-               ANSWER_DESC5,
-               ANSWER_DESC6,
-               ANSWER_DESC7,
-               ANSWER_DESC8,
-               ANSWER_DESC9,
-               ANSWER_DESC10,
                CASE
                    WHEN LEN(ANSWER_DESC11) > 0 AND RIGHT(RTRIM(ANSWER_DESC11), 1) = '|'
                        THEN LEFT(RTRIM(ANSWER_DESC11), LEN(RTRIM(ANSWER_DESC11)) - 1)
@@ -540,20 +515,7 @@ BEGIN
                                   FROM #CODED_COUNTY_TABLE),
              aggregated_answers AS (SELECT INTERVIEW_UID,
                                            NBS_QUESTION_UID,
-                                           MAX(CASE WHEN rn = 1 THEN ANSWER_TXT1 END)  AS ANSWER_DESC1,
-                                           MAX(CASE WHEN rn = 2 THEN ANSWER_TXT1 END)  AS ANSWER_DESC2,
-                                           MAX(CASE WHEN rn = 3 THEN ANSWER_TXT1 END)  AS ANSWER_DESC3,
-                                           MAX(CASE WHEN rn = 4 THEN ANSWER_TXT1 END)  AS ANSWER_DESC4,
-                                           MAX(CASE WHEN rn = 5 THEN ANSWER_TXT1 END)  AS ANSWER_DESC5,
-                                           MAX(CASE WHEN rn = 6 THEN ANSWER_TXT1 END)  AS ANSWER_DESC6,
-                                           MAX(CASE WHEN rn = 7 THEN ANSWER_TXT1 END)  AS ANSWER_DESC7,
-                                           MAX(CASE WHEN rn = 8 THEN ANSWER_TXT1 END)  AS ANSWER_DESC8,
-                                           MAX(CASE WHEN rn = 9 THEN ANSWER_TXT1 END)  AS ANSWER_DESC9,
-                                           MAX(CASE WHEN rn = 10 THEN ANSWER_TXT1 END) AS ANSWER_DESC10,
-
-                                           -- Concatenate all values of ANSWER_TXT1 within each NBS_QUESTION_UID group
                                            STRING_AGG(TRIM(ANSWER_TXT1), ' | ')        AS ANSWER_DESC11
-
                                     FROM numbered_answers
                                     GROUP BY INTERVIEW_UID,
                                              NBS_QUESTION_UID)
@@ -562,16 +524,6 @@ BEGIN
                cctd.NBS_QUESTION_UID,
                cct.RDB_COLUMN_NM,
                cct.NBS_ANSWER_UID,
-               ANSWER_DESC1,
-               ANSWER_DESC2,
-               ANSWER_DESC3,
-               ANSWER_DESC4,
-               ANSWER_DESC5,
-               ANSWER_DESC6,
-               ANSWER_DESC7,
-               ANSWER_DESC8,
-               ANSWER_DESC9,
-               ANSWER_DESC10,
                CASE
                    WHEN LEN(ANSWER_DESC11) > 0 AND RIGHT(RTRIM(ANSWER_DESC11), 1) = '|'
                        THEN LEFT(RTRIM(ANSWER_DESC11), LEN(RTRIM(ANSWER_DESC11)) - 1)
