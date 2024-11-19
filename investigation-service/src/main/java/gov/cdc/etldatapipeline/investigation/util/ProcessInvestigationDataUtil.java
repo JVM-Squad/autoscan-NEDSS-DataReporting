@@ -60,7 +60,7 @@ public class ProcessInvestigationDataUtil {
         transformCaseCountInfo(investigation.getInvestigationCaseCnt(), investigationTransformed);
         transformOrganizationParticipations(investigation.getOrganizationParticipations(), investigationTransformed);
         transformActIds(investigation.getActIds(), investigationTransformed);
-        transformObservationIds(investigation.getObservationNotificationIds(), investigationTransformed);
+        transformObservationIds(investigation.getInvestigationObservationIds(), investigationTransformed);
         transformInvestigationConfirmationMethod(investigation.getInvestigationConfirmationMethod(), investigationTransformed);
         processInvestigationPageCaseAnswer(investigation.getInvestigationCaseAnswer(), investigationTransformed);
 
@@ -204,38 +204,49 @@ public class ProcessInvestigationDataUtil {
         }
     }
 
-    private void transformObservationIds(String observationNotificationIds, InvestigationTransformed investigationTransformed) {
+    private void transformObservationIds(String investigationObservationIds, InvestigationTransformed investigationTransformed) {
         try {
-            JsonNode investigationObservationIdsJsonArray = parseJsonArray(observationNotificationIds);
+            JsonNode investigationObservationIdsJsonArray = parseJsonArray(investigationObservationIds);
             InvestigationObservation investigationObservation = new InvestigationObservation();
-            List<Long> observationIds = new ArrayList<>();
+            InvestigationObservationKey investigationObservationKey = new InvestigationObservationKey();
+
+            investigationKey.setPublicHealthCaseUid(investigationTransformed.getPublicHealthCaseUid());
+            String jsonKey = jsonGenerator.generateStringJson(investigationKey);
+            kafkaTemplate.send(investigationObservationOutputTopicName, jsonKey, null);
 
             for(JsonNode node : investigationObservationIdsJsonArray) {
                 String sourceClassCode = node.path("source_class_cd").asText();
                 String actTypeCode = node.path("act_type_cd").asText();
                 Long sourceActId = node.get("source_act_uid").asLong();
                 Long publicHealthCaseUid = node.get("public_health_case_uid").asLong();
-                investigationKey.setPublicHealthCaseUid(publicHealthCaseUid);
+                String rootTypeCd = node.path("act_type_cd").asText();
 
                 if(sourceClassCode.equals("OBS") && actTypeCode.equals("PHCInvForm")) {
                     investigationTransformed.setPhcInvFormId(sourceActId);
                 }
 
-                if(sourceClassCode.equals("OBS") && actTypeCode.equals("LabReport")) {
-                    investigationObservation.setPublicHealthCaseUid(publicHealthCaseUid);
-                    observationIds.add(sourceActId);
-                }
+                investigationObservationKey.setPublicHealthCaseUid(publicHealthCaseUid);
+                investigationObservationKey.setObservationId(sourceActId);
+                investigationObservationKey.setBranchId(null);
 
-                if(sourceClassCode.equals("OBS") && actTypeCode.equals("MorbReport")) {
-                    investigationObservation.setPublicHealthCaseUid(publicHealthCaseUid);
-                    observationIds.add(sourceActId);
-                }
-            }
+                investigationObservation.setPublicHealthCaseUid(publicHealthCaseUid);
+                investigationObservation.setObservationId(sourceActId);
+                investigationObservation.setRootTypeCd(rootTypeCd);
+                investigationObservation.setBranchId(null);
+                investigationObservation.setBranchTypeCd(null);
 
-            for(Long id : observationIds) {
-                investigationObservation.setObservationId(id);
+                Optional.ofNullable(node.get("branch_uid")).filter(n -> !n.isNull())
+                        .ifPresent(n -> {
+                            investigationObservationKey.setBranchId(n.asLong());
+                            investigationObservation.setBranchId(n.asLong());
+
+                        });
+                Optional.ofNullable(node.get("branch_type_cd")).filter(n -> !n.isNull())
+                        .ifPresent(n -> investigationObservation.setBranchTypeCd(n.asText()));
+
+                jsonKey = jsonGenerator.generateStringJson(investigationObservationKey);
                 String jsonValue = jsonGenerator.generateStringJson(investigationObservation);
-                kafkaTemplate.send(investigationObservationOutputTopicName, jsonValue, jsonValue);
+                kafkaTemplate.send(investigationObservationOutputTopicName, jsonKey, jsonValue);
             }
         } catch (IllegalArgumentException ex) {
             logger.info(ex.getMessage(), "InvestigationObservationIds");
