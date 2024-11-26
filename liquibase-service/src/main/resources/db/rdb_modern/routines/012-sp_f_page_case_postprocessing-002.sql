@@ -1,14 +1,12 @@
 CREATE OR ALTER PROCEDURE dbo.sp_f_page_case_postprocessing
     @phc_ids nvarchar(max),
     @debug bit = 'false'
-as
+AS
 
 BEGIN
     DECLARE @RowCount_no INT ;
     DECLARE @Proc_Step_no FLOAT = 0 ;
     DECLARE @Proc_Step_Name VARCHAR(200) = '' ;
-    DECLARE @batch_start_time datetime2(7) = null ;
-    DECLARE @batch_end_time datetime2(7) = null ;
     DECLARE @batch_id BIGINT;
     SET @batch_id = cast((format(getdate(),'yyyyMMddHHmmss')) as bigint);
 
@@ -45,12 +43,6 @@ BEGIN
         COMMIT TRANSACTION;
 
 
-        select @batch_start_time = batch_start_dttm,@batch_end_time = batch_end_dttm
-        from [dbo].[job_batch_log]
-        where status_type = 'start' and type_code='MasterETL'
-        ;
-
-
         BEGIN TRANSACTION;
 
 
@@ -65,12 +57,10 @@ BEGIN
                LAST_CHG_TIME
         INTO #PHC_UIDS
         FROM dbo.nrt_investigation inv
-                 --LEFT OUTER JOIN NBS_ODSE..CASE_MANAGEMENT cm ON inv.PUBLIC_HEALTH_CASE_UID= cm.PUBLIC_HEALTH_CASE_UID
-                 LEFT OUTER JOIN NBS_SRTE..CONDITION_CODE cc  ON cc.CONDITION_CD= inv.CD
-            AND INVESTIGATION_FORM_CD   NOT IN ( 'INV_FORM_BMDGAS','INV_FORM_BMDGBS','INV_FORM_BMDGEN',
-                                                 'INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV',
-                                                 'INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR')
-        WHERE inv.public_health_case_uid IN (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+        WHERE inv.public_health_case_uid IN (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
+          AND INVESTIGATION_FORM_CD  NOT IN ( 'INV_FORM_BMDGAS','INV_FORM_BMDGBS','INV_FORM_BMDGEN',
+                                              'INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV',
+                                              'INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR');
 
         if @debug  = 'true' select * from #PHC_UIDS;
 
@@ -87,10 +77,9 @@ BEGIN
         INTO  #PHC_UIDS_ALL
         FROM
             dbo.nrt_investigation inv
-                --LEFT OUTER JOIN NBS_ODSE.dbo.CASE_MANAGEMENT ON	inv.PUBLIC_HEALTH_CASE_UID= CASE_MANAGEMENT.PUBLIC_HEALTH_CASE_UID
-                LEFT OUTER JOIN NBS_SRTE.dbo.CONDITION_CODE ON 	CONDITION_CODE.CONDITION_CD= inv.CD AND	INVESTIGATION_FORM_CD
-                NOT IN 	( 'bo.','INV_FORM_BMDGBS','INV_FORM_BMDGEN','INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV','INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR')
-        WHERE inv.public_health_case_uid IN (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+        WHERE inv.public_health_case_uid IN (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
+          AND INVESTIGATION_FORM_CD
+            NOT IN 	( 'bo.','INV_FORM_BMDGBS','INV_FORM_BMDGEN','INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV','INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR');
 
         if @debug  = 'true' select * from #PHC_UIDS_ALL;
 
@@ -121,10 +110,8 @@ BEGIN
         INTO  #PHC_CASE_UIDS_ALL
         FROM
             dbo.nrt_investigation inv
-                --LEFT OUTER JOIN NBS_ODSE.dbo.CASE_MANAGEMENT ON	inv.PUBLIC_HEALTH_CASE_UID= CASE_MANAGEMENT.PUBLIC_HEALTH_CASE_UID
-                LEFT OUTER JOIN NBS_SRTE.dbo.CONDITION_CODE ON 	CONDITION_CODE.CONDITION_CD= inv.CD AND	INVESTIGATION_FORM_CD
-                NOT IN 	( 'bo.','INV_FORM_BMDGBS','INV_FORM_BMDGEN','INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV','INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR')
         where inv.public_health_case_uid IN (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
+          and INVESTIGATION_FORM_CD  NOT IN 	( 'bo.','INV_FORM_BMDGBS','INV_FORM_BMDGEN','INV_FORM_BMDNM','INV_FORM_BMDSP','INV_FORM_GEN','INV_FORM_HEPA','INV_FORM_HEPBV','INV_FORM_HEPCV','INV_FORM_HEPGEN','INV_FORM_MEA','INV_FORM_PER','INV_FORM_RUB','INV_FORM_RVCT','INV_FORM_VAR')
           AND CASE_MANAGEMENT_UID is null;
 
         if @debug  = 'true' select * from #PHC_CASE_UIDS_ALL;

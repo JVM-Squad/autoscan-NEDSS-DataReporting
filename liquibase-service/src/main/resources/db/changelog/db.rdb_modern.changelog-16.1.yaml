@@ -558,3 +558,19 @@ databaseChangeLog:
         - sqlFile:
             path: 004-v_getobstxt-001.sql
             splitStatements: false
+  - changeSet:
+      id: 75
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 010-sp_sld_investigation_repeat_postprocessing-003.sql
+            splitStatements: false
+  - changeSet:
+      id: 76
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 012-sp_f_page_case_postprocessing-002.sql
+            splitStatements: false
