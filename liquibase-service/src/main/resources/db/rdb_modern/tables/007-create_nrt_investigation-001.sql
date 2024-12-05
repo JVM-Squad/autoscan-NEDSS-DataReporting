@@ -114,9 +114,11 @@ CREATE TABLE dbo.nrt_investigation (
     PERIOD FOR SYSTEM_TIME (refresh_datetime, max_datetime)
 );
 
+
 IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_investigation' and xtype = 'U')
     BEGIN
 
+--CNDE-1916
         IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'investigation_form_cd' AND Object_ID = Object_ID(N'nrt_investigation'))
             BEGIN
             ALTER TABLE dbo.nrt_investigation ADD investigation_form_cd VARCHAR(50);
@@ -127,4 +129,116 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_investigation' and xtype =
                 ALTER TABLE dbo.nrt_investigation ADD outbreak_name_desc VARCHAR(100);
             END;
 
+--CNDE-1802
+        IF EXISTS(SELECT 1 FROM sys.columns WHERE name = N'notification_local_id' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation DROP COLUMN notification_local_id;
+            END;
+
+        IF EXISTS(SELECT 1 FROM sys.columns WHERE name = N'notification_add_time' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation DROP COLUMN notification_add_time;
+            END;
+
+        IF EXISTS(SELECT 1 FROM sys.columns WHERE name = N'notification_record_status_cd' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation DROP COLUMN notification_record_status_cd;
+            END;
+
+        IF EXISTS(SELECT 1 FROM sys.columns WHERE Name = N'notification_last_chg_time' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation DROP COLUMN notification_last_chg_time;
+            END;
+
+--CNDE-1602
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'investigation_count' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD investigation_count bigint;
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'case_count' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD case_count bigint;
+            END;
+
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'investigator_assigned_datetime' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD investigator_assigned_datetime datetime;
+            END;
+
+--CNDE-1902
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'investigation_form_cd' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD investigation_form_cd VARCHAR(50);
+            END;
+
+--CNDE-1913
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'ca_supervisor_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD ca_supervisor_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'closure_investgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD closure_investgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'dispo_fld_fupinvestgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD dispo_fld_fupinvestgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'fld_fup_investgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD fld_fup_investgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'fld_fup_prov_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD fld_fup_prov_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'fld_fup_supervisor_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD fld_fup_supervisor_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'init_fld_fup_investgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD init_fld_fup_investgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'init_fup_investgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD init_fup_investgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'init_interviewer_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD init_interviewer_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'interviewer_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD interviewer_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'surv_investgr_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD surv_investgr_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'fld_fup_facility_of_phc_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD fld_fup_facility_of_phc_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'org_as_hospital_of_delivery_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD org_as_hospital_of_delivery_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'per_as_provider_of_delivery_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD per_as_provider_of_delivery_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'per_as_provider_of_obgyn_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD per_as_provider_of_obgyn_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'per_as_provider_of_pediatrics_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD per_as_provider_of_pediatrics_uid bigint;
+            END;
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'org_as_reporter_uid' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD org_as_reporter_uid bigint;
+            END;
     END;
