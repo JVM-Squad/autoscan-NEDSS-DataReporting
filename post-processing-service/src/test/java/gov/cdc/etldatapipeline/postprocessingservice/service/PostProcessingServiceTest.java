@@ -171,11 +171,14 @@ class PostProcessingServiceTest {
 
         String expectedPublicHealthCaseIdsString = "123";
         verify(investigationRepositoryMock).executeStoredProcForCaseManagement(expectedPublicHealthCaseIdsString);
+        verify(investigationRepositoryMock).executeStoredProcForFStdPageCase(expectedPublicHealthCaseIdsString);
 
         List<ILoggingEvent> logs = listAppender.list;
-        assertEquals(4, logs.size());
+        assertEquals(6, logs.size());
         assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.CASE_MANAGEMENT.getStoredProcedure()));
         assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+        assertTrue(logs.get(4).getFormattedMessage().contains(PostProcessingService.Entity.F_STD_PAGE_CASE.getStoredProcedure()));
+        assertTrue(logs.get(5).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
@@ -406,10 +409,11 @@ class PostProcessingServiceTest {
         assertTrue(topicLogList.get(5).contains(invTopic));
         assertTrue(topicLogList.get(6).contains(ntfTopic));
         assertTrue(topicLogList.get(7).contains(cmTopic));
-        assertTrue(topicLogList.get(8).contains(intTopic));
+        assertTrue(topicLogList.get(8).contains(cmTopic));
         assertTrue(topicLogList.get(9).contains(intTopic));
-        assertTrue(topicLogList.get(10).contains(ldfTopic));
-        assertTrue(topicLogList.get(11).contains(obsTopic));
+        assertTrue(topicLogList.get(10).contains(intTopic));
+        assertTrue(topicLogList.get(11).contains(ldfTopic));
+        assertTrue(topicLogList.get(12).contains(obsTopic));
     }
 
     @Test
