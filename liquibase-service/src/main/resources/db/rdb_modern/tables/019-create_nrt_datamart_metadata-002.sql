@@ -23,5 +23,3 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xty
             END;
 
     END;
-
-    END;
