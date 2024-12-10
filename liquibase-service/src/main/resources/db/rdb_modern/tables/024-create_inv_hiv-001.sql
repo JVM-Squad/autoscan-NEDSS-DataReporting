@@ -22,4 +22,7 @@ IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'INV_HIV' and xtype = 'U')
             HIV_CA_900_REASON_NOT_LOC VARCHAR(4000),
             INVESTIGATION_KEY BIGINT
         );
+
+        INSERT INTO [DBO].[INV_HIV] (INVESTIGATION_KEY) VALUES (1);
+
     END;

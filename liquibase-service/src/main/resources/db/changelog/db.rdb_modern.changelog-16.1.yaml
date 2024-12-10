@@ -596,7 +596,6 @@ databaseChangeLog:
   - changeSet:
       id: 82
       author: liquibase
-      runOnChange: true
       changes:
         - sqlFile:
             path: 024-create_inv_hiv-001.sql
