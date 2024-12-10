@@ -247,6 +247,7 @@ databaseChangeLog:
   - changeSet:
       id: 33
       author: liquibase
+      runOnChange: true
       changes:
         - sqlFile:
             path: 019-create_nrt_datamart_metadata-001.sql
@@ -590,10 +591,18 @@ databaseChangeLog:
       author: liquibase
       changes:
         - sqlFile:
-            path: 019-create_nrt_datamart_metadata-002.sql
+            path: 023-create_std_hiv_datamart-001.sql
             splitStatements: false
   - changeSet:
       id: 82
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 024-create_inv_hiv-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 83
       author: liquibase
       runOnChange: true
       changes:
