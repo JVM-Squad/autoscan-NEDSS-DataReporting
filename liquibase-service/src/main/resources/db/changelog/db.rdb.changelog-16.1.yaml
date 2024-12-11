@@ -48,3 +48,10 @@ databaseChangeLog:
         - sqlFile:
             path: 001-generate_data_for_data_sync_config-005.sql
             splitStatements: false
+  - changeSet:
+      id: 7
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-generate_data_for_data_sync_config-006.sql
+            splitStatements: false
