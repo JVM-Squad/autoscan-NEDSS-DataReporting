@@ -14,12 +14,17 @@ BEGIN
      * 3. The stored procedure inserts or updates records based on the INVESTIGATION_KEY.
      * */
 
+
     DECLARE @batch_id BIGINT;
     SET @batch_id = cast((format(getdate(),'yyyyMMddHHmmss')) as bigint);
     PRINT @batch_id;
     DECLARE @RowCount_no int;
     DECLARE @Proc_Step_no float= 0;
     DECLARE @Proc_Step_Name varchar(200)= '';
+    DECLARE @COUNTSTD AS int;
+    DECLARE @COUNTHIV AS int;
+    SET @COUNTSTD= (select  COUNT(*)as INT  from NBS_SRTE..Condition_code where nnd_entity_identifier= 'STD_Case_Map_v1.0' and port_req_ind_cd ='F' );
+    SET @COUNTHIV= (SELECT COUNT(*) from NBS_ODSE..NBS_rdb_metadata where rdb_table_nm = 'D_INV_HIV' );
 
 
     BEGIN TRY
@@ -27,6 +32,7 @@ BEGIN
         BEGIN TRANSACTION;
         SET @Proc_Step_Name = 'SP_Start';
         SET @PROC_STEP_NO = @PROC_STEP_NO + 1;
+
 
         /* Get list of Investigations*/
         SELECT *
@@ -78,7 +84,7 @@ BEGIN
             RECORD_STATUS_CD='ACTIVE'
           AND EXISTS
             (
-                SELECT 1 FROM DBO.INV_HIV_TEST ih
+                SELECT 1 FROM DBO.INV_HIV ih
                 WHERE ih.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
 
             );
@@ -144,7 +150,7 @@ BEGIN
             RECORD_STATUS_CD='ACTIVE'
           AND NOT EXISTS
             (
-                SELECT 1 FROM DBO.INV_HIV_TEST ih
+                SELECT 1 FROM DBO.INV_HIV ih
                 WHERE ih.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
 
             )
@@ -504,7 +510,7 @@ BEGIN
           ,[SYM_OTIC_MANIFESTATION]	 = 	SYM.SYM_OTIC_MANIFESTATION
           ,[SYM_LATE_CLINICAL_MANIFES]	 = 	SYM.SYM_LATE_CLINICAL_MANIFES
           ,[TRT_TREATMENT_DATE]	 = 	TRT.TRT_TREATMENT_DATE
-        FROM [dbo].[STD_HIV_DATAMART_TEST] shd
+        FROM [dbo].[STD_HIV_DATAMART] shd
                  INNER JOIN dbo.F_STD_PAGE_CASE PC ON  shd.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
                  INNER JOIN #tmp_investigation INV ON INV.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
                  LEFT JOIN dbo.CONDITION COND ON COND.CONDITION_KEY = PC.CONDITION_KEY
@@ -1218,7 +1224,7 @@ BEGIN
                AND PC.PATIENT_KEY != 1
                AND NOT EXISTS
                  (
-                     SELECT 1 FROM DBO.STD_HIV_DATAMART_TEST shd
+                     SELECT 1 FROM DBO.STD_HIV_DATAMART shd
                      WHERE shd.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
 
                  )
