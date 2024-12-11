@@ -21,10 +21,6 @@ BEGIN
     DECLARE @RowCount_no int;
     DECLARE @Proc_Step_no float= 0;
     DECLARE @Proc_Step_Name varchar(200)= '';
-    DECLARE @COUNTSTD AS int;
-    DECLARE @COUNTHIV AS int;
-    SET @COUNTSTD= (select  COUNT(*)as INT  from NBS_SRTE..Condition_code where nnd_entity_identifier= 'STD_Case_Map_v1.0' and port_req_ind_cd ='F' );
-    SET @COUNTHIV= (SELECT COUNT(*) from NBS_ODSE..NBS_rdb_metadata where rdb_table_nm = 'D_INV_HIV' );
 
 
     BEGIN TRY

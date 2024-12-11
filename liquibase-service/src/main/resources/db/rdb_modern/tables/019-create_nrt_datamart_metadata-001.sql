@@ -9,9 +9,9 @@ IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and
             );
     END;
 
-/*CNDE-1954: Separate Hepatitis Datamart condition code addition script.*/
 IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xtype = 'U')
     BEGIN
+        /*CNDE-1954: Separate Hepatitis Datamart condition code addition script.*/
         IF NOT EXISTS (SELECT 1 FROM dbo.nrt_datamart_metadata ndm WHERE ndm.Datamart = 'Hepatitis_Datamart')
             BEGIN
                 INSERT INTO dbo.nrt_datamart_metadata
@@ -40,11 +40,7 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xty
                            WHERE ndm.condition_cd = hep_codes.condition_cd);
             END;
 
-    END;
-
-/*CNDE-1954: Page Builder STD HIV Codes determined using nnd_entity_identifier for STD and prog_area_cd for HIV.*/
-IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xtype = 'U')
-    BEGIN
+        /*CNDE-1954: Page Builder STD HIV Codes determined using nnd_entity_identifier for STD and prog_area_cd for HIV.*/
         IF NOT EXISTS (SELECT 1 FROM dbo.nrt_datamart_metadata ndm WHERE ndm.Datamart = 'Std_Hiv_Datamart')
             BEGIN
                 INSERT INTO dbo.nrt_datamart_metadata
