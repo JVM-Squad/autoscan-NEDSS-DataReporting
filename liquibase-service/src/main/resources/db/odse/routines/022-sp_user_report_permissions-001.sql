@@ -49,6 +49,10 @@ BEGIN
                 LEFT JOIN dbo.Data_Source ds
                 ON ds.data_source_uid = rep.data_source_uid
         where   
+                /*
+                For the case when the user_ids variable is NULL or an empty string, return all user report permissions
+                Otherwise, check to see if the user_id is contains in the user_ids variable
+                */
                 (CASE 
                     WHEN COALESCE(@user_ids, '') = '' THEN 1
                     WHEN [user].user_id in (SELECT value FROM STRING_SPLIT(@user_ids, ',')) THEN 1
