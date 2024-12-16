@@ -17,7 +17,6 @@ BEGIN
 
         select distinct
         [user].user_id                  as [user],
-        [operation_type].bus_op_nm      as [operation_type],
         [object_type].bus_obj_nm        as [object_type],
         [operation_type].bus_op_nm + '-' + [object_type].bus_obj_nm as [authority],
         rep.report_title,
