@@ -40,8 +40,8 @@ BEGIN
 
 
         SELECT @RowCount_no = @@ROWCOUNT;
-        INSERT INTO [dbo].[job_flow_log] (batch_id,[Dataflow_Name],[package_Name],[Status_Type] ,[step_number],[step_name],[row_count])
-        VALUES( @Batch_id,'STD_HIV_DATAMART','STD_HIV_DATAMART','START',@Proc_Step_no,@Proc_Step_Name,0);
+        INSERT INTO [dbo].[job_flow_log] (batch_id,[Dataflow_Name],[package_Name],[Status_Type] ,[step_number],[step_name],[row_count],[msg_description1])
+        VALUES( @Batch_id,'STD_HIV_DATAMART','STD_HIV_DATAMART','START',@Proc_Step_no,@Proc_Step_Name,0,LEFT(@phc_id, 500));
         COMMIT TRANSACTION;
 
         /*New logic for INV_HIV*/
@@ -1229,6 +1229,33 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
         --PRINT 'STD_HIV_DATAMART ENDING...'+ CONVERT(VARCHAR(20), GETDATE(),120)
 
+        INSERT INTO [dbo].[job_flow_log] (batch_id,[Dataflow_Name],[package_Name],[Status_Type],[step_number],[step_name],[row_count])
+        VALUES(@Batch_id,'STD_HIV_DATAMART','STD_HIV_DATAMART','START',@Proc_Step_no,@Proc_Step_name,@RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION;
+
+        SET @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET @Proc_Step_Name = 'Remove INACTIVE Investigations';
+
+        DELETE FROM dbo.STD_HIV_DATAMART
+        WHERE INVESTIGATION_KEY IN (
+            SELECT DISTINCT PC.INVESTIGATION_KEY
+            FROM dbo.F_STD_PAGE_CASE PC
+                     INNER JOIN dbo.INVESTIGATION INV ON PC.INVESTIGATION_KEY = INV.INVESTIGATION_KEY
+                     INNER JOIN dbo.STD_HIV_DATAMART SHD ON SHD.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
+            WHERE INV.RECORD_STATUS_CD <> 'ACTIVE');
+
+        DELETE FROM dbo.INV_HIV
+        WHERE INVESTIGATION_KEY IN (
+            SELECT DISTINCT PC.INVESTIGATION_KEY
+            FROM dbo.F_STD_PAGE_CASE PC
+                     INNER JOIN dbo.INVESTIGATION INV ON PC.INVESTIGATION_KEY = INV.INVESTIGATION_KEY
+                     INNER JOIN dbo.INV_HIV IH ON IH.INVESTIGATION_KEY = PC.INVESTIGATION_KEY
+            WHERE INV.RECORD_STATUS_CD <> 'ACTIVE');
+
+        SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log] (batch_id,[Dataflow_Name],[package_Name],[Status_Type],[step_number],[step_name],[row_count])
         VALUES(@Batch_id,'STD_HIV_DATAMART','STD_HIV_DATAMART','START',@Proc_Step_no,@Proc_Step_name,@RowCount_no);
 
