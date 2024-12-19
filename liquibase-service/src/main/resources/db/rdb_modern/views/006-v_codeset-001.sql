@@ -1,5 +1,5 @@
 
-use rdb_modern;
+
 create or alter view dbo.v_codeset as 
 select m.unique_cd as CD ,
 	RDB_table as TBL_NM ,

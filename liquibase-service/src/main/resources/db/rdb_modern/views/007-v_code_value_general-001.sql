@@ -1,4 +1,4 @@
-use rdb_modern;
+
 create or alter view dbo.v_code_value_general as 
   select  v.code as CODE_VAL, 
          v.code_short_desc_txt as CODE_DESC, 
