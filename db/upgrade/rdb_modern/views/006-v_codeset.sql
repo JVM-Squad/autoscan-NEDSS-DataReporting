@@ -1,6 +1,6 @@
 
 use rdb_modern;
-create view dbo.v_codeset as 
+create or alter  view dbo.v_codeset as 
 select m.unique_cd as CD ,
 	RDB_table as TBL_NM ,
 	RDB_attribute as COL_NM ,
