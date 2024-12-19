@@ -1,4 +1,5 @@
-	 
+IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_srte_Code_value_general' and xtype = 'U')	 
+BEGIN	 
 CREATE TABLE dbo.nrt_srte_Code_value_general (
 	code_set_nm varchar(256) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
 	code varchar(20) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
@@ -33,3 +34,4 @@ CREATE TABLE dbo.nrt_srte_Code_value_general (
  CREATE NONCLUSTERED INDEX INDEX_CODE_VALUE_GENERAL_IND01 ON dbo.nrt_srte_Code_value_general (  code ASC  )  
 	 WITH (  PAD_INDEX = OFF ,FILLFACTOR = 90   ,SORT_IN_TEMPDB = OFF , IGNORE_DUP_KEY = OFF , STATISTICS_NORECOMPUTE = OFF , ONLINE = OFF , ALLOW_ROW_LOCKS = ON , ALLOW_PAGE_LOCKS = ON  )
 	 ON [PRIMARY ] ;
+END;

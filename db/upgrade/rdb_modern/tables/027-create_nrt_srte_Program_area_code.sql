@@ -1,4 +1,4 @@
-
+IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_srte_Program_area_code' and xtype = 'U')
 CREATE TABLE dbo.nrt_srte_Program_area_code (
 	prog_area_cd varchar(20) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
 	prog_area_desc_txt varchar(50) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
