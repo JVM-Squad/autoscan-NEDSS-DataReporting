@@ -1,4 +1,4 @@
-IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_srte_Codeset' and xtype = 'U')
+IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_srte_Codeset' and xtype = 'U')	 
 BEGIN
 CREATE TABLE dbo.nrt_srte_Codeset (
 	code_set_nm varchar(256) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL,
@@ -31,4 +31,5 @@ CREATE TABLE dbo.nrt_srte_Codeset (
  CREATE NONCLUSTERED INDEX RDB_PERF_03312021_1 ON dbo.nrt_srte_Codeset (  code_set_group_id ASC  )  
 	 WITH (  PAD_INDEX = OFF ,FILLFACTOR = 100  ,SORT_IN_TEMPDB = OFF , IGNORE_DUP_KEY = OFF , STATISTICS_NORECOMPUTE = OFF , ONLINE = OFF , ALLOW_ROW_LOCKS = ON , ALLOW_PAGE_LOCKS = ON  )
 	 ON [PRIMARY ] ;
-END;	 
+	 
+END;
