@@ -1,7 +1,9 @@
 CREATE OR ALTER VIEW dbo.v_condition_dim AS
+-- default record for the dimension
 with default_record as (
     SELECT 1 AS CONDITION_KEY
 ),
+-- CTE containing condition dim transformations
 condition_list as(
 SELECT 
     cc.condition_cd,
@@ -48,6 +50,7 @@ FROM
     NBS_SRTE.dbo.Program_area_code pac
         on  cc.prog_area_cd = pac.prog_area_cd
 ),
+-- section for records containing only program area information
 pam_only as (
     SELECT
     program_area_cd,
@@ -61,24 +64,6 @@ pam_only as (
     condition_list) as dist_pam
 )
 SELECT 
-    condition_cd,
-    condition_desc, 
-    condition_short_nm, 
-    condition_cd_eff_dt, 
-    condition_cd_end_dt, 
-    nnd_ind, 
-    condition_key,
-    disease_grp_cd, 
-    disease_grp_desc,
-    program_area_cd, 
-    program_area_desc,
-    condition_cd_sys_cd, 
-    condition_cd_sys_cd_nm, 
-    assigning_authority_cd, 
-    assigning_authority_desc
-FROM condition_list
-UNION ALL
-SELECT 
     NULL AS condition_cd,
     NULL AS condition_desc, 
     NULL AS condition_short_nm, 
@@ -90,11 +75,29 @@ SELECT
     NULL AS disease_grp_desc,
     NULL AS program_area_cd, 
     NULL AS program_area_desc,
-    NULL AS condition_cd_sys_cd, 
     NULL AS condition_cd_sys_cd_nm, 
     NULL AS assigning_authority_cd, 
-    NULL AS assigning_authority_desc
+    NULL AS assigning_authority_desc,
+    NULL AS condition_cd_sys_cd
 from default_record
+UNION ALL
+SELECT 
+    condition_cd,
+    condition_desc, 
+    condition_short_nm, 
+    condition_cd_eff_dt, 
+    condition_cd_end_dt, 
+    nnd_ind, 
+    condition_key,
+    disease_grp_cd, 
+    disease_grp_desc,
+    program_area_cd, 
+    program_area_desc,
+    condition_cd_sys_cd_nm, 
+    assigning_authority_cd, 
+    assigning_authority_desc,
+    condition_cd_sys_cd
+FROM condition_list
 UNION ALL
 SELECT 
     NULL AS condition_cd,
@@ -108,9 +111,9 @@ SELECT
     NULL AS disease_grp_desc,
     program_area_cd,
     program_area_desc, 
-    NULL AS condition_cd_sys_cd, 
     NULL AS condition_cd_sys_cd_nm, 
     NULL AS assigning_authority_cd, 
-    NULL AS assigning_authority_desc
+    NULL AS assigning_authority_desc,
+    NULL AS condition_cd_sys_cd
 from pam_only;
 
