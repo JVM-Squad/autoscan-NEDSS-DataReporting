@@ -630,3 +630,11 @@ databaseChangeLog:
         - sqlFile:
             path: 010-v_code_value_general-001.sql
             splitStatements: false
+  - changeSet:
+      id: 96
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 011-v_condition_dim-001.sql
+            splitStatements: false
