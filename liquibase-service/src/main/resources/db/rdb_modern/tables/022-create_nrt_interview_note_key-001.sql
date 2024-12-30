@@ -1,3 +1,5 @@
+-- table is not dropped and recreated so as to stay consistent with the design of nrt_interview_key
+
 IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_interview_note_key' and xtype = 'U')
     BEGIN
 

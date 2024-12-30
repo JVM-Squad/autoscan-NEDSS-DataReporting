@@ -1,3 +1,5 @@
+-- table is not dropped and recreated, as D_INTERVIEW_KEY does not retain the key-uid relationship
+
 IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_interview_key' and xtype = 'U')
     BEGIN
 
