@@ -92,26 +92,23 @@ BEGIN
         COMMIT TRANSACTION;
 
 
+    /*
+    The coded attributes table exists for coded because the values need to be filtered out before the string split is applied.
+    Otherwise, the stored procedure will consistently throw a deadlocking error.
+    */
         BEGIN TRANSACTION
 
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING #OBS_CODED';
+            @PROC_STEP_NAME = ' GENERATING #CODED_ATTRIBUTES';
 
-        select 
-        obs.public_health_case_uid,
- imrdb.unique_cd as cd, 
-  obs.response,
-  imrdb.col_nm
-  INTO #OBS_CODED
-from 
-(SELECT 
+        SELECT 
 unique_cd,
-    TRIM(Value) AS col_nm
+    RDB_attribute
+    INTO #CODED_ATTRIBUTES
 FROM dbo.v_nrt_srte_imrdbmapping 
-CROSS APPLY STRING_SPLIT(RDB_attribute, ',')
-WHERE DB_field = 'code' AND unique_cd IN
+WHERE  unique_cd IN
 (
     'CRS007',       /* AUTOPSY_PERFORMED_IND */
           'CRS009',       /* BIRTH_STATE */
@@ -193,7 +190,42 @@ WHERE DB_field = 'code' AND unique_cd IN
           'CRS180',       /* INFANT_DEATH_FRM_CRS */
 		  'CRS182',       /* GENOTYPE_SEQUENCED_CRS */
 		  'CRS183'        /* GENOTYPE_IDENTIFIED_CRS */
-)
+);
+
+        if
+            @debug = 'true'
+            select @Proc_Step_Name as step, *
+            from #CODED_ATTRIBUTES;
+
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'CRS_CASE_DATAMART', 'CRS_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+
+        BEGIN TRANSACTION
+
+        SET
+            @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET
+            @PROC_STEP_NAME = ' GENERATING #OBS_CODED';
+
+        select 
+        obs.public_health_case_uid,
+ imrdb.unique_cd as cd, 
+  obs.response,
+  imrdb.col_nm
+  INTO #OBS_CODED
+from 
+(SELECT 
+unique_cd,
+    TRIM(Value) AS col_nm
+FROM #CODED_ATTRIBUTES 
+CROSS APPLY STRING_SPLIT(RDB_attribute, ',')
 ) imrdb
     LEFT JOIN (SELECT
     public_health_case_uid,
@@ -241,8 +273,7 @@ WHERE DB_field = 'code' AND unique_cd IN
             LEFT JOIN (SELECT * FROM dbo.v_getobstxt
             WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))) obs
             ON imrdb.unique_cd = obs.cd
-            WHERE 
-            imrdb.DB_field = 'value_txt' AND imrdb.unique_cd IN (
+            WHERE imrdb.unique_cd IN (
                 'CRS005',        /* DEATH_CERTIFICATE_PRIMARY_CAUS */
                     'CRS006',        /* DEATH_CERTIFICATE_2NDARY_CAUSE */
                     'CRS008',        /* FINAL_ANATOMICAL_DEATH_CAUSE */
@@ -305,10 +336,9 @@ obs.response
 INTO #OBS_DATE
 from dbo.v_nrt_srte_imrdbmapping imrdb
     LEFT JOIN (SELECT * FROM dbo.v_getobsdate
-    WHERE public_health_case_uid = 10659262) obs
+    WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))) obs
     ON imrdb.unique_cd = obs.cd
-WHERE 
-imrdb.DB_field = 'from_time' AND imrdb.unique_cd in (
+WHERE imrdb.unique_cd in (
     'CRS002',        /* HEALTH_PROVIDER_LAST_EVAL_DT */
           'CRS022a',       /* MOTHER_RASH_ONSET_DT */
           'CRS051',        /* RUBELLA_IGM_EIA_NONCAPTURE_DT */
@@ -360,10 +390,9 @@ obs.response
 INTO #OBS_NUMERIC
 from dbo.v_nrt_srte_imrdbmapping imrdb
     LEFT JOIN (SELECT * FROM dbo.v_getobsnum
-    WHERE public_health_case_uid = 10659262) obs
+    WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))) obs
     ON imrdb.unique_cd = obs.cd
-WHERE 
-imrdb.DB_field = 'numeric_value_1' AND imrdb.unique_cd IN (
+WHERE imrdb.unique_cd IN (
     'CRS010',       /* GESTATIONAL_AGE_IN_WK_AT_BIRTH */
           'CRS011',       /* CHILD_AGE_AT_THIS_DIAGNOSIS */
           'CRS013',       /* BIRTH_WEIGHT */       -- MISSING FROM SYSTEM
@@ -400,6 +429,8 @@ imrdb.DB_field = 'numeric_value_1' AND imrdb.unique_cd IN (
         SET
             @PROC_STEP_NAME = 'UPDATE dbo.CRS_CASE';
 
+        -- variables for the column lists
+        -- must be ordered the same as those used in the insert statement
         DECLARE @obscoded_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
 FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
@@ -434,19 +465,19 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
         tgt.GEOCODING_LOCATION_KEY = src.GEOCODING_LOCATION_KEY
         ' + CASE
                 WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-                                                 FROM #OBS_CODED)
+                                                 FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
             ELSE '' END 
          + CASE
                 WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-                                                 FROM #OBS_NUMERIC)
+                                                 FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) as cols)
             ELSE '' END 
          + CASE
                 WHEN @obstxt_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-                                                 FROM #OBS_TXT)
+                                                 FROM (SELECT DISTINCT col_nm FROM #OBS_TXT) as cols)
             ELSE '' END 
         + CASE
                 WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-                                                 FROM #OBS_DATE)
+                                                 FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
             ELSE '' END +
         ' FROM 
         #CRS_CASE_INIT src
@@ -507,7 +538,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
             MAX(response) 
             FOR col_nm IN (' + @obstxt_columns + ')
         ) AS PivotTable) ovt 
-        ON ovc.public_health_case_uid = src.public_health_case_uid'
+        ON ovt.public_health_case_uid = src.public_health_case_uid'
         ELSE ' ' END
         + CASE
               WHEN @obsdate_columns != '' THEN 
@@ -526,7 +557,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
             MAX(response) 
             FOR col_nm IN (' + @obsdate_columns + ')
         ) AS PivotTable) ovd
-        ON ovc.public_health_case_uid = src.public_health_case_uid'
+        ON ovd.public_health_case_uid = src.public_health_case_uid'
         ELSE ' ' END
         + ' WHERE
         tgt.INVESTIGATION_KEY IS NOT NULL 
@@ -553,6 +584,8 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
         SET @PROC_STEP_NAME = 'INSERT INTO dbo.CRS_CASE';
 
 
+        -- Variables for the columns in the insert select statement
+        -- Must be ordered the same as the original column lists
         DECLARE @obscoded_insert_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_insert_columns = COALESCE(STRING_AGG('ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm)  , '')
 FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
@@ -687,7 +720,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
             MAX(response) 
             FOR col_nm IN (' + @obstxt_columns + ')
         ) AS PivotTable) ovt 
-        ON ovc.public_health_case_uid = src.public_health_case_uid'
+        ON ovt.public_health_case_uid = src.public_health_case_uid'
         ELSE ' ' END
         + CASE
               WHEN @obsdate_columns != '' THEN 
@@ -706,7 +739,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
             MAX(response) 
             FOR col_nm IN (' + @obsdate_columns + ')
         ) AS PivotTable) ovd
-        ON ovc.public_health_case_uid = src.public_health_case_uid'
+        ON ovd.public_health_case_uid = src.public_health_case_uid'
         ELSE ' ' END
         +  ' WHERE tgt.INVESTIGATION_KEY IS NULL 
         AND src.public_health_case_uid IS NOT NULL';
