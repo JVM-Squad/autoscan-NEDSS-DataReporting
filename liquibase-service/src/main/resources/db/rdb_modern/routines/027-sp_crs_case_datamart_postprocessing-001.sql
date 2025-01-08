@@ -228,19 +228,24 @@ FROM #CODED_ATTRIBUTES
 CROSS APPLY STRING_SPLIT(RDB_attribute, ',')
 ) imrdb
     LEFT JOIN (SELECT
-    public_health_case_uid,
-    response,
-    cd,
-    CASE WHEN cd = 'CRS090' THEN 'PRENATAL_CARE_OBTAINED_FRM_' + CAST(ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, cd ORDER BY cd) AS NVARCHAR(50))
+    ovc.public_health_case_uid,
+    ovc.response,
+    ovc.cd,
+    CASE WHEN cd = 'CRS090' THEN 'PRENATAL_CARE_OBTAINED_FRM_' + CAST(ROW_NUMBER() OVER (PARTITION BY ovc.public_health_case_uid, ovc.cd ORDER BY ovc.cd, cvg.nbs_uid DESC) AS NVARCHAR(50))
     ELSE ''
-    END AS col_nm FROM dbo.v_getobscode
-    WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))) obs
+    END AS col_nm 
+    FROM dbo.v_getobscode ovc
+    LEFT JOIN (SELECT code_desc_txt, nbs_uid FROM dbo.v_nrt_srte_code_value_general WHERE code_set_nm = 'RUB_PRE_CARE_T') cvg
+        ON ovc.response = cvg.code_desc_txt
+    WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))
+    ) obs
     ON imrdb.unique_cd = obs.cd
         AND
         CASE WHEN obs.col_nm != '' AND obs.col_nm = imrdb.col_nm THEN 1
             WHEN obs.col_nm = '' THEN 1
         ELSE 0
-        END = 1;
+        END = 1
+    where obs.public_health_case_uid is not null;
 
         if
             @debug = 'true'
@@ -304,7 +309,7 @@ CROSS APPLY STRING_SPLIT(RDB_attribute, ',')
                     'CRS171',       /* OTHER_RUBELLA_TEST_RESULT_VAL */
                     'CRS173',        /* OTHER_RUBELLA_SPECIMEN_TYPE */
                     'CRS184'        /* GENOTYPE_OTHER_IDENTIFIED_CRS */
-            );
+            ) and obs.public_health_case_uid is not null;
 
         if
             @debug = 'true'
@@ -358,7 +363,7 @@ WHERE imrdb.unique_cd in (
           'CRS143',        /* SENT_FOR_GENOTYPING_DT */
           'CRS148',        /* MOTHER_VACCINATED_DT */
           'CRS174'         /* SEROLOGICALLY_CONFIRMD_DT */
-);
+) and obs.public_health_case_uid is not null;
 
         if
             @debug = 'true'
@@ -405,7 +410,7 @@ WHERE imrdb.unique_cd IN (
           'CRS158',       /* PREVIOUS_PREGNANCY_NBR */
           'CRS159',       /* TOTAL_LIVE_BIRTH_NBR */
           'CRS160'        /* BIRTH_DELIVERED_IN_US_NBR */
-);
+) and obs.public_health_case_uid is not null;
 
         if
             @debug = 'true'
@@ -494,7 +499,6 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 response
             FROM 
                 #OBS_CODED 
-                where public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -513,7 +517,6 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 response
             FROM 
                 #OBS_NUMERIC 
-                where public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -532,7 +535,6 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 response
             FROM 
                 #OBS_TXT 
-                where public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -551,7 +553,6 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 response
             FROM 
                 #OBS_DATE 
-                where public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -672,9 +673,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 col_nm, 
                 response
             FROM 
-                #OBS_CODED 
-                where public_health_case_uid IS NOT NULL
-                
+                #OBS_CODED                 
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -692,9 +691,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 col_nm, 
                 response
             FROM 
-                #OBS_NUMERIC 
-                where public_health_case_uid IS NOT NULL
-                
+                #OBS_NUMERIC                 
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -712,9 +709,7 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 col_nm, 
                 response
             FROM 
-                #OBS_TXT 
-                where public_health_case_uid IS NOT NULL
-        
+                #OBS_TXT         
         ) AS SourceData
         PIVOT (
             MAX(response) 
@@ -733,7 +728,6 @@ FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
                 response
             FROM 
                 #OBS_DATE 
-                where public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
             MAX(response) 
