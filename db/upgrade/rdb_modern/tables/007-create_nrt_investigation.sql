@@ -56,6 +56,7 @@ CREATE TABLE dbo.nrt_investigation (
     pat_age_at_onset_unit_cd            varchar(20)                                     NULL,
     pat_age_at_onset_unit               varchar(20)                                     NULL,
     investigator_assigned_time          datetime                                        NULL,
+    detection_method_cd                 varchar(20)                                     NULL,
     detection_method_desc_txt           varchar(50)                                     NULL,
     effective_duration_amt              varchar(50)                                     NULL,
     effective_duration_unit_cd          varchar(20)                                     NULL,

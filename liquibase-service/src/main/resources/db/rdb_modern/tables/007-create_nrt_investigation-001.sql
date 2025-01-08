@@ -252,3 +252,11 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_investigation' and xtype =
             ALTER TABLE dbo.nrt_investigation DROP COLUMN jurisdiction_code_desc_txt;
             END;
     END;
+
+--CNDE-2046
+        IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE name = N'detection_method_cd' AND Object_ID = Object_ID(N'nrt_investigation'))
+            BEGIN
+            ALTER TABLE dbo.nrt_investigation ADD detection_method_cd varchar(20);
+            END;
+
+END;
