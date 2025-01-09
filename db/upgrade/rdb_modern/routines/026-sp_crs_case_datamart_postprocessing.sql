@@ -14,10 +14,6 @@ BEGIN
         @batch_id BIGINT;
     SET
         @batch_id = cast((format(getdate(), 'yyyyMMddHHmmss')) as bigint);
-    DECLARE
-        @dynamic_columns NVARCHAR(MAX) = '';
-    DECLARE
-        @dynamic_join NVARCHAR(MAX) = '';
 
     BEGIN TRY
 
