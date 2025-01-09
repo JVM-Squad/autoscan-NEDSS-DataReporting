@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.TimeZone;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -27,6 +29,7 @@ public class InvestigationController {
     @GetMapping("/reporting/investigation-svc/status")
     public ResponseEntity<String> getDataPipelineStatusHealth() {
         log.info("Investigation Service Status OK");
+        log.info("Default time zone is: {}", TimeZone.getDefault().getID());
         return ResponseEntity.status(HttpStatus.OK).body("Investigation Service Status OK");
     }
 
