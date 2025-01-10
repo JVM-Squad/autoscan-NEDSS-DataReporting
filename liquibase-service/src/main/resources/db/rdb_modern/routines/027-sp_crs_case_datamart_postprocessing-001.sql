@@ -49,25 +49,22 @@ BEGIN
             SET
                 @PROC_STEP_NAME = ' GENERATING #CRS_CASE_INIT';
 
-            select inv.public_health_case_uid,
-                   i.INVESTIGATION_KEY,
-                   i.CONDITION_KEY,
-                   i.patient_key,
-                   i.Investigator_key,
-                   i.Physician_key,
-                   i.Reporter_key,
-                   i.Rpt_Src_Org_key,
-                   i.ADT_HSPTL_KEY,
-                   i.Inv_Assigned_dt_key,
-                   i.LDF_GROUP_KEY,
-                   i.GEOCODING_LOCATION_KEY
+            select public_health_case_uid,
+                   INVESTIGATION_KEY,
+                   CONDITION_KEY,
+                   patient_key,
+                   Investigator_key,
+                   Physician_key,
+                   Reporter_key,
+                   Rpt_Src_Org_key,
+                   ADT_HSPTL_KEY,
+                   Inv_Assigned_dt_key,
+                   LDF_GROUP_KEY,
+                   GEOCODING_LOCATION_KEY
             INTO #CRS_CASE_INIT
-            from dbo.nrt_investigation inv
-                     inner join dbo.v_common_inv_keys i
-                                on inv.public_health_case_uid = i.public_health_case_uid
-
-            where inv.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))
-              AND inv.investigation_form_cd LIKE 'INV_FORM_CRS%';
+            from dbo.v_nrt_inv_keys_attrs_mapping
+            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))
+              AND investigation_form_cd LIKE 'INV_FORM_CRS%';
 
             if
                 @debug = 'true'
