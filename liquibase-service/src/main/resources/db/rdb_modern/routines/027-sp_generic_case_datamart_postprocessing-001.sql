@@ -9,8 +9,9 @@ BEGIN
      * [Description]
      * This stored procedure is handles event based updates to Generic_Case datamart.
      * 1. Receives input list of public_health_case_uids. .
-     * 2. Relevant dimensions and f_std_page_case fact table are used to build the records.
-     * 3. The stored procedure inserts or updates records based on the INVESTIGATION_KEY.
+     * 2. Uses v_nrt_inv_keys_attrs_mapping to get the records. Had to hard code 'INV110' into this proc to exclude it as it is not included in the original SAS proc
+     * 3. Pivots the data to transform the col_nm values obtained for each code into column
+     * 4. The pivoted data is used to insert and also update into the datamart on the INVESTIGATION_KEY.
      * */
 
 
@@ -20,9 +21,12 @@ BEGIN
     DECLARE @RowCount_no int;
     DECLARE @Proc_Step_no float= 0;
     DECLARE @Proc_Step_Name varchar(200)= '';
+    DECLARE @datamart_nm VARCHAR(100) = 'GENERIC_CASE_DATAMART';
 
+    DECLARE @inv_form_cd VARCHAR(100) = 'INV_FORM_GEN%';
+    DECLARE @tgt_table_nm VARCHAR(50) = 'Generic_Case';
 
-    BEGIN TRY
+BEGIN TRY
 
         SET @Proc_Step_Name = 'SP_Start';
         SET @PROC_STEP_NO = @PROC_STEP_NO + 1;
@@ -40,8 +44,8 @@ BEGIN
                                      , [row_count]
                                      , [Msg_Description1])
         VALUES ( @batch_id
-               , 'GENERIC_CASE_DATAMART'
-               , 'GENERIC_CASE_DATAMART'
+               , @datamart_nm
+               , @datamart_nm
                , 'START'
                , @Proc_Step_no
                , @Proc_Step_Name
@@ -55,10 +59,10 @@ BEGIN
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING #GENERIC_CASE_INIT';
+            @PROC_STEP_NAME = ' GENERATING ##KEY_ATTR_INIT';
 
-        IF OBJECT_ID('#GENERIC_CASE_INIT', 'U') IS NOT NULL
-            drop table #GENERIC_CASE_INIT
+        IF OBJECT_ID('#KEY_ATTR_INIT', 'U') IS NOT NULL
+            drop table #KEY_ATTR_INIT
         ;
         select
             public_health_case_uid,
@@ -79,22 +83,22 @@ BEGIN
             pat_age_at_onset_unit_cd as PATIENT_AGE_AT_ONSET_UNIT,
             detection_method_cd as DETECTION_METHOD,
             detection_method_desc_txt as DETECTION_METHOD_OTHER
-        INTO #GENERIC_CASE_INIT
+        INTO #KEY_ATTR_INIT
         from dbo.v_nrt_inv_keys_attrs_mapping
         where
             public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
-            AND investigation_form_cd = 'INV_FORM_GEN';
+            AND investigation_form_cd like @inv_form_cd;
 
         if
             @debug = 'true'
             select @Proc_Step_Name as step, *
-            from #GENERIC_CASE_INIT;
+            from #KEY_ATTR_INIT;
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -115,7 +119,7 @@ BEGIN
                coded_response as response
                 INTO #OBS_CODED
         from dbo.v_rdb_obs_mapping
-        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'code')
+        WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'code')
         and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
@@ -126,7 +130,7 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -147,7 +151,7 @@ BEGIN
                coded_response as response
         INTO #OBS_DATE
         from dbo.v_rdb_obs_mapping
-        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'from_time')
+        WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time')
           and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
@@ -158,7 +162,7 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -178,7 +182,7 @@ BEGIN
                coded_response as response
         INTO #OBS_NUMERIC
         from dbo.v_rdb_obs_mapping
-        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1')
+        WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1')
           and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
@@ -189,7 +193,7 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -199,21 +203,21 @@ BEGIN
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = 'UPDATE dbo.GENERIC_CASE';
+            @PROC_STEP_NAME = 'UPDATE dbo.'+@tgt_table_nm;
 
         -- variables for the column lists
         -- must be ordered the same as those used in the insert statement
         DECLARE @obscoded_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'code') AS cols;
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = @tgt_table_nm and db_field = 'code') AS cols;
 
         DECLARE @obsnum_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1') AS cols;
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1') AS cols;
 
         DECLARE @obsdate_columns NVARCHAR(MAX) = '';
         SELECT @obsdate_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'from_time')  AS cols;
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_TABLE = @tgt_table_nm and db_field = 'from_time') and  unique_cd != 'INV110')  AS cols;
 
 
 
@@ -229,7 +233,7 @@ BEGIN
        tgt.PHYSICIAN_KEY = src.PHYSICIAN_KEY,
        tgt.REPORTER_KEY = src.REPORTER_KEY,
        tgt.RPT_SRC_ORG_KEY = src.RPT_SRC_ORG_KEY,
-		tgt.ADT_HSPTL_KEY = src.ADT_HSPTL_KEY,
+	    tgt.ADT_HSPTL_KEY = src.ADT_HSPTL_KEY,
        tgt.INV_ASSIGNED_DT_KEY = src.INV_ASSIGNED_DT_KEY,
        tgt.LDF_GROUP_KEY = src.LDF_GROUP_KEY,
        tgt.GEOCODING_LOCATION_KEY = src.GEOCODING_LOCATION_KEY,
@@ -241,23 +245,23 @@ BEGIN
        tgt.DETECTION_METHOD_OTHER = src.DETECTION_METHOD_OTHER'
  		+ CASE
 	       	WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	              FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'code' AND RDB_table = 'Generic_Case' ) as cols)
+	              FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm AND db_field = 'code' ) as cols)
 	       	ELSE ''
 		END
 		+ CASE
 	       	WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	                FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'numeric_value_1' AND RDB_table = 'Generic_Case' ) as cols)
+	                FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm AND db_field = 'numeric_value_1' ) as cols)
 			ELSE ''
 		END
 		+ CASE
 	        WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	               FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'from_time' AND RDB_table = 'Generic_Case' ) as cols)
+	               FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_table = @tgt_table_nm AND db_field = 'from_time') and  unique_cd != 'INV110' ) as cols)
 	        ELSE ''
     	END
        + '
        FROM
-       #GENERIC_CASE_INIT src
-       LEFT OUTER JOIN dbo.GENERIC_CASE tgt
+       #KEY_ATTR_INIT src
+       LEFT OUTER JOIN dbo.'+@tgt_table_nm+' tgt
            on src.INVESTIGATION_KEY = tgt.INVESTIGATION_KEY'
        + CASE
              WHEN @obscoded_columns != '' THEN
@@ -336,38 +340,36 @@ BEGIN
 
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
         BEGIN TRANSACTION;
 
         SET @PROC_STEP_NO = @PROC_STEP_NO + 1;
-        SET @PROC_STEP_NAME = 'INSERT INTO dbo.GENERIC_CASE';
+        SET @PROC_STEP_NAME = 'INSERT INTO dbo.'+@tgt_table_nm;
 
 
         -- Variables for the columns in the insert select statement
         -- Must be ordered the same as the original column lists
 
         DECLARE @obscoded_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obscoded_insert_columns = COALESCE(
-                STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-        FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'code') AS cols;
-
+        SELECT @obscoded_insert_columns = COALESCE(STRING_AGG('ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm and db_field = 'code') AS cols;
 
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns = COALESCE(STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-        FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1') AS cols;
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm and db_field = 'numeric_value_1') AS cols;
 
         DECLARE @obsdate_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'from_time') AS cols;
+        SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_table = @tgt_table_nm and db_field = 'from_time') and  unique_cd != 'INV110') AS cols;
 
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
 
         SET @Insert_sql = '
-        INSERT INTO dbo.GENERIC_CASE (
+        INSERT INTO dbo.'+@tgt_table_nm+' (
 	    	INVESTIGATION_KEY,
 	        CONDITION_KEY,
 	        PATIENT_KEY,
@@ -429,8 +431,8 @@ BEGIN
             END
          	+
             '
-			  FROM #GENERIC_CASE_INIT src
-              LEFT OUTER JOIN dbo.GENERIC_CASE tgt
+			  FROM #KEY_ATTR_INIT src
+              LEFT OUTER JOIN dbo.'+@tgt_table_nm+' tgt
               ON src.INVESTIGATION_KEY = tgt.INVESTIGATION_KEY
             '
             + CASE
@@ -513,7 +515,7 @@ BEGIN
 
         INSERT INTO [DBO].[JOB_FLOW_LOG]
         (BATCH_ID, [DATAFLOW_NAME], [PACKAGE_NAME], [STATUS_TYPE], [STEP_NUMBER], [STEP_NAME], [ROW_COUNT])
-        VALUES (@BATCH_ID, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @PROC_STEP_NO, @PROC_STEP_NAME, @ROWCOUNT_NO);
+        VALUES (@BATCH_ID, @datamart_nm, @datamart_nm, 'START', @PROC_STEP_NO, @PROC_STEP_NAME, @ROWCOUNT_NO);
 
         COMMIT TRANSACTION;
 
@@ -532,8 +534,8 @@ BEGIN
         )
         VALUES
             (@batch_id,
-             'GENERIC_CASE_DATAMART',
-             'GENERIC_CASE_DATAMART',
+             @datamart_nm,
+             @datamart_nm,
              'COMPLETE',
              @Proc_Step_no,
              @Proc_Step_name,
@@ -557,7 +559,7 @@ BEGIN
         DECLARE @ErrorState INT = ERROR_STATE();
 
         INSERT INTO [dbo].[job_flow_log]( batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [Error_Description], [row_count] )
-        VALUES( @Batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'ERROR', @Proc_Step_no, 'ERROR - '+@Proc_Step_name, 'Step -'+CAST(@Proc_Step_no AS varchar(3))+' -'+CAST(@ErrorMessage AS varchar(500)), 0 );
+        VALUES( @Batch_id, @datamart_nm, @datamart_nm, 'ERROR', @Proc_Step_no, 'ERROR - '+@Proc_Step_name, 'Step -'+CAST(@Proc_Step_no AS varchar(3))+' -'+CAST(@ErrorMessage AS varchar(500)), 0 );
         RETURN -1;
 
     END CATCH;
