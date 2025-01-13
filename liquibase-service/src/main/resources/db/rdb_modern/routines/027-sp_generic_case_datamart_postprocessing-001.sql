@@ -61,33 +61,29 @@ BEGIN
             drop table #GENERIC_CASE_INIT
         ;
         select
-            inv.public_health_case_uid,
-            i.INVESTIGATION_KEY,
-            i.CONDITION_KEY,
-            i.PATIENT_KEY,
-            i.INVESTIGATOR_KEY,
-            i.PHYSICIAN_KEY,
-            i.REPORTER_KEY,
-            i.RPT_SRC_ORG_KEY,
-            i.ADT_HSPTL_KEY,
-            i.INV_ASSIGNED_DT_KEY,
-            i.LDF_GROUP_KEY,
-            i.GEOCODING_LOCATION_KEY,
-            inv.effective_duration_amt as ILLNESS_DURATION,
-            inv.effective_duration_unit_cd as ILLNESS_DURATION_UNIT,
-            inv.pat_age_at_onset as PATIENT_AGE_AT_ONSET,
-            inv.pat_age_at_onset_unit_cd as PATIENT_AGE_AT_ONSET_UNIT,
-            inv.detection_method_cd as DETECTION_METHOD,
-            inv.detection_method_desc_txt as DETECTION_METHOD_OTHER
+            public_health_case_uid,
+            INVESTIGATION_KEY,
+            CONDITION_KEY,
+            PATIENT_KEY,
+            INVESTIGATOR_KEY,
+            PHYSICIAN_KEY,
+            REPORTER_KEY,
+            RPT_SRC_ORG_KEY,
+            ADT_HSPTL_KEY,
+            INV_ASSIGNED_DT_KEY,
+            LDF_GROUP_KEY,
+            GEOCODING_LOCATION_KEY,
+            effective_duration_amt as ILLNESS_DURATION,
+            effective_duration_unit_cd as ILLNESS_DURATION_UNIT,
+            pat_age_at_onset as PATIENT_AGE_AT_ONSET,
+            pat_age_at_onset_unit_cd as PATIENT_AGE_AT_ONSET_UNIT,
+            detection_method_cd as DETECTION_METHOD,
+            detection_method_desc_txt as DETECTION_METHOD_OTHER
         INTO #GENERIC_CASE_INIT
-        from
-	    dbo.NRT_INVESTIGATION inv
-        inner join dbo.V_COMMON_INV_KEYS i
-            on inv.public_health_case_uid = i.public_health_case_uid
-
+        from dbo.v_nrt_inv_keys_attrs_mapping
         where
-            inv.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
-            AND inv.investigation_form_cd = 'INV_FORM_GEN';
+            public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
+            AND investigation_form_cd = 'INV_FORM_GEN';
 
         if
             @debug = 'true'
@@ -98,7 +94,7 @@ BEGIN
 
         INSERT INTO [dbo].[job_flow_log]
         (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        VALUES (@batch_id, 'CRS_CASE_DATAMART', 'CRS_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -113,27 +109,14 @@ BEGIN
         IF OBJECT_ID('#OBS_CODED', 'U') IS NOT NULL
             drop table #OBS_CODED;
 
-        select
-            obs.public_health_case_uid,
-            imrdb.unique_cd as cd,
-            imrdb.RDB_attribute as col_nm,
-            obs.response
-        INTO #OBS_CODED
-        from dbo.v_nrt_srte_imrdbmapping imrdb
-        LEFT JOIN (
-            SELECT * FROM dbo.v_getobscode
-            WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
-        ) obs
-        ON imrdb.unique_cd = obs.cd
-        WHERE
-        imrdb.unique_cd IN (
-           'INV113',     /* OTHER_RPT_SRC */
-          'INV148',			/* DAYCARE_ASSOCIATION_FLG */
-          'INV149',			/* FOOD_HANDLR_IND */
-          'INV178',			/* PREGNANCY_STATUS */
-          'INV179',			/* PID_IND */
-          'INV189' 		/* CULTURE_IDENT_ORG_ID */
-        ) and public_health_case_uid is not null;
+        select public_health_case_uid,
+               unique_cd    as cd,
+               col_nm,
+               coded_response as response
+                INTO #OBS_CODED
+        from dbo.v_rdb_obs_mapping
+        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'code')
+        and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
             @debug = 'true'
@@ -158,23 +141,14 @@ BEGIN
         IF OBJECT_ID('#OBS_DATE', 'U') IS NOT NULL
             drop table #OBS_DATE;
 
-        select
-            obs.public_health_case_uid,
-            imrdb.unique_cd as cd,
-            imrdb.RDB_attribute as col_nm,
-            obs.response
+        select public_health_case_uid,
+               unique_cd    as cd,
+               col_nm,
+               coded_response as response
         INTO #OBS_DATE
-        from dbo.v_nrt_srte_imrdbmapping imrdb
-        LEFT JOIN (
-            SELECT * FROM dbo.v_getobsdate
-            WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
-        ) obs
-        ON imrdb.unique_cd = obs.cd
-        WHERE
-        imrdb.unique_cd IN (
-           'INV184',		/* INV_HSPTL_ID */
-	        'INV191'		/* BIRTH_HSPTL_ID */
-        ) and public_health_case_uid is not null;
+        from dbo.v_rdb_obs_mapping
+        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'from_time')
+          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
             @debug = 'true'
@@ -198,22 +172,14 @@ BEGIN
         IF OBJECT_ID('#OBS_NUMERIC', 'U') IS NOT NULL
             drop table #OBS_NUMERIC;
 
-        select
-            obs.public_health_case_uid,
-            imrdb.unique_cd as cd,
-            imrdb.RDB_attribute as col_nm,
-            obs.response
+        select public_health_case_uid,
+               unique_cd    as cd,
+               col_nm,
+               coded_response as response
         INTO #OBS_NUMERIC
-        from dbo.v_nrt_srte_imrdbmapping imrdb
-        LEFT JOIN (
-            SELECT * FROM dbo.v_getobsnum
-            WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','))
-        ) obs
-        ON imrdb.unique_cd = obs.cd
-        WHERE
-        imrdb.unique_cd IN (
-           'INV185'		/* DAYCARE_ID */
-        ) and public_health_case_uid is not null;
+        from dbo.v_rdb_obs_mapping
+        WHERE (RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1')
+          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
             @debug = 'true'
@@ -228,24 +194,28 @@ BEGIN
         COMMIT TRANSACTION;
 
 
-    BEGIN TRANSACTION
+        BEGIN TRANSACTION
 
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
             @PROC_STEP_NAME = 'UPDATE dbo.GENERIC_CASE';
 
+        -- variables for the column lists
+        -- must be ordered the same as those used in the insert statement
         DECLARE @obscoded_columns NVARCHAR(MAX) = '';
-        SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-        FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
+        SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'code') AS cols;
 
         DECLARE @obsnum_columns NVARCHAR(MAX) = '';
-        SELECT @obsnum_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-        FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
+        SELECT @obsnum_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1') AS cols;
 
         DECLARE @obsdate_columns NVARCHAR(MAX) = '';
-        SELECT @obsdate_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-        FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
+        SELECT @obsdate_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'from_time')  AS cols;
+
+
 
        DECLARE @Update_sql NVARCHAR(MAX) = '';
 
@@ -271,17 +241,17 @@ BEGIN
        tgt.DETECTION_METHOD_OTHER = src.DETECTION_METHOD_OTHER'
  		+ CASE
 	       	WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	              FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
+	              FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'code' AND RDB_table = 'Generic_Case' ) as cols)
 	       	ELSE ''
 		END
 		+ CASE
 	       	WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	               FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) as cols)
+	                FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'numeric_value_1' AND RDB_table = 'Generic_Case' ) as cols)
 			ELSE ''
 		END
 		+ CASE
 	        WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	               FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
+	               FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where db_field = 'from_time' AND RDB_table = 'Generic_Case' ) as cols)
 	        ELSE ''
     	END
        + '
@@ -359,15 +329,14 @@ BEGIN
        if
            @debug = 'true'
            select @Proc_Step_Name as step,  @Update_sql;
-
         exec sp_executesql @Update_sql;
 
        SELECT @RowCount_no = @@ROWCOUNT;
 
 
-       INSERT INTO [dbo].[job_flow_log]
-       (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-       VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'GENERIC_CASE_DATAMART', 'GENERIC_CASE_DATAMART', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
 
         COMMIT TRANSACTION;
 
@@ -379,21 +348,23 @@ BEGIN
 
         -- Variables for the columns in the insert select statement
         -- Must be ordered the same as the original column lists
+
         DECLARE @obscoded_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obscoded_insert_columns = COALESCE(STRING_AGG('ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm)  , '')
-FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
+        SELECT @obscoded_insert_columns = COALESCE(
+                STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+        FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'code') AS cols;
+
 
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns = COALESCE(STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
-
+        FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'numeric_value_1') AS cols;
 
         DECLARE @obsdate_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
+        SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
+            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = 'Generic_Case' and db_field = 'from_time') AS cols;
+
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
-
 
         SET @Insert_sql = '
         INSERT INTO dbo.GENERIC_CASE (
