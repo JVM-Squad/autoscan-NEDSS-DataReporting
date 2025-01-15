@@ -66,7 +66,7 @@ public class PostProcessingService {
         ORGANIZATION(1, "organization", "organization_uid", "sp_nrt_organization_postprocessing"),
         PROVIDER(2, "provider", "provider_uid", "sp_nrt_provider_postprocessing"),
         PATIENT(3, "patient", "patient_uid", "sp_nrt_patient_postprocessing"),
-        D_PLACE(3, "place", "place_uid", "sp_nrt_place_postprocessing"),
+        D_PLACE(4, "place", "place_uid", "sp_nrt_place_postprocessing"),
         INVESTIGATION(5, "investigation", PHC_UID, "sp_nrt_investigation_postprocessing"),
         NOTIFICATION(6, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
         INTERVIEW(7, "interview", "interview_uid", "sp_d_interview_postprocessing"),
