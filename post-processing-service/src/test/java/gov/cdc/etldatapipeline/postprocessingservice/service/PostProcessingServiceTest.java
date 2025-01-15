@@ -67,6 +67,7 @@ class PostProcessingServiceTest {
     @CsvSource({
             "dummy_patient, '{\"payload\":{\"patient_uid\":123}}', 123",
             "dummy_provider, '{\"payload\":{\"provider_uid\":123}}', 123",
+            "dummy_place, '{\"payload\":{\"place_uid\":123}}', 123",
             "dummy_organization, '{\"payload\":{\"organization_uid\":123}}', 123",
             "dummy_investigation, '{\"payload\":{\"public_health_case_uid\":123}}', 123",
             "dummy_notification, '{\"payload\":{\"notification_uid\":123}}', 123",
@@ -541,17 +542,6 @@ class PostProcessingServiceTest {
 
         verify(postProcRepositoryMock).executeStoredProcForDPlace("123,124");
     }
-
-    @ParameterizedTest
-    @CsvSource({
-            "dummy_place, '{\"payload\":{\"place_uid\":123}}', 123"
-    })
-    void testPostProcessMessage_Place(String topic, String messageKey, Long expectedId) {
-        postProcessingServiceMock.postProcessMessage(topic, messageKey, messageKey);
-        assertEquals(expectedId, postProcessingServiceMock.idCache.get(topic).element());
-        assertTrue(postProcessingServiceMock.idCache.containsKey(topic));
-    }
-
     @Test
     void testPostProcessNoPlaceUidException() {
         String placeKey = "{\"payload\":{}}";
