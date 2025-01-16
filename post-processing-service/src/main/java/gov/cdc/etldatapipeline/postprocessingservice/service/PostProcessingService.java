@@ -119,7 +119,8 @@ public class PostProcessingService {
             "${spring.kafka.topic.case_management}",
             "${spring.kafka.topic.interview}",
             "${spring.kafka.topic.ldf_data}",
-            "${spring.kafka.topic.observation}"
+            "${spring.kafka.topic.observation}",
+            "${spring.kafka.topic.place}"
     })
     public void postProcessMessage(
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
