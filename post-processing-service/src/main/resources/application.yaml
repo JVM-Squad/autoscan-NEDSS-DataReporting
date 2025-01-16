@@ -11,6 +11,7 @@ spring:
       interview: nrt_interview
       ldf_data: nrt_ldf_data
       datamart: nbs_Datamart
+      place: nrt_place
     dlq:
       retry-suffix: -retry
       dlq-suffix: -dlt
