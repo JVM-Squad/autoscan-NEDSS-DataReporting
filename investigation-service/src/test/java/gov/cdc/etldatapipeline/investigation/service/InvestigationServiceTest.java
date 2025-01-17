@@ -239,8 +239,8 @@ class InvestigationServiceTest {
     private Investigation constructInvestigation(Long investigationUid) {
         Investigation investigation = new Investigation();
         investigation.setPublicHealthCaseUid(investigationUid);
-        investigation.setJurisdictionCode("130001");
         investigation.setJurisdictionNm("Fulton County");
+        investigation.setJurisdictionCd("130001");
         investigation.setInvestigationStatus("Open");
         investigation.setClassCd("CASE");
         investigation.setInvCaseStatus("Confirmed");
@@ -256,6 +256,8 @@ class InvestigationServiceTest {
         investigation.setOutbreakInd("Yes");
         investigation.setOutbreakName("MDK");
         investigation.setOutbreakNameDesc("Ketchup - McDonalds");
+        investigation.setDetectionMethodCd("20");
+        investigation.setDetectionMethodDescTxt("Screening procedure (procedure)");
 
         investigation.setActIds(readFileData(FILE_PATH_PREFIX + "ActIds.json"));
         investigation.setInvestigationConfirmationMethod(readFileData(FILE_PATH_PREFIX + "ConfirmationMethod.json"));
@@ -272,8 +274,8 @@ class InvestigationServiceTest {
     private InvestigationReporting constructInvestigationReporting(Long investigationUid) {
         final InvestigationReporting reporting = new InvestigationReporting();
         reporting.setPublicHealthCaseUid(investigationUid);
-        reporting.setJurisdictionCode("130001");
         reporting.setJurisdictionNm("Fulton County");
+        reporting.setJurisdictionCd("130001");
         reporting.setInvestigationStatus("Open");
         reporting.setClassCd("CASE");
         reporting.setInvCaseStatus("Confirmed");
@@ -289,6 +291,8 @@ class InvestigationServiceTest {
         reporting.setOutbreakInd("Yes");
         reporting.setOutbreakName("MDK");
         reporting.setOutbreakNameDesc("Ketchup - McDonalds");
+        reporting.setDetectionMethodCd("20");
+        reporting.setDetectionMethodDescTxt("Screening procedure (procedure)");
 
         reporting.setInvestigatorId(32143250L);         // PersonParticipations.json, entity_id for type_cd=InvestgrOfPHC
         reporting.setPhysicianId(14253651L);            // PersonParticipations.json, entity_id for type_cd=PhysicianOfPHC

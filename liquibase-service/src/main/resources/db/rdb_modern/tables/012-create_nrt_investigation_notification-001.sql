@@ -1,6 +1,5 @@
-
-IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_notifications' and xtype = 'U')
-CREATE TABLE dbo.nrt_notifications (
+IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_investigation_notification' and xtype = 'U')
+CREATE TABLE dbo.nrt_investigation_notification (
     source_act_uid           bigint                                          NOT NULL,
     public_health_case_uid   bigint                                          NULL,
     source_class_cd          varchar(10)                                     NULL,
