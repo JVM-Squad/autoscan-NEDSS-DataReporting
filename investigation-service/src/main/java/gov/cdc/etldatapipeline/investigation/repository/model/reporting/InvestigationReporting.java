@@ -73,7 +73,6 @@ public class InvestigationReporting {
     private String patAgeAtOnset;
     private String patAgeAtOnsetUnitCd;
     private String patAgeAtOnsetUnit;
-    private String detectionMethodCd;
     private String detectionMethodDescTxt;
     private String contactInvPriority;
     private String contactInvStatus;
