@@ -116,11 +116,14 @@ BEGIN TRY
         select public_health_case_uid,
                unique_cd    as cd,
                col_nm,
-               coded_response as response
-                INTO #OBS_CODED
+               coded_response as response,
+               rdb_table,
+               db_field,
+               label
+        INTO #OBS_CODED
         from dbo.v_rdb_obs_mapping
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'code')
-        and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
 
         if
             @debug = 'true'
@@ -148,7 +151,9 @@ BEGIN TRY
         select public_health_case_uid,
                unique_cd    as cd,
                col_nm,
-               coded_response as response
+               coded_response as response,
+               rdb_table,
+               db_field
         INTO #OBS_DATE
         from dbo.v_rdb_obs_mapping
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time')
@@ -179,7 +184,9 @@ BEGIN TRY
         select public_health_case_uid,
                unique_cd    as cd,
                col_nm,
-               coded_response as response
+               coded_response as response,
+               rdb_table,
+               db_field
         INTO #OBS_NUMERIC
         from dbo.v_rdb_obs_mapping
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1')
@@ -197,6 +204,7 @@ BEGIN TRY
 
         COMMIT TRANSACTION;
 
+        exec sp_alter_datamart_schema @batch_id, @datamart_nm, @tgt_table_nm, @debug;
 
         BEGIN TRANSACTION
 
