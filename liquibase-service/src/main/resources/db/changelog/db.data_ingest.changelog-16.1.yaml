@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 000-dataingest-db-general-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 1
+      author: liquibase
+      changes:
+        - sqlFile:
+            path: 001-create_data_ingest_table-001.sql
+            splitStatements: false
