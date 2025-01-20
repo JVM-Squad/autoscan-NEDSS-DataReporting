@@ -132,4 +132,5 @@ public class InvestigationReporting {
     private Long perAsProviderOfObgynUid;
     private Long perAsProviderOfPediatricsUid;
     private Long orgAsReporterUid;
+    private String detectionMethodCd;
 }

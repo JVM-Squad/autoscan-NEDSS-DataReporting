@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import gov.cdc.etldatapipeline.postprocessingservice.repository.*;
-import gov.cdc.etldatapipeline.postprocessingservice.repository.model.InvestigationResult;
+import gov.cdc.etldatapipeline.postprocessingservice.repository.model.DatamartData;
 import gov.cdc.etldatapipeline.postprocessingservice.repository.model.dto.Datamart;
 import jakarta.annotation.PreDestroy;
 import lombok.Getter;
@@ -34,6 +34,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -65,12 +66,13 @@ public class PostProcessingService {
         ORGANIZATION(1, "organization", "organization_uid", "sp_nrt_organization_postprocessing"),
         PROVIDER(2, "provider", "provider_uid", "sp_nrt_provider_postprocessing"),
         PATIENT(3, "patient", "patient_uid", "sp_nrt_patient_postprocessing"),
-        INVESTIGATION(4, "investigation", PHC_UID, "sp_nrt_investigation_postprocessing"),
-        NOTIFICATION(5, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
-        INTERVIEW(6, "interview", "interview_uid", "sp_d_interview_postprocessing"),
-        CASE_MANAGEMENT(7, "case_management", PHC_UID, "sp_nrt_case_management_postprocessing"),
-        LDF_DATA(8, "ldf_data", "ldf_uid", "sp_nrt_ldf_postprocessing"),
-        OBSERVATION(9, "observation", "observation_uid", null),
+        D_PLACE(4, "place", "place_uid", "sp_nrt_place_postprocessing"),
+        INVESTIGATION(5, "investigation", PHC_UID, "sp_nrt_investigation_postprocessing"),
+        NOTIFICATION(6, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
+        INTERVIEW(7, "interview", "interview_uid", "sp_d_interview_postprocessing"),
+        CASE_MANAGEMENT(8, "case_management", PHC_UID, "sp_nrt_case_management_postprocessing"),
+        LDF_DATA(9, "ldf_data", "ldf_uid", "sp_nrt_ldf_postprocessing"),
+        OBSERVATION(10, "observation", "observation_uid", null),
         F_PAGE_CASE(0, "fact page case", PHC_UID, "sp_f_page_case_postprocessing"),
         CASE_ANSWERS(0, "case answers", PHC_UID, "sp_page_builder_postprocessing"),
         CASE_COUNT(0, "case count", PHC_UID, "sp_nrt_case_count_postprocessing"),
@@ -117,7 +119,8 @@ public class PostProcessingService {
             "${spring.kafka.topic.case_management}",
             "${spring.kafka.topic.interview}",
             "${spring.kafka.topic.ldf_data}",
-            "${spring.kafka.topic.observation}"
+            "${spring.kafka.topic.observation}",
+            "${spring.kafka.topic.place}"
     })
     public void postProcessMessage(
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -209,7 +212,7 @@ public class PostProcessingService {
             List<Entry<String, List<Long>>> sortedEntries = idCacheSnapshot.entrySet().stream()
                     .sorted(Comparator.comparingInt(entry -> getEntityByTopic(entry.getKey()).getPriority())).toList();
 
-            List<InvestigationResult> dmData = new ArrayList<>();
+            List<DatamartData> dmData = new ArrayList<>();
 
             for (Entry<String, List<Long>> entry : sortedEntries) {
                 String keyTopic = entry.getKey();
@@ -220,14 +223,16 @@ public class PostProcessingService {
                 Entity entity = getEntityByTopic(keyTopic);
                 switch (entity) {
                     case ORGANIZATION:
-                        processTopic(keyTopic, entity, ids,
-                                postProcRepository::executeStoredProcForOrganizationIds);
+                        processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForOrganizationIds);
                         break;
                     case PROVIDER:
                         processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForProviderIds);
                         break;
                     case PATIENT:
                         processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForPatientIds);
+                        break;
+                    case D_PLACE:
+                        processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForDPlace);
                         break;
                     case INVESTIGATION:
                         dmData = processTopic(keyTopic, entity, ids,
@@ -244,8 +249,9 @@ public class PostProcessingService {
                                 investigationRepository::executeStoredProcForCaseCount);
                         break;
                     case NOTIFICATION:
-                        processTopic(keyTopic, entity, ids,
-                                postProcRepository::executeStoredProcForNotificationIds);
+                        List<DatamartData> dmDataN = processTopic(keyTopic, entity, ids,
+                                investigationRepository::executeStoredProcForNotificationIds);
+                        dmData = Stream.concat(dmData.stream(), dmDataN.stream()).distinct().toList();
                         break;
                     case CASE_MANAGEMENT:
                         processTopic(keyTopic, entity, ids,
@@ -309,8 +315,8 @@ public class PostProcessingService {
                 Set<Map<Long, Long>> dmSet = entry.getValue();
                 dmCache.put(dmType, ConcurrentHashMap.newKeySet());
 
-                String cases =
-                        dmSet.stream().flatMap(m -> m.keySet().stream().map(String::valueOf)).collect(Collectors.joining(","));
+                String cases = dmSet.stream()
+                        .flatMap(m -> m.keySet().stream().map(String::valueOf)).collect(Collectors.joining(","));
 
                 if (dmType.equals(Entity.HEPATITIS_DATAMART.getEntityName())) {
 

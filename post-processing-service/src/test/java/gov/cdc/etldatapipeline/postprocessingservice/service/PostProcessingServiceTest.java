@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import gov.cdc.etldatapipeline.postprocessingservice.repository.*;
-import gov.cdc.etldatapipeline.postprocessingservice.repository.model.InvestigationResult;
+import gov.cdc.etldatapipeline.postprocessingservice.repository.model.DatamartData;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +37,8 @@ class PostProcessingServiceTest {
     KafkaTemplate<String, String> kafkaTemplate;
     @Captor
     private ArgumentCaptor<String> topicCaptor;
+    @Captor
+    private ArgumentCaptor<String> keyCaptor;
 
     private ProcessDatamartData datamartProcessor;
 
@@ -65,6 +67,7 @@ class PostProcessingServiceTest {
     @CsvSource({
             "dummy_patient, '{\"payload\":{\"patient_uid\":123}}', 123",
             "dummy_provider, '{\"payload\":{\"provider_uid\":123}}', 123",
+            "dummy_place, '{\"payload\":{\"place_uid\":123}}', 123",
             "dummy_organization, '{\"payload\":{\"organization_uid\":123}}', 123",
             "dummy_investigation, '{\"payload\":{\"public_health_case_uid\":123}}', 123",
             "dummy_notification, '{\"payload\":{\"notification_uid\":123}}', 123",
@@ -153,7 +156,7 @@ class PostProcessingServiceTest {
         postProcessingServiceMock.processCachedIds();
 
         String expectedNotificationIdsString = "123";
-        verify(postProcRepositoryMock).executeStoredProcForNotificationIds(expectedNotificationIdsString);
+        verify(investigationRepositoryMock).executeStoredProcForNotificationIds(expectedNotificationIdsString);
 
         List<ILoggingEvent> logs = listAppender.list;
         assertEquals(4, logs.size());
@@ -343,22 +346,30 @@ class PostProcessingServiceTest {
         String ntfKey2 = "{\"payload\":{\"notification_uid\":568}}";
         String ntfTopic = "dummy_notification";
 
+        String placeKey1 = "{\"payload\":{\"place_uid\":123}}";
+        String placeKey2 = "{\"payload\":{\"place_uid\":124}}";
+        String placeTopic = "dummy_place";
+
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey1, orgKey1);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey2, orgKey2);
         postProcessingServiceMock.postProcessMessage(ntfTopic, ntfKey1, ntfKey1);
         postProcessingServiceMock.postProcessMessage(ntfTopic, ntfKey2, ntfKey2);
         postProcessingServiceMock.postProcessMessage(invTopic, invKey1, invKey1);
         postProcessingServiceMock.postProcessMessage(invTopic, invKey2, invKey2);
+        postProcessingServiceMock.postProcessMessage(placeTopic, placeKey1, placeKey1);
+        postProcessingServiceMock.postProcessMessage(placeTopic, placeKey2, placeKey2);
 
         assertTrue(postProcessingServiceMock.idCache.containsKey(orgTopic));
         assertTrue(postProcessingServiceMock.idCache.containsKey(invTopic));
         assertTrue(postProcessingServiceMock.idCache.containsKey(ntfTopic));
+        assertTrue(postProcessingServiceMock.idCache.containsKey(placeTopic));
 
         postProcessingServiceMock.processCachedIds();
 
         verify(postProcRepositoryMock).executeStoredProcForOrganizationIds("123,124");
         verify(investigationRepositoryMock).executeStoredProcForPublicHealthCaseIds("234,235");
-        verify(postProcRepositoryMock).executeStoredProcForNotificationIds("567,568");
+        verify(investigationRepositoryMock).executeStoredProcForNotificationIds("567,568");
+        verify(postProcRepositoryMock).executeStoredProcForDPlace("123,124");
     }
 
     @Test
@@ -366,18 +377,20 @@ class PostProcessingServiceTest {
         String orgKey = "{\"payload\":{\"organization_uid\":123}}";
         String providerKey = "{\"payload\":{\"provider_uid\":124}}";
         String patientKey = "{\"payload\":{\"patient_uid\":125}}";
+        String placeKey = "{\"payload\":{\"place_uid\":131}}";
         String investigationKey = "{\"payload\":{\"public_health_case_uid\":126}}";
         String notificationKey = "{\"payload\":{\"notification_uid\":127}}";
         String caseManagementKey = "{\"payload\":{\"public_health_case_uid\":128,\"case_management_uid\":1001}}";
         String ldfKey = "{\"payload\":{\"ldf_uid\":129}}";
         String interviewKey = "{\"payload\":{\"interview_uid\":130}}";
-
         String observationKey = "{\"payload\":{\"observation_uid\":130}}";
         String observationMsg = "{\"payload\":{\"observation_uid\":130, \"obs_domain_cd_st_1\": \"Order\",\"ctrl_cd_display_form\": \"MorbReport\"}}";
+
 
         String orgTopic = "dummy_organization";
         String providerTopic = "dummy_provider";
         String patientTopic = "dummy_patient";
+        String placeTopic = "dummy_place";
         String invTopic = "dummy_investigation";
         String ntfTopic = "dummy_notification";
         String intTopic = "dummy_interview";
@@ -386,9 +399,11 @@ class PostProcessingServiceTest {
         String obsTopic = "dummy_observation";
 
 
+
         postProcessingServiceMock.postProcessMessage(invTopic, investigationKey, investigationKey);
         postProcessingServiceMock.postProcessMessage(providerTopic, providerKey, providerKey);
         postProcessingServiceMock.postProcessMessage(patientTopic, patientKey, patientKey);
+        postProcessingServiceMock.postProcessMessage(placeTopic, placeKey, placeKey);
         postProcessingServiceMock.postProcessMessage(intTopic, interviewKey, interviewKey);
         postProcessingServiceMock.postProcessMessage(ntfTopic, notificationKey, notificationKey);
         postProcessingServiceMock.postProcessMessage(orgTopic, orgKey, orgKey);
@@ -404,16 +419,17 @@ class PostProcessingServiceTest {
         assertTrue(topicLogList.get(0).contains(orgTopic));
         assertTrue(topicLogList.get(1).contains(providerTopic));
         assertTrue(topicLogList.get(2).contains(patientTopic));
-        assertTrue(topicLogList.get(3).contains(invTopic));
+        assertTrue(topicLogList.get(3).contains(placeTopic));
         assertTrue(topicLogList.get(4).contains(invTopic));
         assertTrue(topicLogList.get(5).contains(invTopic));
-        assertTrue(topicLogList.get(6).contains(ntfTopic));
-        assertTrue(topicLogList.get(7).contains(intTopic));
+        assertTrue(topicLogList.get(6).contains(invTopic));
+        assertTrue(topicLogList.get(7).contains(ntfTopic));
         assertTrue(topicLogList.get(8).contains(intTopic));
-        assertTrue(topicLogList.get(9).contains(cmTopic));
+        assertTrue(topicLogList.get(9).contains(intTopic));
         assertTrue(topicLogList.get(10).contains(cmTopic));
-        assertTrue(topicLogList.get(11).contains(ldfTopic));
-        assertTrue(topicLogList.get(12).contains(obsTopic));
+        assertTrue(topicLogList.get(11).contains(cmTopic));
+        assertTrue(topicLogList.get(12).contains(ldfTopic));
+        assertTrue(topicLogList.get(13).contains(obsTopic));
     }
 
     @Test
@@ -450,19 +466,31 @@ class PostProcessingServiceTest {
 
     @Test
     void testProduceDatamartTopic() {
-        String topic = "dummy_investigation";
-        String key = "{\"payload\":{\"public_health_case_uid\":123}}";
         String dmTopic = "dummy_datamart";
 
-        List<InvestigationResult> invResults = getInvestigationResults(123L, 200L);
+        String topicInv = "dummy_investigation";
+        String keyInv = "{\"payload\":{\"public_health_case_uid\":123}}";
+
+        String topicNtf = "dummy_notification";
+        String keyNtf = "{\"payload\":{\"notification_uid\":124}}";
 
         datamartProcessor.datamartTopic = dmTopic;
-        when(investigationRepositoryMock.executeStoredProcForPublicHealthCaseIds("123")).thenReturn(invResults);
-        postProcessingServiceMock.postProcessMessage(topic, key, key);
+        postProcessingServiceMock.postProcessMessage(topicInv, keyInv, keyInv);
+        postProcessingServiceMock.postProcessMessage(topicNtf, keyNtf, keyNtf);
+
+        List<DatamartData> masterData = getDatamartData(123L, 200L);
+        List<DatamartData> notificationData = getDatamartData(123L, 200L);
+        notificationData.addAll(getDatamartData(124L, 201L));
+
+        when(investigationRepositoryMock.executeStoredProcForPublicHealthCaseIds("123")).thenReturn(masterData);
+        when(investigationRepositoryMock.executeStoredProcForNotificationIds("124")).thenReturn(notificationData);
         postProcessingServiceMock.processCachedIds();
 
-        verify(kafkaTemplate).send(topicCaptor.capture(), anyString(), anyString());
+        // verify that only unique datamart data items (2 of 3) are processed
+        verify(kafkaTemplate, times(2)).send(topicCaptor.capture(), keyCaptor.capture(), anyString());
         assertEquals(dmTopic, topicCaptor.getValue());
+        assertTrue(keyCaptor.getAllValues().get(0).contains("123"));
+        assertTrue(keyCaptor.getAllValues().get(1).contains("124"));
     }
 
     @Test
@@ -472,7 +500,7 @@ class PostProcessingServiceTest {
         String dmTopic = "dummy_datamart";
 
         // patientKey=1L for no patient data in D_PATIENT
-        List<InvestigationResult> invResults = getInvestigationResults(123L, 1L);
+        List<DatamartData> invResults = getDatamartData(123L, 1L);
 
         datamartProcessor.datamartTopic = dmTopic;
         when(investigationRepositoryMock.executeStoredProcForPublicHealthCaseIds("123")).thenReturn(invResults);
@@ -482,6 +510,47 @@ class PostProcessingServiceTest {
         verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
     }
 
+    @Test
+    void testPostProcessPlaceMessage() {
+        String topic = "dummy_place";
+        String key = "{\"payload\":{\"place_uid\":123}}";
+
+        postProcessingServiceMock.postProcessMessage(topic, key, key);
+        postProcessingServiceMock.processCachedIds();
+
+        String expectedPlaceIdsString = "123";
+        verify(postProcRepositoryMock).executeStoredProcForDPlace(expectedPlaceIdsString);
+
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(4, logs.size());
+        assertTrue(logs.get(2).getFormattedMessage().contains(PostProcessingService.Entity.D_PLACE.getStoredProcedure()));
+        assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
+    }
+
+    @Test
+    void testPostProcessMultipleMessages_WithPlace() {
+        String placeKey1 = "{\"payload\":{\"place_uid\":123}}";
+        String placeKey2 = "{\"payload\":{\"place_uid\":124}}";
+        String placeTopic = "dummy_place";
+
+        postProcessingServiceMock.postProcessMessage(placeTopic, placeKey1, placeKey1);
+        postProcessingServiceMock.postProcessMessage(placeTopic, placeKey2, placeKey2);
+
+        assertTrue(postProcessingServiceMock.idCache.containsKey(placeTopic));
+
+        postProcessingServiceMock.processCachedIds();
+
+        verify(postProcRepositoryMock).executeStoredProcForDPlace("123,124");
+    }
+    @Test
+    void testPostProcessNoPlaceUidException() {
+        String placeKey = "{\"payload\":{}}";
+        String topic = "dummy_place";
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> postProcessingServiceMock.postProcessMessage(topic, placeKey, placeKey));
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
+    }
     @ParameterizedTest
     @CsvSource({
             "'{\"payload\":{\"public_health_case_uid\":123,\"rdb_table_name_list\":null}}'",
@@ -525,7 +594,7 @@ class PostProcessingServiceTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> postProcessingServiceMock.postProcessMessage(topic,
                 orgKey, orgKey));
-        assertEquals(ex.getCause().getClass(), NoSuchElementException.class);
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
     }
 
     @Test
@@ -582,17 +651,17 @@ class PostProcessingServiceTest {
         inOrder.verify(postProcessingServiceMock).processDatamartIds();
     }
 
-    private List<InvestigationResult> getInvestigationResults(Long phcUid, Long patientKey) {
-        List<InvestigationResult> investigationResults = new ArrayList<>();
-        InvestigationResult investigationResult = new InvestigationResult();
-        investigationResult.setPublicHealthCaseUid(phcUid);
-        investigationResult.setInvestigationKey(100L);
-        investigationResult.setPatientUid(456L);
-        investigationResult.setPatientKey(patientKey);
-        investigationResult.setConditionCd("10110");
-        investigationResult.setDatamart(PostProcessingService.Entity.HEPATITIS_DATAMART.getEntityName());
-        investigationResult.setStoredProcedure(PostProcessingService.Entity.HEPATITIS_DATAMART.getStoredProcedure());
-        investigationResults.add(investigationResult);
-        return investigationResults;
+    private List<DatamartData> getDatamartData(Long phcUid, Long patientKey) {
+        List<DatamartData> datamartDataLst = new ArrayList<>();
+        DatamartData datamartData = new DatamartData();
+        datamartData.setPublicHealthCaseUid(phcUid);
+        datamartData.setInvestigationKey(100L);
+        datamartData.setPatientUid(456L);
+        datamartData.setPatientKey(patientKey);
+        datamartData.setConditionCd("10110");
+        datamartData.setDatamart(PostProcessingService.Entity.HEPATITIS_DATAMART.getEntityName());
+        datamartData.setStoredProcedure(PostProcessingService.Entity.HEPATITIS_DATAMART.getStoredProcedure());
+        datamartDataLst.add(datamartData);
+        return datamartDataLst;
     }
 }

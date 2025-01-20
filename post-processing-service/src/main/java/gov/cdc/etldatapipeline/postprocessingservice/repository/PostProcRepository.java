@@ -17,9 +17,6 @@ public interface PostProcRepository extends JpaRepository<PostProcSp, Long> {
     @Procedure("sp_nrt_patient_postprocessing")
     void executeStoredProcForPatientIds(@Param("patientUids") String patientUids);
 
-    @Procedure("sp_nrt_notification_postprocessing")
-    void executeStoredProcForNotificationIds(@Param("notificationUids") String notificationUids);
-
     @Procedure("sp_nrt_ldf_postprocessing")
     void executeStoredProcForLdfIds(@Param("ldfUids") String ldfUids);
 
@@ -43,4 +40,7 @@ public interface PostProcRepository extends JpaRepository<PostProcSp, Long> {
 
     @Procedure("sp_f_interview_case_postprocessing")
     void executeStoredProcForFInterviewCase(@Param("interviewUids") String interviewUids);
+
+    @Procedure("sp_nrt_place_postprocessing")
+    void executeStoredProcForDPlace(@Param("placeUids") String placeUids);
 }
