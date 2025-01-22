@@ -104,6 +104,7 @@ select inv.public_health_case_uid,
        inv.ordering_facility_uid,
        inv.refresh_datetime,
        inv.investigation_form_cd,
+       inv.detection_method_cd,
        i.investigation_key                 as INVESTIGATION_KEY,
        con.condition_key                   as CONDITION_KEY,
        coalesce(dpat.patient_key, 1)       as patient_key,
@@ -121,7 +122,7 @@ select inv.public_health_case_uid,
 from dbo.nrt_investigation inv
          inner join dbo.INVESTIGATION i with (nolock) on
     inv.public_health_case_uid = i.case_uid
-         inner join dbo.CONDITION con with (nolock) on
+         inner join dbo.v_condition_dim con with (nolock) on
     con.condition_cd = inv.CD
          left outer join dbo.LDF_GROUP lg on
     lg.BUSINESS_OBJECT_UID = inv.public_health_case_uid

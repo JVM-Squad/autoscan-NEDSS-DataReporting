@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE dbo.sp_crs_case_datamart_postprocessing @inv_uids nvarchar(max),
+CREATE OR ALTER PROCEDURE dbo.sp_rubella_case_datamart_postprocessing @inv_uids nvarchar(max),
                                                                   @debug bit = 'false'
 as
 
@@ -15,20 +15,17 @@ BEGIN
     SET
         @batch_id = cast((format(getdate(), 'yyyyMMddHHmmss')) as bigint);
 
-    /*
-        add top level variables for form code and RDB table name
-    */
-    -- condition for investigation_form_cd uses the LIKE operator for CRS_Case, so % is included
+    -- condition for investigation_form_cd uses the LIKE operator for Rubella_Case, so % is included
     DECLARE
-        @inv_form_cd VARCHAR(100) = 'INV_FORM_CRS%';
+        @inv_form_cd VARCHAR(100) = 'INV_FORM_RUB%';
 
     -- used in conditions for temp table queries and the dynamic sql
     DECLARE
-        @tgt_table_nm VARCHAR(50) = 'CRS_Case';
+        @tgt_table_nm VARCHAR(50) = 'Rubella_Case';
 
     -- used in the logging statements
     DECLARE 
-        @datamart_nm VARCHAR(100) = 'CRS_CASE_DATAMART';
+        @datamart_nm VARCHAR(100) = 'RUBELLA_CASE_DATAMART';
 
     BEGIN TRY
 
@@ -65,6 +62,7 @@ BEGIN
                 @PROC_STEP_NAME = ' GENERATING #KEY_ATTR_INIT';
 
             select public_health_case_uid,
+                   transmission_mode_cd AS transmission_setting,
                    INVESTIGATION_KEY,
                    CONDITION_KEY,
                    patient_key,
@@ -105,21 +103,13 @@ BEGIN
 
             select public_health_case_uid,
                    unique_cd      as cd,
+                   col_nm,
                    rom.DB_field,
                    rom.rdb_table,
                    rom.label,
-                   CASE
-                       WHEN unique_cd = 'CRS090' THEN 'PRENATAL_CARE_OBTAINED_FRM_' +
-                                                      CAST(ROW_NUMBER() OVER (PARTITION BY rom.public_health_case_uid, rom.unique_cd ORDER BY rom.unique_cd, cvg.nbs_uid DESC) AS NVARCHAR(50))
-                       ELSE col_nm
-                       END        AS col_nm,
                    coded_response as response
             INTO #OBS_CODED
             from dbo.v_rdb_obs_mapping rom
-                     LEFT JOIN (SELECT code_desc_txt, nbs_uid
-                                FROM dbo.v_nrt_srte_code_value_general
-                                WHERE code_set_nm = 'RUB_PRE_CARE_T') cvg
-                               ON rom.coded_response = cvg.code_desc_txt
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'code'
               and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
 
@@ -147,9 +137,9 @@ BEGIN
 
             select public_health_case_uid,
                    unique_cd    as cd,
+                   col_nm,
                    DB_field,
                    rdb_table,
-                   col_nm,
                    txt_response as response
             INTO #OBS_TXT
             from dbo.v_rdb_obs_mapping
@@ -180,22 +170,14 @@ BEGIN
 
             select public_health_case_uid,
                    unique_cd     as cd,
+                   col_nm,
                    DB_field,
                    rdb_table,
-                   col_nm,
                    date_response as response
             INTO #OBS_DATE
             from dbo.v_rdb_obs_mapping
-            WHERE RDB_TABLE = @tgt_table_nm and db_field = 'from_time'
+            WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time' or unique_cd in ('INV132','INV133'))
               and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR public_health_case_uid is null);
-            --AND unique_cd != 'CRS013'
-            
-            /*
-                AND unique_cd != 'CRS013'
-
-                This condition wass in temporarily, as CRS013 wass improperly labeled as a date value. It caused an error if it is used in the date table.
-                As of the completion of ticket CNDE-2107, this value has been fixed in DTS1's NBS_SRTE.dbo.imrdbmapping
-            */
 
             if
                 @debug = 'true'
@@ -238,21 +220,11 @@ BEGIN
                 AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE rom.RDB_TABLE = @tgt_table_nm and rom.db_field = 'numeric_value_1'
             and (rom.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
-            -- WHERE ((RDB_TABLE = 'CRS_Case' and db_field = 'numeric_value_1') or unique_cd = 'CRS013')
-            --   and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','));
 
-            /*
-                or unique_cd = 'CRS013'
-
-                
-                This condition was in temporarily, as CRS013 was improperly labeled as a date value. It caused an error if it is used in the date table.
-                As of the completion of ticket CNDE-2107, this value has been fixed in DTS1's NBS_SRTE.dbo.imrdbmapping
-            */
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
                 from #OBS_NUMERIC;
-
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -263,7 +235,6 @@ BEGIN
                     @RowCount_no);
 
         COMMIT TRANSACTION;
-
 
         -- run procedure for checking target table schema vs results of temp tables above
         exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
@@ -306,6 +277,7 @@ BEGIN
             SET @Update_sql = '
         UPDATE tgt
         SET
+        tgt.TRANSMISSION_SETTING = src.TRANSMISSION_SETTING,
         tgt.INVESTIGATION_KEY = src.INVESTIGATION_KEY,
         tgt.CONDITION_KEY = src.CONDITION_KEY,
         tgt.patient_key = src.patient_key,
@@ -364,7 +336,7 @@ BEGIN
                 response
             FROM
                 #OBS_CODED 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -383,7 +355,7 @@ BEGIN
                 response
             FROM
                 #OBS_NUMERIC 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -402,7 +374,7 @@ BEGIN
                 response
             FROM
                 #OBS_TXT 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -421,7 +393,7 @@ BEGIN
                 response
             FROM
                 #OBS_DATE 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -457,28 +429,18 @@ BEGIN
 
         -- Variables for the columns in the insert select statement
         -- Must be ordered the same as the original column lists
+
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns = COALESCE(
                 STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
         FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) AS cols;
 
+
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
 
-        DECLARE @Insert_cols NVARCHAR(MAX) = CASE
-            WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
-                  ELSE '' END
-            + CASE
-                  WHEN @obsnum_columns != '' THEN ',' + @obsnum_columns
-                  ELSE '' END
-            + CASE
-                  WHEN @obstxt_columns != '' THEN ',' + @obstxt_columns
-                  ELSE '' END
-            + CASE
-                  WHEN @obsdate_columns != '' THEN ',' + @obsdate_columns
-                  ELSE '' END;
-
         SET @Insert_sql = '
-        INSERT INTO dbo.' + @tgt_table_nm + ' (
+        INSERT INTO dbo. ' + @tgt_table_nm + ' (
+        TRANSMISSION_SETTING,
         INVESTIGATION_KEY,
         CONDITION_KEY,
         patient_key,
@@ -490,8 +452,20 @@ BEGIN
         Inv_Assigned_dt_key,
         LDF_GROUP_KEY,
         GEOCODING_LOCATION_KEY
-        ' + @Insert_cols +
+        ' + CASE
+                  WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsnum_columns != '' THEN ',' + @obsnum_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obstxt_columns != '' THEN ',' + @obstxt_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsdate_columns != '' THEN ',' + @obsdate_columns
+                  ELSE '' END +
                           ') SELECT
+                            src.TRANSMISSION_SETTING,
                             src.INVESTIGATION_KEY,
                             src.CONDITION_KEY,
                             src.patient_key,
@@ -530,7 +504,7 @@ BEGIN
                 response
             FROM
                 #OBS_CODED 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -549,7 +523,7 @@ BEGIN
                 response
             FROM
                 #OBS_NUMERIC 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -568,7 +542,7 @@ BEGIN
                 response
             FROM
                 #OBS_TXT 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
@@ -587,7 +561,7 @@ BEGIN
                 response
             FROM
                 #OBS_DATE 
-            WHERE public_health_case_uid IS NOT NULL
+                WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
             MAX(response)
