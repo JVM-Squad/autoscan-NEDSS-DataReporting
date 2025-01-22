@@ -78,7 +78,12 @@ BEGIN TRY
 
 	set @DynamicQuery = 'insert into #missed_cols
 	select
-	  snt.rdb_table, snt.col_nm, coalesce(isc_rdb.data_type,isc_srte.data_type), coalesce(isc_rdb.character_maximum_length,isc_srte.character_maximum_length), coalesce(isc_rdb.numeric_precision,isc_srte.numeric_precision), coalesce(isc_rdb.numeric_scale,isc_srte.numeric_scale)
+	    snt.rdb_table,
+        snt.col_nm,
+        coalesce(isc_rdb.data_type,isc_srte.data_type, ''VARCHAR''),
+        coalesce(isc_rdb.character_maximum_length,isc_srte.character_maximum_length, 300),
+        coalesce(isc_rdb.numeric_precision,isc_srte.numeric_precision,18),
+        coalesce(isc_rdb.numeric_scale,isc_srte.numeric_scale,0)
 	from
 	(
 	select src.*,
@@ -95,7 +100,6 @@ BEGIN TRY
 				else null
 			end as src_nrt_table,
 			case
-				when db_field =''code'' and label is null then ''ovc_code''
 				when db_field =''code'' and label is not null and label = ''cvg_code'' then ''code_short_desc_txt''
 				when db_field =''code'' and label is not null and label = ''country'' then ''code_short_desc_txt''
 				when db_field =''code'' and label is not null and label = ''state'' then ''state_nm''
@@ -128,7 +132,7 @@ BEGIN TRY
 
 
 	if @debug = 'true'
-        select 'DynamicQuery', @DynamicQuery;
+        select '@DynamicQuery', @DynamicQuery;
 
 
     exec sp_executesql @DynamicQuery;
@@ -145,10 +149,8 @@ BEGIN TRY
     SET @PROC_STEP_NO =  @PROC_STEP_NO + 1;
     SET @PROC_STEP_NAME = ' Adding Missed Columns';
 
-    DECLARE @ColumnDef NVARCHAR(MAX);
-	DECLARE @alterquery NVARCHAR(MAX) = 'ALTER TABLE '+@tgt_table_nm+' ADD ';
+	DECLARE @AlterQuery NVARCHAR(MAX);
 
-	DECLARE @Index INT = 1;
 	DECLARE @Count INT = (SELECT COUNT(*) FROM #missed_cols );
 
 	IF @Count is null or @Count = 0
@@ -162,58 +164,21 @@ BEGIN TRY
 
 
 
---	WHILE @Index <= @Count
---    BEGIN
---	    -- Fetch the column name for the current iteration
---        SELECT @ColumnDef = col_nm + ' '+  col_data_type +
---            CASE
---                WHEN col_character_maximum_length IS NOT NULL THEN '(' +
---                                                                   CASE WHEN col_character_maximum_length = -1 THEN 'MAX' ELSE CAST(col_character_maximum_length AS NVARCHAR) END
---                    + ')'
---                WHEN col_data_type IN ('decimal', 'numeric') THEN '(' + CAST(col_numeric_precision AS NVARCHAR) + ',' + CAST(col_numeric_scale AS NVARCHAR) + ')'
---                ELSE ''
---            END
---        FROM (
---                 SELECT
---                     col_nm,
---                     col_data_type,
---                     col_character_maximum_length,
---                     col_numeric_precision,
---                     col_numeric_scale,
---                     ROW_NUMBER() OVER (ORDER BY col_nm) AS RowNum
---                 FROM  #missed_cols
---             ) AS OrderedTable
---        WHERE RowNum = @Index;
---
---        -- Add the column name to the dynamic query - @alterquery
---        SET @alterquery = @alterquery + @ColumnDef;
---
---	    -- Add a comma if it's not the last column
---	    IF @Index < @Count
---	        SET @alterquery = @alterquery + ', ';
---
---	    -- Increment the index
---	    SET @Index = @Index + 1;
---    END
-
-
-	--alternate approach which didn't work
---	DECLARE @alterquery NVARCHAR(MAX);
-	set @alterquery = 'ALTER TABLE '+ @tgt_table_nm + ' ADD ' + (select STRING_AGG( col_nm + ' ' +  col_data_type +
+	set @AlterQuery = 'ALTER TABLE '+ @tgt_table_nm + ' ADD ' + (select STRING_AGG( col_nm + ' ' +  col_data_type +
 	    CASE
+	        WHEN col_data_type IN ('decimal', 'numeric') THEN '(' + CAST(col_NUMERIC_PRECISION AS NVARCHAR) + ',' + CAST(col_NUMERIC_SCALE AS NVARCHAR) + ')'
 	        WHEN col_CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN '(' +
 	            CASE WHEN col_CHARACTER_MAXIMUM_LENGTH = -1 THEN 'MAX' ELSE CAST(col_CHARACTER_MAXIMUM_LENGTH AS NVARCHAR) END
 	        + ')'
-	        WHEN col_data_type IN ('decimal', 'numeric') THEN '(' + CAST(col_NUMERIC_PRECISION AS NVARCHAR) + ',' + CAST(col_NUMERIC_SCALE AS NVARCHAR) + ')'
 	        ELSE ''
 	    END, ', ') from #missed_cols);
 
 	-- Print or execute the generated SQL
 
     if @debug = 'true'
-        select 'alterquery', @alterquery;
+        select '@AlterQuery', @AlterQuery;
 
-    exec sp_executesql @alterquery;
+    exec sp_executesql @AlterQuery;
 
     INSERT INTO dbo.[JOB_FLOW_LOG]
 	    (BATCH_ID,[DATAFLOW_NAME],[PACKAGE_NAME] ,[STATUS_TYPE],[STEP_NUMBER],[STEP_NAME],[ROW_COUNT])
