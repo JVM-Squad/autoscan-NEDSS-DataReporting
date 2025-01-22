@@ -123,7 +123,8 @@ BEGIN TRY
         INTO #OBS_CODED
         from dbo.v_rdb_obs_mapping
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'code')
-          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+        ;
 
         if
             @debug = 'true'
@@ -151,13 +152,14 @@ BEGIN TRY
         select public_health_case_uid,
                unique_cd    as cd,
                col_nm,
-               coded_response as response,
+               date_response as response,
                rdb_table,
                db_field
         INTO #OBS_DATE
         from dbo.v_rdb_obs_mapping
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time')
-          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+         and  unique_cd != 'INV110';
 
         if
             @debug = 'true'
@@ -181,16 +183,28 @@ BEGIN TRY
         IF OBJECT_ID('#OBS_NUMERIC', 'U') IS NOT NULL
             drop table #OBS_NUMERIC;
 
-        select public_health_case_uid,
-               unique_cd    as cd,
-               col_nm,
-               coded_response as response,
-               rdb_table,
-               db_field
-        INTO #OBS_NUMERIC
-        from dbo.v_rdb_obs_mapping
+        select
+            rom.public_health_case_uid,
+            rom.unique_cd    as cd,
+            rom.col_nm,
+            rom.numeric_response as response,
+            rom.rdb_table,
+            rom.db_field,
+            CASE
+                WHEN isc.DATA_TYPE = 'numeric' THEN 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ', ' + CAST(isc.NUMERIC_SCALE as NVARCHAR(5)) + ') AS NUMERIC(' + CAST(isc.NUMERIC_PRECISION as NVARCHAR(5)) + ',' + CAST(isc.NUMERIC_SCALE as NVARCHAR(5)) + '))'
+                WHEN isc.DATA_TYPE LIKE '%int' THEN 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ', ' + CAST(isc.NUMERIC_SCALE as NVARCHAR(5)) + ') AS ' + isc.DATA_TYPE + ')'
+                WHEN isc.DATA_TYPE IN ('varchar', 'nvarchar') THEN 'CAST(ovn.' + QUOTENAME(col_nm) + ' AS ' + isc.DATA_TYPE + '(' + CAST(isc.CHARACTER_MAXIMUM_LENGTH as NVARCHAR(5)) + '))'
+                ELSE 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ',5) AS NUMERIC(15,5))'
+            END AS converted_column
+        into #OBS_NUMERIC
+        from dbo.v_rdb_obs_mapping rom
+        left join
+            INFORMATION_SCHEMA.COLUMNS isc
+            ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+            AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1')
-          and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ','));
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+        ;
 
         if
             @debug = 'true'
@@ -204,7 +218,7 @@ BEGIN TRY
 
         COMMIT TRANSACTION;
 
-        exec sp_alter_datamart_schema @batch_id, @datamart_nm, @tgt_table_nm, @debug;
+        exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
 
         BEGIN TRANSACTION
 
@@ -217,15 +231,15 @@ BEGIN TRY
         -- must be ordered the same as those used in the insert statement
         DECLARE @obscoded_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = @tgt_table_nm and db_field = 'code') AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
 
         DECLARE @obsnum_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1') AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
 
         DECLARE @obsdate_columns NVARCHAR(MAX) = '';
         SELECT @obsdate_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_TABLE = @tgt_table_nm and db_field = 'from_time') and  unique_cd != 'INV110')  AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE)  AS cols;
 
 
 
@@ -253,17 +267,17 @@ BEGIN TRY
        tgt.DETECTION_METHOD_OTHER = src.DETECTION_METHOD_OTHER'
  		+ CASE
 	       	WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	              FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm AND db_field = 'code' ) as cols)
+	              FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
 	       	ELSE ''
 		END
 		+ CASE
-	       	WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	                FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm AND db_field = 'numeric_value_1' ) as cols)
-			ELSE ''
+	      WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) +  ' = ' + CAST(converted_column AS NVARCHAR(MAX)),  ',')
+                 FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) as cols)
+          ELSE ''
 		END
 		+ CASE
 	        WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	               FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_table = @tgt_table_nm AND db_field = 'from_time') and  unique_cd != 'INV110' ) as cols)
+	               FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
 	        ELSE ''
     	END
        + '
@@ -363,15 +377,15 @@ BEGIN TRY
 
         DECLARE @obscoded_insert_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_insert_columns = COALESCE(STRING_AGG('ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm and db_field = 'code') AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
 
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obsnum_insert_columns = COALESCE(STRING_AGG('ovn.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where RDB_table = @tgt_table_nm and db_field = 'numeric_value_1') AS cols;
+        SELECT @obsnum_insert_columns =  COALESCE(STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) AS cols;
 
         DECLARE @obsdate_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-            FROM (SELECT DISTINCT RDB_ATTRIBUTE AS col_nm FROM dbo.v_nrt_srte_imrdbmapping where (RDB_table = @tgt_table_nm and db_field = 'from_time') and  unique_cd != 'INV110') AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
 
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''

@@ -80,7 +80,7 @@ BEGIN TRY
 	select
 	    snt.rdb_table,
         snt.col_nm,
-        coalesce(isc_rdb.data_type,isc_srte.data_type, ''VARCHAR''),
+        coalesce(isc_rdb.data_type,isc_srte.data_type, ''varchar''),
         coalesce(isc_rdb.character_maximum_length,isc_srte.character_maximum_length, 300),
         coalesce(isc_rdb.numeric_precision,isc_srte.numeric_precision,18),
         coalesce(isc_rdb.numeric_scale,isc_srte.numeric_scale,0)
@@ -167,7 +167,7 @@ BEGIN TRY
 	set @AlterQuery = 'ALTER TABLE '+ @tgt_table_nm + ' ADD ' + (select STRING_AGG( col_nm + ' ' +  col_data_type +
 	    CASE
 	        WHEN col_data_type IN ('decimal', 'numeric') THEN '(' + CAST(col_NUMERIC_PRECISION AS NVARCHAR) + ',' + CAST(col_NUMERIC_SCALE AS NVARCHAR) + ')'
-	        WHEN upper(col_data_type) = 'VARCHAR' THEN '(' +
+	        WHEN col_data_type = 'varchar' THEN '(' +
 	            CASE WHEN col_CHARACTER_MAXIMUM_LENGTH = -1 THEN 'MAX' ELSE CAST(col_CHARACTER_MAXIMUM_LENGTH AS NVARCHAR) END
 	        + ')'
 	        ELSE ''
