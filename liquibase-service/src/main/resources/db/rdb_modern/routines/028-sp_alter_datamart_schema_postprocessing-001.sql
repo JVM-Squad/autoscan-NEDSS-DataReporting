@@ -167,7 +167,7 @@ BEGIN TRY
 	set @AlterQuery = 'ALTER TABLE '+ @tgt_table_nm + ' ADD ' + (select STRING_AGG( col_nm + ' ' +  col_data_type +
 	    CASE
 	        WHEN col_data_type IN ('decimal', 'numeric') THEN '(' + CAST(col_NUMERIC_PRECISION AS NVARCHAR) + ',' + CAST(col_NUMERIC_SCALE AS NVARCHAR) + ')'
-	        WHEN col_CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN '(' +
+	        WHEN upper(col_data_type) = 'VARCHAR' THEN '(' +
 	            CASE WHEN col_CHARACTER_MAXIMUM_LENGTH = -1 THEN 'MAX' ELSE CAST(col_CHARACTER_MAXIMUM_LENGTH AS NVARCHAR) END
 	        + ')'
 	        ELSE ''
