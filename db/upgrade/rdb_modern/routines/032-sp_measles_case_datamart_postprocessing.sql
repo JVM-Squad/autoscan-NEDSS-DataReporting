@@ -15,7 +15,7 @@ BEGIN
     SET
         @batch_id = cast((format(getdate(), 'yyyyMMddHHmmss')) as bigint);
 
-    -- condition for investigation_form_cd uses the LIKE operator for Rubella_Case, so % is included
+    -- condition for investigation_form_cd uses the LIKE operator for Measles_Case, so % is included
     DECLARE
         @inv_form_cd VARCHAR(100) = 'INV_FORM_MEA%';
 

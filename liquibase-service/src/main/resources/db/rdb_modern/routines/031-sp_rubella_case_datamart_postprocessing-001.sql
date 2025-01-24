@@ -229,7 +229,6 @@ BEGIN
             IF OBJECT_ID('#OBS_NUMERIC_Rubella_Case', 'U') IS NOT NULL
             drop table #OBS_NUMERIC_Rubella_Case;
             
-                -- add suffix to temp table name (@tgt_table_nm)
 
             select rom.public_health_case_uid,
                    rom.unique_cd        as cd,
