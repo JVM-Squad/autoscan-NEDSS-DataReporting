@@ -59,7 +59,7 @@ BEGIN TRY
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING ##KEY_ATTR_INIT';
+            @PROC_STEP_NAME = ' GENERATING #KEY_ATTR_INIT';
 
         IF OBJECT_ID('#KEY_ATTR_INIT', 'U') IS NOT NULL
             drop table #KEY_ATTR_INIT
@@ -108,7 +108,7 @@ BEGIN TRY
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING #OBS_CODED';
+            @PROC_STEP_NAME = ' GENERATING #OBS_CODED_Generic_Case';
 
         IF OBJECT_ID('#OBS_CODED_Generic_Case', 'U') IS NOT NULL
             drop table #OBS_CODED_Generic_Case;
@@ -147,7 +147,7 @@ BEGIN TRY
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING #OBS_DATE';
+            @PROC_STEP_NAME = ' GENERATING #OBS_DATE_Generic_Case';
 
         IF OBJECT_ID('#OBS_DATE_Generic_Case', 'U') IS NOT NULL
             drop table #OBS_DATE_Generic_Case;
@@ -184,7 +184,7 @@ BEGIN TRY
         SET
             @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-            @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC';
+            @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC_Generic_Case';
 
         IF OBJECT_ID('#OBS_NUMERIC_Generic_Case', 'U') IS NOT NULL
             drop table #OBS_NUMERIC_Generic_Case;
@@ -224,7 +224,18 @@ BEGIN TRY
 
         COMMIT TRANSACTION;
 
+        SET
+            @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET
+            @PROC_STEP_NAME = 'Exec procedure: dbo.sp_alter_datamart_schema_postprocessing';
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name, 0);
+
         exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
+
+
+
 
         BEGIN TRANSACTION
 
