@@ -9,8 +9,6 @@ BEGIN
 
     DECLARE @RowCount_no INT;
 
-    DECLARE @Table_RowCount_no INT;
-
     DECLARE @Proc_Step_no FLOAT = 0;
 
     DECLARE @Proc_Step_Name VARCHAR(200) = '';
@@ -42,21 +40,9 @@ BEGIN
                 @ROWCOUNT_NO);
 
         COMMIT TRANSACTION;
--- Get count of existing records
-        with lst as (select investigation_key
-                     from dbo.Investigation i
-                     where i.case_uid in (SELECT value
-                                          FROM
-                                              STRING_SPLIT(@phc_id,
-                                                           ','))
-                       and RECORD_STATUS_CD = 'ACTIVE')
-        select @Table_RowCount_no = count(*)
-        from lst;
-
 -- new as per the team discussion, to remove TEMP_UPDATED_LAB_INV_MAP from SP_RUN sp
         IF OBJECT_ID('tempdb..#TEMP_UPDATED_LAB_INV_MAP') IS NOT NULL
             DROP TABLE #TEMP_UPDATED_LAB_INV_MAP;
-        if @Table_RowCount_no > 0
             BEGIN TRANSACTION;
         SET @Proc_Step_no = @Proc_Step_no + 1;
         SET @Proc_Step_Name = 'Creating LAB_INV_MAP';
@@ -87,9 +73,6 @@ BEGIN
                 @ROWCOUNT_NO);
         COMMIT TRANSACTION;
         -- added till here as part of team discussion.
---  PRINT 'Table_RowCount_no: ' + CAST(@Table_RowCount_no AS VARCHAR(10));
-
-
 -- Create session table for all cases
         IF OBJECT_ID('tempdb..#TMP_CLDM_All_Case') IS NOT NULL
             DROP TABLE #TMP_CLDM_All_Case;
