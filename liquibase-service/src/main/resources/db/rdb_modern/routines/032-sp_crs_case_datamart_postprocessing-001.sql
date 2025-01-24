@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE dbo.sp_crs_case_datamart_postprocessing @inv_uids nvarchar(max),
+CREATE OR ALTER PROCEDURE dbo.sp_crs_case_datamart_postprocessing @phc_uids nvarchar(max),
                                                                   @debug bit = 'false'
 as
 
@@ -54,7 +54,7 @@ BEGIN
                , @Proc_Step_no
                , @Proc_Step_Name
                , 0
-               , LEFT('ID List-' + @inv_uids, 500));
+               , LEFT('ID List-' + @phc_uids, 500));
 
         COMMIT TRANSACTION;
 
@@ -63,6 +63,9 @@ BEGIN
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
                 @PROC_STEP_NAME = ' GENERATING #KEY_ATTR_INIT';
+
+            IF OBJECT_ID('#KEY_ATTR_INIT', 'U') IS NOT NULL
+            drop table #KEY_ATTR_INIT;
 
             select public_health_case_uid,
                    INVESTIGATION_KEY,
@@ -78,7 +81,7 @@ BEGIN
                    GEOCODING_LOCATION_KEY
             INTO #KEY_ATTR_INIT
             from dbo.v_nrt_inv_keys_attrs_mapping
-            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))
+            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
               AND investigation_form_cd LIKE @inv_form_cd;
 
             if
@@ -100,34 +103,50 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = 'GENERATING #OBS_CODED';
+                @PROC_STEP_NAME = 'GENERATING #OBS_CODED_CRS_Case';
 
+            IF OBJECT_ID('#OBS_CODED_CRS_Case', 'U') IS NOT NULL
+            drop table #OBS_CODED_CRS_Case;
 
-            select public_health_case_uid,
-                   unique_cd      as cd,
-                   rom.DB_field,
-                   rom.rdb_table,
-                   rom.label,
-                   CASE
-                       WHEN unique_cd = 'CRS090' THEN 'PRENATAL_CARE_OBTAINED_FRM_' +
-                                                      CAST(ROW_NUMBER() OVER (PARTITION BY rom.public_health_case_uid, rom.unique_cd ORDER BY rom.unique_cd, cvg.nbs_uid DESC) AS NVARCHAR(50))
-                       ELSE col_nm
-                       END        AS col_nm,
-                   coded_response as response
-            INTO #OBS_CODED
-            from dbo.v_rdb_obs_mapping rom
-                     LEFT JOIN (SELECT code_desc_txt, nbs_uid
+            -- CTE for splitting and ordering CRS090
+            WITH processed_coded AS (
+                select public_health_case_uid,
+                    unique_cd      as cd,
+                    rom.DB_field,
+                    rom.rdb_table,
+                    rom.label,
+                    CASE
+                        WHEN unique_cd = 'CRS090' THEN 'PRENATAL_CARE_OBTAINED_FRM_' +
+                                                        CAST(ROW_NUMBER() OVER (PARTITION BY rom.public_health_case_uid, rom.unique_cd ORDER BY rom.unique_cd, cvg.nbs_uid DESC) AS NVARCHAR(50))
+                        ELSE col_nm
+                        END        AS col_nm,
+                    coded_response as response
+                FROM dbo.v_rdb_obs_mapping rom
+                LEFT JOIN (SELECT code_desc_txt,
+                                  nbs_uid
                                 FROM dbo.v_nrt_srte_code_value_general
                                 WHERE code_set_nm = 'RUB_PRE_CARE_T') cvg
-                               ON rom.coded_response = cvg.code_desc_txt
+                    ON rom.coded_response = cvg.code_desc_txt)
+            select public_health_case_uid,
+                   cd,
+                   DB_field,
+                   rdb_table,
+                   col_nm,
+                   response
+            INTO #OBS_CODED_CRS_Case
+            from processed_coded rom
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm) 
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'code'
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_CODED;
+                from #OBS_CODED_CRS_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -143,7 +162,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_TXT';
+                @PROC_STEP_NAME = ' GENERATING #OBS_TXT_CRS_Case';
+
+            IF OBJECT_ID('#OBS_TXT_CRS_Case', 'U') IS NOT NULL
+            drop table #OBS_TXT_CRS_Case;
 
             select public_health_case_uid,
                    unique_cd    as cd,
@@ -151,15 +173,19 @@ BEGIN
                    rdb_table,
                    col_nm,
                    txt_response as response
-            INTO #OBS_TXT
-            from dbo.v_rdb_obs_mapping
+            INTO #OBS_TXT_CRS_Case
+            from dbo.v_rdb_obs_mapping rom
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'value_txt'
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_TXT;
+                from #OBS_TXT_CRS_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -176,7 +202,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_DATE';
+                @PROC_STEP_NAME = ' GENERATING #OBS_DATE_CRS_Case';
+
+            IF OBJECT_ID('#OBS_DATE_CRS_Case', 'U') IS NOT NULL
+            drop table #OBS_DATE_CRS_Case;
 
             select public_health_case_uid,
                    unique_cd     as cd,
@@ -184,10 +213,14 @@ BEGIN
                    rdb_table,
                    col_nm,
                    date_response as response
-            INTO #OBS_DATE
-            from dbo.v_rdb_obs_mapping
+            INTO #OBS_DATE_CRS_Case
+            from dbo.v_rdb_obs_mapping rom
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'from_time'
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
             --AND unique_cd != 'CRS013'
             
             /*
@@ -200,7 +233,7 @@ BEGIN
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_DATE;
+                from #OBS_DATE_CRS_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -217,7 +250,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC';
+                @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC_CRS_Case';
+
+            IF OBJECT_ID('#OBS_NUMERIC_CRS_Case', 'U') IS NOT NULL
+            drop table #OBS_NUMERIC_CRS_Case;
 
             select rom.public_health_case_uid,
                    rom.unique_cd        as cd,
@@ -230,16 +266,16 @@ BEGIN
                     WHEN isc.DATA_TYPE IN ('varchar', 'nvarchar') THEN 'CAST(ovn.' + QUOTENAME(col_nm) + ' AS ' + isc.DATA_TYPE + '(' + CAST(isc.CHARACTER_MAXIMUM_LENGTH as NVARCHAR(5)) + '))'
                     ELSE 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ',5) AS NUMERIC(15,5))'
                 END AS converted_column
-            INTO #OBS_NUMERIC
+            INTO #OBS_NUMERIC_CRS_Case
             from dbo.v_rdb_obs_mapping rom
             LEFT JOIN 
                 INFORMATION_SCHEMA.COLUMNS isc
                 ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
                 AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE rom.RDB_TABLE = @tgt_table_nm and rom.db_field = 'numeric_value_1'
-            and (rom.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
+            and (rom.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
             -- WHERE ((RDB_TABLE = 'CRS_Case' and db_field = 'numeric_value_1') or unique_cd = 'CRS013')
-            --   and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','));
+            --   and public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
 
             /*
                 or unique_cd = 'CRS013'
@@ -251,7 +287,7 @@ BEGIN
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_NUMERIC;
+                from #OBS_NUMERIC_CRS_Case;
 
 
             SELECT @RowCount_no = @@ROWCOUNT;
@@ -264,11 +300,20 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'CHECKING FOR NEW COLUMNS';
 
-        -- run procedure for checking target table schema vs results of temp tables above
-        exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
+            -- run procedure for checking target table schema vs results of temp tables above
+            exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
 
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
 
+        
         BEGIN TRANSACTION
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
@@ -281,25 +326,25 @@ BEGIN
             SELECT @obscoded_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_CRS_Case) AS cols;
 
             DECLARE @obsnum_columns NVARCHAR(MAX) = '';
             SELECT @obsnum_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC_CRS_Case) AS cols;
 
             DECLARE @obstxt_columns NVARCHAR(MAX) = '';
             SELECT @obstxt_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_TXT) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_TXT_CRS_Case) AS cols;
 
             DECLARE @obsdate_columns NVARCHAR(MAX) = '';
             SELECT @obsdate_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_CRS_Case) AS cols;
 
             DECLARE @Update_sql NVARCHAR(MAX) = '';
 
@@ -323,7 +368,7 @@ BEGIN
                                                         ' = ovc.' +
                                                         CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                         ',')
-                    FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
+                    FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_CRS_Case) as cols)
             ELSE '' END
                 + CASE
                       WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -331,7 +376,7 @@ BEGIN
                                                                                ' = ' +
                                                                                CAST(converted_column AS NVARCHAR(MAX)),
                                                                                ',')
-                                                             FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) as cols)
+                                                             FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_CRS_Case) as cols)
                       ELSE '' END
                 + CASE
                       WHEN @obstxt_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -339,7 +384,7 @@ BEGIN
                                                                                ' = ovt.' +
                                                                                CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                                                ',')
-                                                             FROM (SELECT DISTINCT col_nm FROM #OBS_TXT) as cols)
+                                                             FROM (SELECT DISTINCT col_nm FROM #OBS_TXT_CRS_Case) as cols)
                       ELSE '' END
                 + CASE
                       WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -347,7 +392,7 @@ BEGIN
                                                                                 ' = ovd.' +
                                                                                 CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                                                 ',')
-                                                              FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
+                                                              FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_CRS_Case) as cols)
                       ELSE '' END +
                               ' FROM
                               #KEY_ATTR_INIT src
@@ -363,7 +408,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_CODED 
+                #OBS_CODED_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -382,7 +427,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_NUMERIC 
+                #OBS_NUMERIC_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -401,7 +446,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_TXT 
+                #OBS_TXT_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -420,7 +465,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_DATE 
+                #OBS_DATE_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -460,7 +505,7 @@ BEGIN
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns = COALESCE(
                 STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-        FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) AS cols;
+        FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_CRS_Case) AS cols;
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
 
@@ -529,7 +574,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_CODED 
+                #OBS_CODED_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -548,7 +593,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_NUMERIC 
+                #OBS_NUMERIC_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -567,7 +612,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_TXT 
+                #OBS_TXT_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (
@@ -586,7 +631,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_DATE 
+                #OBS_DATE_CRS_Case 
             WHERE public_health_case_uid IS NOT NULL
         ) AS SourceData
         PIVOT (

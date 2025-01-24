@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE dbo.sp_rubella_case_datamart_postprocessing @inv_uids nvarchar(max),
+CREATE OR ALTER PROCEDURE dbo.sp_rubella_case_datamart_postprocessing @phc_uids nvarchar(max),
                                                                   @debug bit = 'false'
 as
 
@@ -51,7 +51,7 @@ BEGIN
                , @Proc_Step_no
                , @Proc_Step_Name
                , 0
-               , LEFT('ID List-' + @inv_uids, 500));
+               , LEFT('ID List-' + @phc_uids, 500));
 
         COMMIT TRANSACTION;
 
@@ -60,6 +60,9 @@ BEGIN
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
                 @PROC_STEP_NAME = ' GENERATING #KEY_ATTR_INIT';
+
+            IF OBJECT_ID('#KEY_ATTR_INIT', 'U') IS NOT NULL
+            drop table #KEY_ATTR_INIT;
 
             select public_health_case_uid,
                    transmission_mode_cd AS transmission_setting,
@@ -76,7 +79,7 @@ BEGIN
                    GEOCODING_LOCATION_KEY
             INTO #KEY_ATTR_INIT
             from dbo.v_nrt_inv_keys_attrs_mapping
-            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ','))
+            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
               AND investigation_form_cd LIKE @inv_form_cd;
 
             if
@@ -98,7 +101,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = 'GENERATING #OBS_CODED';
+                @PROC_STEP_NAME = 'GENERATING #OBS_CODED_Rubella_Case';
+
+            IF OBJECT_ID('#OBS_CODED_Rubella_Case', 'U') IS NOT NULL
+            drop table #OBS_CODED_Rubella_Case;
 
 
             select public_health_case_uid,
@@ -108,18 +114,23 @@ BEGIN
                    rom.rdb_table,
                    rom.label,
                    coded_response as response
-            INTO #OBS_CODED
+            INTO #OBS_CODED_Rubella_Case
             from dbo.v_rdb_obs_mapping rom
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'code'
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_CODED;
+                from #OBS_CODED_Rubella_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
+
 
 
             INSERT INTO [dbo].[job_flow_log]
@@ -133,7 +144,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_TXT';
+                @PROC_STEP_NAME = ' GENERATING #OBS_TXT_Rubella_Case';
+
+            IF OBJECT_ID('#OBS_TXT_Rubella_Case', 'U') IS NOT NULL
+            drop table #OBS_TXT_Rubella_Case;
 
             select public_health_case_uid,
                    unique_cd    as cd,
@@ -141,15 +155,19 @@ BEGIN
                    DB_field,
                    rdb_table,
                    txt_response as response
-            INTO #OBS_TXT
+            INTO #OBS_TXT_Rubella_Case
             from dbo.v_rdb_obs_mapping
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(col_nm)
             WHERE RDB_TABLE = @tgt_table_nm and db_field = 'value_txt'
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_TXT;
+                from #OBS_TXT_Rubella_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -166,7 +184,10 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_DATE';
+                @PROC_STEP_NAME = ' GENERATING #OBS_DATE_Rubella_Case';
+
+            IF OBJECT_ID('#OBS_DATE_Rubella_Case', 'U') IS NOT NULL
+            drop table #OBS_DATE_Rubella_Case;
 
             select public_health_case_uid,
                    unique_cd     as cd,
@@ -174,15 +195,19 @@ BEGIN
                    DB_field,
                    rdb_table,
                    date_response as response
-            INTO #OBS_DATE
+            INTO #OBS_DATE_Rubella_Case
             from dbo.v_rdb_obs_mapping
+            LEFT JOIN 
+                INFORMATION_SCHEMA.COLUMNS isc
+                ON UPPER(isc.TABLE_NAME) = UPPER(RDB_table)
+                AND UPPER(isc.COLUMN_NAME) = UPPER(col_nm)
             WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time' or unique_cd in ('INV132','INV133'))
-              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR public_health_case_uid is null);
+              and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_DATE;
+                from #OBS_DATE_Rubella_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -199,7 +224,12 @@ BEGIN
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
-                @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC';
+                @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC_Rubella_Case';
+
+            IF OBJECT_ID('#OBS_NUMERIC_Rubella_Case', 'U') IS NOT NULL
+            drop table #OBS_NUMERIC_Rubella_Case;
+            
+                -- add suffix to temp table name (@tgt_table_nm)
 
             select rom.public_health_case_uid,
                    rom.unique_cd        as cd,
@@ -212,19 +242,19 @@ BEGIN
                     WHEN isc.DATA_TYPE IN ('varchar', 'nvarchar') THEN 'CAST(ovn.' + QUOTENAME(col_nm) + ' AS ' + isc.DATA_TYPE + '(' + CAST(isc.CHARACTER_MAXIMUM_LENGTH as NVARCHAR(5)) + '))'
                     ELSE 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ',5) AS NUMERIC(15,5))'
                 END AS converted_column
-            INTO #OBS_NUMERIC
+            INTO #OBS_NUMERIC_Rubella_Case
             from dbo.v_rdb_obs_mapping rom
             LEFT JOIN 
                 INFORMATION_SCHEMA.COLUMNS isc
                 ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
                 AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
             WHERE rom.RDB_TABLE = @tgt_table_nm and rom.db_field = 'numeric_value_1'
-            and (rom.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@inv_uids, ',')) OR rom.public_health_case_uid is null);
+            and (rom.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) OR isc.column_name IS NOT NULL);
 
             if
                 @debug = 'true'
                 select @Proc_Step_Name as step, *
-                from #OBS_NUMERIC;
+                from #OBS_NUMERIC_Rubella_Case;
 
             SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -236,8 +266,18 @@ BEGIN
 
         COMMIT TRANSACTION;
 
-        -- run procedure for checking target table schema vs results of temp tables above
-        exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'CHECKING FOR NEW COLUMNS';
+
+            -- run procedure for checking target table schema vs results of temp tables above
+            exec sp_alter_datamart_schema_postprocessing @batch_id, @datamart_nm, @tgt_table_nm, @debug;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
 
 
         BEGIN TRANSACTION
@@ -252,25 +292,25 @@ BEGIN
             SELECT @obscoded_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_Rubella_Case) AS cols;
 
             DECLARE @obsnum_columns NVARCHAR(MAX) = '';
             SELECT @obsnum_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC_Rubella_Case) AS cols;
 
             DECLARE @obstxt_columns NVARCHAR(MAX) = '';
             SELECT @obstxt_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_TXT) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_TXT_Rubella_Case) AS cols;
 
             DECLARE @obsdate_columns NVARCHAR(MAX) = '';
             SELECT @obsdate_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_Rubella_Case) AS cols;
 
             DECLARE @Update_sql NVARCHAR(MAX) = '';
 
@@ -295,7 +335,7 @@ BEGIN
                                                         ' = ovc.' +
                                                         CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                         ',')
-                    FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
+                    FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_Rubella_Case) as cols)
             ELSE '' END
                 + CASE
                       WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -303,7 +343,7 @@ BEGIN
                                                                                ' = ' +
                                                                                CAST(converted_column AS NVARCHAR(MAX)),
                                                                                ',')
-                                                             FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) as cols)
+                                                             FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_Rubella_Case) as cols)
                       ELSE '' END
                 + CASE
                       WHEN @obstxt_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -311,7 +351,7 @@ BEGIN
                                                                                ' = ovt.' +
                                                                                CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                                                ',')
-                                                             FROM (SELECT DISTINCT col_nm FROM #OBS_TXT) as cols)
+                                                             FROM (SELECT DISTINCT col_nm FROM #OBS_TXT_Rubella_Case) as cols)
                       ELSE '' END
                 + CASE
                       WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
@@ -319,7 +359,7 @@ BEGIN
                                                                                 ' = ovd.' +
                                                                                 CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),
                                                                                 ',')
-                                                              FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
+                                                              FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_Rubella_Case) as cols)
                       ELSE '' END +
                               ' FROM
                               #KEY_ATTR_INIT src
@@ -335,7 +375,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_CODED 
+                #OBS_CODED_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -354,7 +394,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_NUMERIC 
+                #OBS_NUMERIC_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -373,7 +413,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_TXT 
+                #OBS_TXT_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -392,7 +432,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_DATE 
+                #OBS_DATE_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -433,7 +473,7 @@ BEGIN
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns = COALESCE(
                 STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-        FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) AS cols;
+        FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_Rubella_Case) AS cols;
 
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
@@ -503,7 +543,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_CODED 
+                #OBS_CODED_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -522,7 +562,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_NUMERIC 
+                #OBS_NUMERIC_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -541,7 +581,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_TXT 
+                #OBS_TXT_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -560,7 +600,7 @@ BEGIN
                 col_nm,
                 response
             FROM
-                #OBS_DATE 
+                #OBS_DATE_Rubella_Case 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
