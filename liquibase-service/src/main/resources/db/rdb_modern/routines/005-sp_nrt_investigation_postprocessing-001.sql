@@ -815,7 +815,8 @@ BEGIN
                  LEFT JOIN dbo.D_PATIENT pat with (nolock) ON pat.PATIENT_UID = nrt.patient_id
                  LEFT JOIN dbo.nrt_datamart_metadata dtm with (nolock) ON dtm.condition_cd = nrt.cd
         WHERE nrt.public_health_case_uid in
-              (SELECT value FROM STRING_SPLIT(@id_list, ','));
+              (SELECT value FROM STRING_SPLIT(@id_list, ','))
+        and  dtm.Datamart is not NULL;
 
 
     END TRY

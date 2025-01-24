@@ -52,6 +52,7 @@ public class PostProcessingService {
 
     static final String PAYLOAD = "payload";
     static final String SP_EXECUTION_COMPLETED = "Stored proc execution completed: {}";
+    static final String PROCESSING_MESSAGE_TOPIC_LOG_MSG = "Processing {} message topic. Calling stored proc: {} '{}'";
     static final String PHC_UID = "public_health_case_uid";
 
     static final String MORB_REPORT = "MorbReport";
@@ -79,6 +80,7 @@ public class PostProcessingService {
         F_STD_PAGE_CASE(0, "fact std page case", PHC_UID, "sp_f_std_page_case_postprocessing"),
         HEPATITIS_DATAMART(0, "Hepatitis_Datamart", PHC_UID, "sp_hepatitis_datamart_postprocessing"),
         STD_HIV_DATAMART(0, "Std_Hiv_Datamart", PHC_UID, "sp_std_hiv_datamart_postprocessing"),
+        GENERIC_CASE(0,"Generic_Case", PHC_UID, "sp_generic_case_datamart_postprocessing"),
         UNKNOWN(-1, "unknown", "unknown_uid", "sp_nrt_unknown_postprocessing");
 
         private final int priority;
@@ -320,16 +322,18 @@ public class PostProcessingService {
 
                 if (dmType.equals(Entity.HEPATITIS_DATAMART.getEntityName())) {
 
-                    logger.info("Processing {} message topic. Calling stored proc: {} '{}'", dmType,
-                            Entity.HEPATITIS_DATAMART.getStoredProcedure(), cases);
+                    logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.HEPATITIS_DATAMART.getStoredProcedure(), cases);
                     investigationRepository.executeStoredProcForHepDatamart(cases);
                     completeLog(Entity.HEPATITIS_DATAMART.getStoredProcedure());
                 } else if (dmType.equals(Entity.STD_HIV_DATAMART.getEntityName())) {
 
-                    logger.info("Processing {} message topic. Calling stored proc: {} '{}'", dmType,
-                            Entity.STD_HIV_DATAMART.getStoredProcedure(), cases);
+                    logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.STD_HIV_DATAMART.getStoredProcedure(), cases);
                     investigationRepository.executeStoredProcForStdHIVDatamart(cases);
                     completeLog(Entity.STD_HIV_DATAMART.getStoredProcedure());
+                } else if (dmType.equals(Entity.GENERIC_CASE.getEntityName())) {
+                    logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.GENERIC_CASE.getStoredProcedure(), cases);
+                    investigationRepository.executeStoredProcForGenericCaseDatamart(cases);
+                    completeLog(Entity.GENERIC_CASE.getStoredProcedure());
                 }
             } else {
                 logger.info("No data to process from the datamart topics.");

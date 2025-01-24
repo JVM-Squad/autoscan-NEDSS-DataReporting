@@ -20,8 +20,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static gov.cdc.etldatapipeline.commonutil.TestUtils.readFileData;
-import static gov.cdc.etldatapipeline.postprocessingservice.service.PostProcessingService.Entity.HEPATITIS_DATAMART;
-import static gov.cdc.etldatapipeline.postprocessingservice.service.PostProcessingService.Entity.STD_HIV_DATAMART;
+import static gov.cdc.etldatapipeline.postprocessingservice.service.PostProcessingService.Entity.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 
@@ -113,6 +112,36 @@ class DatamartProcessingTest {
         assertEquals(datamartKey, actualDatamartKey);
         assertEquals(datamart, actualReporting);
     }
+
+    @Test
+    void testGenericCaseDatamartProcess() throws Exception {
+        String topic = "dummy_investigation";
+        List<DatamartData> datamartDataLst = new ArrayList<>();
+        DatamartData datamartData = getDatamartData(10009757L, GENERIC_CASE.getEntityName(), GENERIC_CASE.getStoredProcedure());
+        datamartDataLst.add(datamartData);
+
+        datamartProcessor.datamartTopic = topic;
+        datamartProcessor.process(datamartDataLst);
+
+        Datamart datamart = getDatamart("GenericCaseDatamart.json");
+        DatamartKey datamartKey = new DatamartKey();
+        datamartKey.setPublicHealthCaseUid(datamartData.getPublicHealthCaseUid());
+
+        verify(kafkaTemplate).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
+
+        String actualMessage = messageCaptor.getValue();
+        String actualKey = keyCaptor.getValue();
+
+        var actualReporting = objectMapper.readValue(
+                objectMapper.readTree(actualMessage).path(PAYLOAD).toString(), Datamart.class);
+        var actualDatamartKey = objectMapper.readValue(
+                objectMapper.readTree(actualKey).path(PAYLOAD).toString(), DatamartKey.class);
+
+        assertEquals(topic, topicCaptor.getValue());
+        assertEquals(datamartKey, actualDatamartKey);
+        assertEquals(datamart, actualReporting);
+    }
+
 
     @Test
     void testDatamartProcessNoExceptionWhenDataIsNull() {
