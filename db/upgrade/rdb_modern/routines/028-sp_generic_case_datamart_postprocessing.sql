@@ -110,8 +110,8 @@ BEGIN TRY
         SET
             @PROC_STEP_NAME = ' GENERATING #OBS_CODED';
 
-        IF OBJECT_ID('#OBS_CODED', 'U') IS NOT NULL
-            drop table #OBS_CODED;
+        IF OBJECT_ID('#OBS_CODED_Generic_Case', 'U') IS NOT NULL
+            drop table #OBS_CODED_Generic_Case;
 
         select public_health_case_uid,
                unique_cd    as cd,
@@ -120,16 +120,19 @@ BEGIN TRY
                rdb_table,
                db_field,
                label
-        INTO #OBS_CODED
-        from dbo.v_rdb_obs_mapping
+        INTO #OBS_CODED_Generic_Case
+        from dbo.v_rdb_obs_mapping rom
+        left join INFORMATION_SCHEMA.COLUMNS isc
+             on UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+             and UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'code')
-          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or isc.column_name IS NOT NULL)
         ;
 
         if
             @debug = 'true'
             select @Proc_Step_Name as step, *
-            from #OBS_CODED;
+            from #OBS_CODED_Generic_Case;
 
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
@@ -146,8 +149,8 @@ BEGIN TRY
         SET
             @PROC_STEP_NAME = ' GENERATING #OBS_DATE';
 
-        IF OBJECT_ID('#OBS_DATE', 'U') IS NOT NULL
-            drop table #OBS_DATE;
+        IF OBJECT_ID('#OBS_DATE_Generic_Case', 'U') IS NOT NULL
+            drop table #OBS_DATE_Generic_Case;
 
         select public_health_case_uid,
                unique_cd    as cd,
@@ -155,16 +158,19 @@ BEGIN TRY
                date_response as response,
                rdb_table,
                db_field
-        INTO #OBS_DATE
-        from dbo.v_rdb_obs_mapping
+        INTO #OBS_DATE_Generic_Case
+        from dbo.v_rdb_obs_mapping rom
+         left join INFORMATION_SCHEMA.COLUMNS isc
+                on UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
+                and UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'from_time')
-          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or isc.column_name IS NOT NULL)
          and  unique_cd != 'INV110';
 
         if
             @debug = 'true'
             select @Proc_Step_Name as step, *
-            from #OBS_DATE;
+            from #OBS_DATE_Generic_Case;
 
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
@@ -180,8 +186,8 @@ BEGIN TRY
         SET
             @PROC_STEP_NAME = ' GENERATING #OBS_NUMERIC';
 
-        IF OBJECT_ID('#OBS_NUMERIC', 'U') IS NOT NULL
-            drop table #OBS_NUMERIC;
+        IF OBJECT_ID('#OBS_NUMERIC_Generic_Case', 'U') IS NOT NULL
+            drop table #OBS_NUMERIC_Generic_Case;
 
         select
             rom.public_health_case_uid,
@@ -196,20 +202,20 @@ BEGIN TRY
                 WHEN isc.DATA_TYPE IN ('varchar', 'nvarchar') THEN 'CAST(ovn.' + QUOTENAME(col_nm) + ' AS ' + isc.DATA_TYPE + '(' + CAST(isc.CHARACTER_MAXIMUM_LENGTH as NVARCHAR(5)) + '))'
                 ELSE 'CAST(ROUND(ovn.' + QUOTENAME(col_nm) + ',5) AS NUMERIC(15,5))'
             END AS converted_column
-        into #OBS_NUMERIC
+        into #OBS_NUMERIC_Generic_Case
         from dbo.v_rdb_obs_mapping rom
         left join
             INFORMATION_SCHEMA.COLUMNS isc
             ON UPPER(isc.TABLE_NAME) = UPPER(rom.RDB_table)
             AND UPPER(isc.COLUMN_NAME) = UPPER(rom.col_nm)
         WHERE (RDB_TABLE = @tgt_table_nm and db_field = 'numeric_value_1')
-          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or public_health_case_uid is null)
+          and (public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_ids, ',')) or isc.column_name IS NOT NULL)
         ;
 
         if
             @debug = 'true'
             select @Proc_Step_Name as step, *
-            from #OBS_NUMERIC;
+            from #OBS_NUMERIC_Generic_Case;
 
         SELECT @RowCount_no = @@ROWCOUNT;
         INSERT INTO [dbo].[job_flow_log]
@@ -231,15 +237,15 @@ BEGIN TRY
         -- must be ordered the same as those used in the insert statement
         DECLARE @obscoded_columns NVARCHAR(MAX) = '';
         SELECT @obscoded_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_Generic_Case) AS cols;
 
         DECLARE @obsnum_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC) AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC_Generic_Case) AS cols;
 
         DECLARE @obsdate_columns NVARCHAR(MAX) = '';
         SELECT @obsdate_columns = COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE)  AS cols;
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_Generic_Case)  AS cols;
 
 
 
@@ -267,17 +273,17 @@ BEGIN TRY
        tgt.DETECTION_METHOD_OTHER = src.DETECTION_METHOD_OTHER'
  		+ CASE
 	       	WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	              FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) as cols)
+	              FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_Generic_Case) as cols)
 	       	ELSE ''
 		END
 		+ CASE
 	      WHEN @obsnum_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) +  ' = ' + CAST(converted_column AS NVARCHAR(MAX)),  ',')
-                 FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) as cols)
+                 FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_Generic_Case) as cols)
           ELSE ''
 		END
 		+ CASE
 	        WHEN @obsdate_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) + ' = ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)),',')
-	               FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) as cols)
+	               FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_Generic_Case) as cols)
 	        ELSE ''
     	END
        + '
@@ -296,7 +302,7 @@ BEGIN TRY
 	                col_nm,
 	                response
 	            FROM
-	                #OBS_CODED
+	                #OBS_CODED_Generic_Case
 	                where public_health_case_uid IS NOT NULL
 	        ) AS SourceData
 	        PIVOT (
@@ -317,7 +323,7 @@ BEGIN TRY
 	                col_nm,
 	                response
 	            FROM
-	                #OBS_NUMERIC
+	                #OBS_NUMERIC_Generic_Case
 	                where public_health_case_uid IS NOT NULL
 	        ) AS SourceData
 	        PIVOT (
@@ -338,7 +344,7 @@ BEGIN TRY
 	                col_nm,
 	                response
 	            FROM
-	                #OBS_DATE
+	                #OBS_DATE_Generic_Case
 	                where public_health_case_uid IS NOT NULL
 	        ) AS SourceData
 	        PIVOT (
@@ -375,17 +381,11 @@ BEGIN TRY
         -- Variables for the columns in the insert select statement
         -- Must be ordered the same as the original column lists
 
-        DECLARE @obscoded_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obscoded_insert_columns = COALESCE(STRING_AGG('ovc.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED) AS cols;
 
         DECLARE @obsnum_insert_columns NVARCHAR(MAX) = '';
         SELECT @obsnum_insert_columns =  COALESCE(STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
-            FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC) AS cols;
+            FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_Generic_Case) AS cols;
 
-        DECLARE @obsdate_insert_columns NVARCHAR(MAX) = '';
-        SELECT @obsdate_insert_columns = COALESCE(STRING_AGG('ovd.' + CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm) , '')
-            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE) AS cols;
 
 
         DECLARE @Insert_sql NVARCHAR(MAX) = ''
@@ -440,7 +440,7 @@ BEGIN TRY
 	        src.DETECTION_METHOD,
 	        src.DETECTION_METHOD_OTHER
           ' + CASE
-                WHEN @obscoded_columns != '' THEN ',' + @obscoded_insert_columns
+                WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
             	ELSE ''
             END
          	+ CASE
@@ -448,13 +448,13 @@ BEGIN TRY
             	ELSE ''
             END
          	+ CASE
-                WHEN @obsdate_columns != '' THEN ',' + @obsdate_insert_columns
+                WHEN @obsdate_columns != '' THEN ',' + @obsdate_columns
             	ELSE ''
             END
          	+
             '
 			  FROM #KEY_ATTR_INIT src
-              LEFT OUTER JOIN dbo.'+@tgt_table_nm+' tgt
+              LEFT OUTER JOIN (SELECT INVESTIGATION_KEY FROM dbo. ' + @tgt_table_nm + ') tgt
               ON src.INVESTIGATION_KEY = tgt.INVESTIGATION_KEY
             '
             + CASE
@@ -468,7 +468,7 @@ BEGIN TRY
 		                col_nm,
 		                response
 		            FROM
-		                #OBS_CODED
+		                #OBS_CODED_Generic_Case
 		                where public_health_case_uid IS NOT NULL
 
 		        ) AS SourceData
@@ -490,7 +490,7 @@ BEGIN TRY
 		                col_nm,
 		                response
 		            FROM
-		                #OBS_NUMERIC
+		                #OBS_NUMERIC_Generic_Case
 		                where public_health_case_uid IS NOT NULL
 
 		        ) AS SourceData
@@ -512,7 +512,7 @@ BEGIN TRY
 		                col_nm,
 		                response
 		            FROM
-		                #OBS_DATE
+		                #OBS_DATE_Generic_Case
 		                where public_health_case_uid IS NOT NULL
 		        ) AS SourceData
 		        PIVOT (

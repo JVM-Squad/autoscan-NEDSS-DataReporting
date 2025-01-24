@@ -21,33 +21,33 @@ BEGIN TRY
     declare @unionquery VARCHAR(500);
 	set @unionquery =
 			case
-	            when OBJECT_ID('tempdb..#OBS_CODED', 'U') is not NULL
-	            		then ' SELECT distinct rdb_table, col_nm, db_field, label FROM #OBS_CODED'
+	            when OBJECT_ID('tempdb..#OBS_CODED_'+@tgt_table_nm, 'U') is not NULL
+	            		then ' SELECT distinct rdb_table, col_nm, db_field, label FROM #OBS_CODED_'+@tgt_table_nm
 				else ' SELECT null as rdb_table, null as col_nm, null as db_field, null as label'
             end +
 			case
-				when OBJECT_ID('tempdb..#OBS_TXT', 'U') is not NULL and OBJECT_ID('tempdb..#OBS_CODED', 'U') is not NULL
-					then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_TXT'
-				when OBJECT_ID('tempdb..#OBS_TXT', 'U') is not null
-					then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_TXT'
+				when OBJECT_ID('tempdb..#OBS_TXT_'+@tgt_table_nm, 'U') is not NULL and OBJECT_ID('tempdb..#OBS_CODED_'+@tgt_table_nm, 'U') is not NULL
+					then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_TXT_'+@tgt_table_nm
+				when OBJECT_ID('tempdb..#OBS_TXT_'+@tgt_table_nm, 'U') is not null
+					then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_TXT_'+@tgt_table_nm
 				else ''
             end +
 			case
-				when OBJECT_ID('tempdb..#OBS_DATE', 'U') is not NULL and (
-					OBJECT_ID('tempdb..#OBS_CODED', 'U') is not NULL or
-					OBJECT_ID('tempdb..#OBS_TXT', 'U') is not NULL
-					) then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_DATE'
-				when OBJECT_ID('tempdb..#OBS_DATE', 'U') is not NULL
-					then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_DATE'
+				when OBJECT_ID('tempdb..#OBS_DATE_'+@tgt_table_nm, 'U') is not NULL and (
+					OBJECT_ID('tempdb..#OBS_CODED_'+@tgt_table_nm, 'U') is not NULL or
+					OBJECT_ID('tempdb..#OBS_TXT_'+@tgt_table_nm, 'U') is not NULL
+					) then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_DATE_'+@tgt_table_nm
+				when OBJECT_ID('tempdb..#OBS_DATE_'+@tgt_table_nm, 'U') is not NULL
+					then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_DATE_'+@tgt_table_nm
 				else ''
             end +
 			case
-				when OBJECT_ID('tempdb..#OBS_NUMERIC', 'U') is not NULL and (
-					OBJECT_ID('tempdb..#OBS_CODED', 'U') is not NULL or
-					OBJECT_ID('tempdb..#OBS_TXT', 'U') is not NULL or
-					OBJECT_ID('tempdb..#OBS_DATE', 'U') is not NULL
-					) then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_NUMERIC'
-				when OBJECT_ID('tempdb..#OBS_NUMERIC', 'U') is not NULL then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_NUMERIC'
+				when OBJECT_ID('tempdb..#OBS_NUMERIC_'+@tgt_table_nm, 'U') is not NULL and (
+					OBJECT_ID('tempdb..#OBS_CODED_'+@tgt_table_nm, 'U') is not NULL or
+					OBJECT_ID('tempdb..#OBS_TXT_'+@tgt_table_nm, 'U') is not NULL or
+					OBJECT_ID('tempdb..#OBS_DATE_'+@tgt_table_nm, 'U') is not NULL
+					) then ' union all SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_NUMERIC_'+@tgt_table_nm
+				when OBJECT_ID('tempdb..#OBS_NUMERIC_'+@tgt_table_nm, 'U') is not NULL then 'SELECT distinct rdb_table, col_nm, db_field, null FROM #OBS_NUMERIC_'+@tgt_table_nm
 				else ''
             end
 	;
