@@ -663,3 +663,67 @@ databaseChangeLog:
         - sqlFile:
             path: 032-alter_lab_test-001.sql
             splitStatements: false
+  - changeSet:
+      id: 100
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 033-create_nrt_place-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 101
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 034-create_nrt_place_tele_001.sql
+            splitStatements: false
+  - changeSet:
+      id: 102
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 035-create_nrt_place_key-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 103
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 028-sp_nrt_place_postprocessing-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 104
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 012-v_nrt_inv_keys_attrs_mapping-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 105
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 013-v_rdb_obs_mapping-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 106
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 029-sp_alter_datamart_schema_postprocessing-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 107
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 030-sp_generic_case_datamart_postprocessing-001.sql
+            splitStatements: false

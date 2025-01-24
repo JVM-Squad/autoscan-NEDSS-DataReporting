@@ -122,27 +122,27 @@ select inv.public_health_case_uid,
 from dbo.nrt_investigation inv
          inner join dbo.INVESTIGATION i with (nolock) on
     inv.public_health_case_uid = i.case_uid
-         inner join dbo.v_condition_dim con with (nolock) on
+    inner join dbo.v_condition_dim con with (nolock) on
     con.condition_cd = inv.CD
-         left outer join dbo.LDF_GROUP lg on
+    left outer join dbo.LDF_GROUP lg on
     lg.BUSINESS_OBJECT_UID = inv.public_health_case_uid
-         left outer join dbo.D_PATIENT dpat with (nolock) on
+    left outer join dbo.D_PATIENT dpat with (nolock) on
     inv.patient_id = dpat.patient_uid
-         left outer join dbo.D_PROVIDER dpro1 with (nolock) on
+    left outer join dbo.D_PROVIDER dpro1 with (nolock) on
     inv.investigator_id = dpro1.provider_uid
-         left outer join dbo.D_PROVIDER dpro2 with (nolock) on
+    left outer join dbo.D_PROVIDER dpro2 with (nolock) on
     inv.physician_id = dpro2.provider_uid
-         left outer join dbo.D_PROVIDER dpro3 with (nolock) on
+    left outer join dbo.D_PROVIDER dpro3 with (nolock) on
     inv.person_as_reporter_uid = dpro3.provider_uid
-         left outer join dbo.D_ORGANIZATION dorg1 with (nolock) on
+    left outer join dbo.D_ORGANIZATION dorg1 with (nolock) on
     inv.organization_id = dorg1.organization_uid
-         left outer join dbo.D_ORGANIZATION dorg2 with (nolock) on
+    left outer join dbo.D_ORGANIZATION dorg2 with (nolock) on
     inv.hospital_uid = dorg2.organization_uid
-         left outer join dbo.RDB_DATE rd1 with (nolock) on
+    left outer join dbo.RDB_DATE rd1 with (nolock) on
     inv.investigator_assigned_datetime = rd1.DATE_MM_DD_YYYY
-         left outer join dbo.RDB_DATE rd2 with (nolock) on
+    left outer join dbo.RDB_DATE rd2 with (nolock) on
     inv.activity_to_time = rd2.DATE_MM_DD_YYYY
-         left outer join dbo.RDB_DATE rd3 with (nolock) on
+    left outer join dbo.RDB_DATE rd3 with (nolock) on
     inv.diagnosis_time = rd3.DATE_MM_DD_YYYY
-         left outer join dbo.RDB_DATE rd4 with (nolock) on
+    left outer join dbo.RDB_DATE rd4 with (nolock) on
     inv.rpt_form_cmplt_time = rd4.DATE_MM_DD_YYYY;

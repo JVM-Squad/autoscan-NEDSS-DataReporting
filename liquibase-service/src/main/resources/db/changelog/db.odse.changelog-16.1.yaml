@@ -207,3 +207,11 @@ databaseChangeLog:
         - sqlFile:
             path: 023-sp_auth_user_event-001.sql
             splitStatements: false
+  - changeSet:
+      id: 31
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 024-sp_place_event-001.sql
+            splitStatements: false

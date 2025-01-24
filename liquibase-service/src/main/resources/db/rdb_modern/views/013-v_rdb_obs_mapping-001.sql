@@ -10,22 +10,22 @@ SELECT  imrdb.RDB_table,
         CASE
             WHEN imrdb.DB_field = 'code' then ovc.response
             ELSE NULL
-        END AS coded_response,
+            END AS coded_response,
         CASE
             WHEN imrdb.DB_field = 'numeric_value_1' then ovn.response
             ELSE NULL
-        END AS numeric_response,
+            END AS numeric_response,
         CASE
             WHEN imrdb.DB_field = 'value_txt' then ovt.response
             ELSE NULL
-        END AS txt_response,
+            END AS txt_response,
         CASE
             WHEN imrdb.DB_field = 'from_time' then ovd.response
             ELSE NULL
-        END AS date_response,
+            END AS date_response,
         ovc.label
 FROM nbs_srte.dbo.imrdbmapping imrdb
          LEFT JOIN dbo.v_getobscode ovc ON imrdb.unique_cd = ovc.cd
          LEFT JOIN dbo.v_getobsnum ovn ON imrdb.unique_cd = ovn.cd
          LEFT JOIN dbo.v_getobstxt ovt ON imrdb.unique_cd = ovt.cd
-         LEFT JOIN dbo.v_getobsdate ovd ON imrdb.unique_cd = ovd.cd;  
+         LEFT JOIN dbo.v_getobsdate ovd ON imrdb.unique_cd = ovd.cd;
