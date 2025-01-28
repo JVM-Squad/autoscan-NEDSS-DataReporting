@@ -16,7 +16,7 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xty
             WHERE NOT EXISTS
                       (SELECT 1
                        FROM dbo.nrt_datamart_metadata ndm
-                       WHERE ndm.condition_cd = std_hiv_codes.condition_cd);
+                       WHERE ndm.condition_cd = gen_codes.condition_cd);
             END;
 
     END;
