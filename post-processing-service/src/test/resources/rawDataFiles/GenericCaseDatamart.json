@@ -44,7 +44,7 @@
       "patient_uid": 456,
       "investigation_key": 100,
       "patient_key": 200,
-      "condition_cd": "10110",
+      "condition_cd": "12020",
       "datamart": "Generic_Case",
       "stored_procedure": "sp_generic_case_datamart_postprocessing"
     }

@@ -118,6 +118,7 @@ class DatamartProcessingTest {
         String topic = "dummy_investigation";
         List<DatamartData> datamartDataLst = new ArrayList<>();
         DatamartData datamartData = getDatamartData(10009757L, GENERIC_CASE.getEntityName(), GENERIC_CASE.getStoredProcedure());
+        datamartData.setConditionCd("12020");
         datamartDataLst.add(datamartData);
 
         datamartProcessor.datamartTopic = topic;

@@ -321,12 +321,10 @@ public class PostProcessingService {
                         .flatMap(m -> m.keySet().stream().map(String::valueOf)).collect(Collectors.joining(","));
 
                 if (dmType.equals(Entity.HEPATITIS_DATAMART.getEntityName())) {
-
                     logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.HEPATITIS_DATAMART.getStoredProcedure(), cases);
                     investigationRepository.executeStoredProcForHepDatamart(cases);
                     completeLog(Entity.HEPATITIS_DATAMART.getStoredProcedure());
                 } else if (dmType.equals(Entity.STD_HIV_DATAMART.getEntityName())) {
-
                     logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.STD_HIV_DATAMART.getStoredProcedure(), cases);
                     investigationRepository.executeStoredProcForStdHIVDatamart(cases);
                     completeLog(Entity.STD_HIV_DATAMART.getStoredProcedure());
