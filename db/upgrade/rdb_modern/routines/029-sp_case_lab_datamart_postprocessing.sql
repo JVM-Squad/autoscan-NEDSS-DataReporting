@@ -141,7 +141,7 @@ BEGIN
                                             FROM dbo.LAB_TEST_RESULT
                                             where LAB_TEST_KEY in (select lab_test_key
                                                                    FROM dbo.LAB_TEST
-                                                                   where INVESTIGATION_KEY in (SELECT value
+                                                                   where case_uid in (SELECT value
                                                                                                FROM
                                                                                                    STRING_SPLIT(@phc_id,
                                                                                                                 ',')))
@@ -165,7 +165,7 @@ BEGIN
                                                      inner join dbo.MORBIDITY_REPORT_EVENT mre
                                                                 on
                                                                     mr.MORB_RPT_KEY = mre.MORB_RPT_KEY
-                                            where INVESTIGATION_KEY in (SELECT value
+                                            where case_uid in (SELECT value
                                                                         FROM
                                                                             STRING_SPLIT(@phc_id,
                                                                                          ',')))
