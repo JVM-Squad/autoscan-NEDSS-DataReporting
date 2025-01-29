@@ -43,7 +43,7 @@ BEGIN
 -- new as per the team discussion, to remove TEMP_UPDATED_LAB_INV_MAP from SP_RUN sp
         IF OBJECT_ID('tempdb..#TEMP_UPDATED_LAB_INV_MAP') IS NOT NULL
             DROP TABLE #TEMP_UPDATED_LAB_INV_MAP;
-        BEGIN TRANSACTION;
+            BEGIN TRANSACTION;
         SET @Proc_Step_no = @Proc_Step_no + 1;
         SET @Proc_Step_Name = 'Creating LAB_INV_MAP';
 
@@ -142,9 +142,9 @@ BEGIN
                                             where LAB_TEST_KEY in (select lab_test_key
                                                                    FROM dbo.LAB_TEST
                                                                    where case_uid in (SELECT value
-                                                                                      FROM
-                                                                                          STRING_SPLIT(@phc_id,
-                                                                                                       ',')))
+                                                                                               FROM
+                                                                                                   STRING_SPLIT(@phc_id,
+                                                                                                                ',')))
                                               and INVESTIGATION_KEY <> 1)
             UNION
 
@@ -166,9 +166,9 @@ BEGIN
                                                                 on
                                                                     mr.MORB_RPT_KEY = mre.MORB_RPT_KEY
                                             where case_uid in (SELECT value
-                                                               FROM
-                                                                   STRING_SPLIT(@phc_id,
-                                                                                ',')))
+                                                                        FROM
+                                                                            STRING_SPLIT(@phc_id,
+                                                                                         ',')))
             UNION
 
             SELECT inv.INVESTIGATION_KEY,
@@ -459,6 +459,7 @@ BEGIN
                                WHERE CMG.[INVESTIGATION_KEY] =
                                      #TMP_CLDM_GEN_PATINFO_INV_PHY_RPTSRC_COND.investigation_key);
 COMMIT TRANSACTION;
+
 -- Declare the dynamic SQL variable
         DECLARE @Update_sql NVARCHAR(MAX);
 
