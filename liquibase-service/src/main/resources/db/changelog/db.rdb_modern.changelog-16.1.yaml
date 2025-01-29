@@ -752,7 +752,7 @@ databaseChangeLog:
             path: 030-sp_measles_case_datamart_postprocessing-001.sql
             splitStatements: false
   - changeSet:
-      id: 110
+      id: 111
       author: liquibase
       runOnChange: true
       changes:
