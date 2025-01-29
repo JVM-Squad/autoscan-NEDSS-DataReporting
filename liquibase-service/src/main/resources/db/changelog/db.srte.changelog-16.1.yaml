@@ -5,14 +5,15 @@ databaseChangeLog:
       runOnChange: true
       changes:
         - sqlFile:
-            path: 000-rdb-db-general-001.sql
+            path: 000-srte-db-general-001.sql
             splitStatements: false
   - changeSet:
       id: 1
       author: liquibase
+      runOnChange: true
       changes:
         - sqlFile:
-            path: 001-create_data_sync_config-001.sql
+            path: 001-alter_condition_code-001.sql
             splitStatements: false
   - changeSet:
       id: 2
@@ -20,13 +21,5 @@ databaseChangeLog:
       runOnChange: true
       changes:
         - sqlFile:
-            path: 001-generate_data_for_data_sync_config-001.sql
-            splitStatements: false
-  - changeSet:
-      id: 3
-      author: liquibase
-      runOnChange: true
-      changes:
-        - sqlFile:
-            path: 002-alter_lab_test-001.sql
+            path: 001-alter_imrdbmapping_code-001.sql
             splitStatements: false
