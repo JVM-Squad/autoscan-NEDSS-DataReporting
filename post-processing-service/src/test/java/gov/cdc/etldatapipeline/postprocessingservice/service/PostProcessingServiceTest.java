@@ -481,6 +481,38 @@ class PostProcessingServiceTest {
     }
 
     @Test
+    void testPostProcessCRSCaseDatamart() {
+        String topic = "dummy_datamart";
+        String msg = "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456," +
+                "\"investigation_key\":100,\"patient_key\":200,\"condition_cd\":\"10370\"," +
+                "\"datamart\":\"CRS_Case\",\"stored_procedure\":\"sp_crs_case_datamart_postprocessing\"}}";
+
+        postProcessingServiceMock.postProcessDatamart(topic, msg);
+        postProcessingServiceMock.processDatamartIds();
+
+        verify(investigationRepositoryMock).executeStoredProcForCRSCaseDatamart("123");
+        assertTrue(postProcessingServiceMock.dmCache.containsKey(PostProcessingService.Entity.CRS_CASE.getEntityName()));
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(3, logs.size());
+    }
+
+    @Test
+    void testPostProcessRubellaCaseDatamart() {
+        String topic = "dummy_datamart";
+        String msg = "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456," +
+                "\"investigation_key\":100,\"patient_key\":200,\"condition_cd\":\"10200\"," +
+                "\"datamart\":\"Rubella_Case\",\"stored_procedure\":\"sp_rubella_case_datamart_postprocessing\"}}";
+
+        postProcessingServiceMock.postProcessDatamart(topic, msg);
+        postProcessingServiceMock.processDatamartIds();
+
+        verify(investigationRepositoryMock).executeStoredProcForRubellaCaseDatamart("123");
+        assertTrue(postProcessingServiceMock.dmCache.containsKey(PostProcessingService.Entity.RUBELLA_CASE.getEntityName()));
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(3, logs.size());
+    }
+
+    @Test
     void testProduceDatamartTopic() {
         String dmTopic = "dummy_datamart";
 
@@ -644,6 +676,22 @@ class PostProcessingServiceTest {
         assertEquals(1, logs.size());
         assertTrue(logs.getFirst().getMessage().contains("No data to process from the datamart topics."));
     }
+
+    @Test
+    void testProcessDatamartInvalidKey() {
+        String topic = "dummy_datamart";
+        String msg = "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456," +
+                "\"investigation_key\":100,\"patient_key\":200,\"condition_cd\":\"10370\"," +
+                "\"datamart\":\"UNKNOWN\",\"stored_procedure\":\"sp_nrt_unknown_postprocessing\"}}";
+
+        postProcessingServiceMock.postProcessDatamart(topic, msg);
+        postProcessingServiceMock.processDatamartIds();
+
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(2, logs.size());
+        assertTrue(logs.getLast().getMessage().contains("No associated datamart processing logic found"));
+    }
+
 
     @Test
     void testPostProcessUnknownTopic() {

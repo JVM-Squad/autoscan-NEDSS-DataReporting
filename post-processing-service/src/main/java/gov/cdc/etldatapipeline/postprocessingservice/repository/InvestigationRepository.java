@@ -40,4 +40,10 @@ public interface InvestigationRepository extends JpaRepository<DatamartData, Lon
 
     @Procedure("sp_generic_case_datamart_postprocessing")
     void executeStoredProcForGenericCaseDatamart(@Param("publicHealthCaseUids") String publicHealthCaseUids);
+
+    @Procedure("sp_crs_case_datamart_postprocessing")
+    void executeStoredProcForCRSCaseDatamart(@Param("publicHealthCaseUids") String publicHealthCaseUids);
+
+    @Procedure("sp_rubella_case_datamart_postprocessing")
+    void executeStoredProcForRubellaCaseDatamart(@Param("publicHealthCaseUids") String publicHealthCaseUids);
 }
