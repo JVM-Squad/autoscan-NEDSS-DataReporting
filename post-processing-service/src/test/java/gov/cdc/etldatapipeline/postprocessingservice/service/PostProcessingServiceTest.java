@@ -516,6 +516,22 @@ class PostProcessingServiceTest {
     }
 
     @Test
+    void testPostProcessMeaslesCaseDatamart() {
+        String topic = "dummy_datamart";
+        String msg = "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456," +
+                "\"investigation_key\":100,\"patient_key\":200,\"condition_cd\":\"10140\"," +
+                "\"datamart\":\"Measles_Case\",\"stored_procedure\":\"sp_measles_case_datamart_postprocessing\"}}";
+
+        postProcessingServiceMock.postProcessDatamart(topic, msg);
+        postProcessingServiceMock.processDatamartIds();
+
+        verify(investigationRepositoryMock).executeStoredProcForMeaslesCaseDatamart("123");
+        assertTrue(postProcessingServiceMock.dmCache.containsKey(PostProcessingService.Entity.MEASLES_CASE.getEntityName()));
+        List<ILoggingEvent> logs = listAppender.list;
+        assertEquals(3, logs.size());
+    }
+
+    @Test
     void testProduceDatamartTopic() {
         String dmTopic = "dummy_datamart";
 
