@@ -169,7 +169,7 @@ BEGIN
                                                                         FROM
                                                                             STRING_SPLIT(@phc_id,
                                                                                          ',')))
-            UNION
+         /*   UNION
 
             SELECT inv.INVESTIGATION_KEY,
                    RPT_SRC_ORG_KEY,
@@ -192,7 +192,7 @@ BEGIN
                                                                                            STRING_SPLIT(@phc_id,
                                                                                                         ',')))
                                      group by PATIENT_LOCAL_ID,
-                                              patient_key);
+                                              patient_key); */
 
             if @debug = 'true'
                 select '#TMP_CLDM_All_Case',
