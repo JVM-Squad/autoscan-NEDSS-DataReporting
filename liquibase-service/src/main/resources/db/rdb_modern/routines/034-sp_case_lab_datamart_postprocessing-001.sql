@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[sp_case_lab_datamart_postprocessing] @phc_id nvarchar(max),
+CREATE OR ALTER PROCEDURE [dbo].[sp_case_lab_datamart_postprocessing] @phc_id nvarchar(max),
                                                              @debug bit = 'false'
 AS
 BEGIN
@@ -458,6 +458,7 @@ BEGIN
                                FROM dbo.[CONFIRMATION_METHOD_GROUP] CMG with (nolock)
                                WHERE CMG.[INVESTIGATION_KEY] =
                                      #TMP_CLDM_GEN_PATINFO_INV_PHY_RPTSRC_COND.investigation_key);
+COMMIT TRANSACTION;
 -- Declare the dynamic SQL variable
         DECLARE @Update_sql NVARCHAR(MAX);
 
