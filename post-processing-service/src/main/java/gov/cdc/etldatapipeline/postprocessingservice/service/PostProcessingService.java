@@ -84,6 +84,7 @@ public class PostProcessingService {
         GENERIC_CASE(0,"Generic_Case", PHC_UID, "sp_generic_case_datamart_postprocessing"),
         CRS_CASE(0,"CRS_Case", PHC_UID, "sp_crs_case_datamart_postprocessing"),
         RUBELLA_CASE(0,"Rubella_Case", PHC_UID, "sp_rubella_case_datamart_postprocessing"),
+        MEASLES_CASE(0, "Measles_Case", PHC_UID,"sp_measles_case_datamart_postprocessing"),
         UNKNOWN(-1, "unknown", "unknown_uid", "sp_nrt_unknown_postprocessing");
 
         private final int priority;
@@ -355,6 +356,11 @@ public class PostProcessingService {
                         logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.RUBELLA_CASE.getStoredProcedure(), cases);
                         investigationRepository.executeStoredProcForRubellaCaseDatamart(cases);
                         completeLog(Entity.RUBELLA_CASE.getStoredProcedure());
+                        break;
+                    case MEASLES_CASE:
+                        logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, Entity.MEASLES_CASE.getStoredProcedure(), cases);
+                        investigationRepository.executeStoredProcForMeaslesCaseDatamart(cases);
+                        completeLog(Entity.MEASLES_CASE.getStoredProcedure());
                         break;
                     default:
                         logger.info("No associated datamart processing logic found for the key: {} ",dmType);
