@@ -55,7 +55,7 @@ BEGIN
                nrt.notif_last_chg_time AS NOTIFICATION_LAST_CHANGE_TIME
         INTO #temp_ntf_table
         FROM dbo.nrt_investigation_notification nrt
-                 LEFT JOIN dbo.nrt_notification_key nk with (nolock) ON nrt.notification_uid = nk.notification_uid
+            LEFT JOIN dbo.nrt_notification_key nk with (nolock) ON nrt.notification_uid = nk.notification_uid
         WHERE nrt.notification_uid in (SELECT value FROM STRING_SPLIT(@notification_uids, ','));
 
         /* Temp notification_event table creation */
@@ -116,8 +116,8 @@ BEGIN
           ,NOTIFICATION_SUBMITTED_BY = ntf.NOTIFICATION_SUBMITTED_BY
           ,NOTIFICATION_LAST_CHANGE_TIME = ntf.NOTIFICATION_LAST_CHANGE_TIME
         FROM #temp_ntf_table ntf
-                 INNER JOIN dbo.NOTIFICATION n with (nolock) ON ntf.NOTIFICATION_KEY = n.NOTIFICATION_KEY
-            AND ntf.NOTIFICATION_KEY IS NOT NULL;
+            INNER JOIN dbo.NOTIFICATION n with (nolock) ON ntf.NOTIFICATION_KEY = n.NOTIFICATION_KEY
+                AND ntf.NOTIFICATION_KEY IS NOT NULL;
 
         /* Logging */
         SET @rowcount=@@rowcount
@@ -257,7 +257,7 @@ BEGIN
              ,ntfe.NOTIFICATION_UPD_DT_KEY
         FROM #temp_ntf_event_table ntfe
                  JOIN dbo.nrt_notification_key k with (nolock) ON ntfe.notification_uid = k.notification_uid
-        WHERE ntfe.NOTIFICATION_KEY IS NULL
+        WHERE ntfe.NOTIFICATION_KEY IS NULL;
 
         /* Logging */
         set @rowcount=@@rowcount
@@ -315,20 +315,16 @@ BEGIN
                );
 
 
-        SELECT nrt.public_health_case_uid         AS public_health_case_uid,
-               nrt.patient_id                     AS patient_uid,
-               COALESCE(inv.INVESTIGATION_KEY, 1) AS investigation_key,
-               COALESCE(pat.PATIENT_KEY, 1)       AS patient_key,
-               nrt.cd                             AS condition_cd,
+        SELECT inv.CASE_UID                       AS public_health_case_uid,
+               pat.PATIENT_UID                    AS patient_uid,
                dtm.Datamart                       AS datamart,
+               c.CONDITION_CD                     AS condition_cd,
                dtm.Stored_Procedure               AS stored_procedure
-        FROM dbo.nrt_investigation nrt
-                 INNER JOIN dbo.nrt_investigation_notification ntf ON ntf.public_health_case_uid = nrt.public_health_case_uid
-                 LEFT JOIN dbo.INVESTIGATION inv with (nolock) ON inv.CASE_UID = nrt.public_health_case_uid
-                 LEFT JOIN dbo.D_PATIENT pat with (nolock) ON pat.PATIENT_UID = nrt.patient_id
-                 LEFT JOIN dbo.nrt_datamart_metadata dtm with (nolock) ON dtm.condition_cd = nrt.cd
-        WHERE ntf.notification_uid in
-              (SELECT value FROM STRING_SPLIT(@notification_uids, ','));
+        FROM #temp_ntf_event_table ntf
+            LEFT JOIN dbo.INVESTIGATION inv with (nolock) ON inv.INVESTIGATION_KEY = ntf.INVESTIGATION_KEY
+            LEFT JOIN dbo.CONDITION c ON c.CONDITION_KEY = ntf.CONDITION_KEY
+            LEFT JOIN dbo.D_PATIENT pat with (nolock) ON pat.PATIENT_KEY = ntf.PATIENT_KEY
+            LEFT JOIN dbo.nrt_datamart_metadata dtm with (nolock) ON dtm.condition_cd = c.CONDITION_CD;
 
     END TRY
 
