@@ -63,6 +63,7 @@ BEGIN
                    when (results.record_status_cd is not null or results.record_status_cd != '')
                        then dbo.fn_get_record_status(results.record_status_cd)
                    end                                                              as record_status_cd,
+               results.record_status_cd                                             as raw_record_status_cd,
                results.shared_ind,
                NULLIF(results.txt, '')                                              as txt,
                results.effective_from_time,
@@ -121,6 +122,7 @@ BEGIN
                results.coinfection_id,
                NULLIF(results.contact_inv_txt, '')                                  as contact_inv_txt,
                results.status_time,
+               results.record_status_time,
                pac.prog_area_desc_txt                                               as program_area_description,
                cm.case_management_uid,
                investigation_act_entity.nac_page_case_uid,
@@ -203,6 +205,7 @@ BEGIN
                                            'INV109'))
                          end as                   investigation_status,
                      phc.record_status_cd,
+                     phc.record_status_time,
                      phc.shared_ind,
                      phc.txt,
                      phc.effective_from_time,
