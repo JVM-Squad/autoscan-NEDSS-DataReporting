@@ -797,7 +797,7 @@ databaseChangeLog:
       runOnChange: true
       changes:
         - sqlFile:
-            path: 036-d_contact_record_postprocessing-001.sql
+            path: 036-sp_d_contact_record_postprocessing-001.sql
             splitStatements: false
   - changeSet:
       id: 117
@@ -805,5 +805,5 @@ databaseChangeLog:
       runOnChange: true
       changes:
         - sqlFile:
-            path: 037-event_metric_datamart_postprocessing-001.sql
+            path: 037-sp_event_metric_datamart_postprocessing-001.sql
             splitStatements: false
