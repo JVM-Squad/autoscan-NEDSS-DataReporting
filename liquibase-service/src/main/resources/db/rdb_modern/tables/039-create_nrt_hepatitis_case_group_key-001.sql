@@ -1,5 +1,5 @@
 -- table is not dropped and recreated so as to stay consistent with the design of nrt_interview_key
-
+DROP TABLE dbo.nrt_hepatitis_case_group_key;
 IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_hepatitis_case_group_key' and xtype = 'U')
     BEGIN
 

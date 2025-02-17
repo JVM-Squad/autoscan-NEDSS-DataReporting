@@ -433,9 +433,6 @@ BEGIN
             )
             SELECT ids.public_health_case_uid,
                    ids.branch_id,
-                   CASE WHEN hcgk.HEP_MULTI_VAL_GRP_KEY IS NULL THEN 'I'
-                   ELSE 'U'
-                   END AS DML_IND,
                    ROW_NUMBER() OVER (PARTITION BY ids.public_health_case_uid, ids.branch_id ORDER BY ids.branch_id) as row_num
             INTO #HEP_MULTI_VAL_IDS
             FROM id_cte ids 
@@ -457,30 +454,129 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'GENERATING #OLD_GRP_KEYS';
 
-        -- BEGIN TRANSACTION
-        --     SET
-        --         @PROC_STEP_NO = @PROC_STEP_NO + 1;
-        --     SET
-        --         @PROC_STEP_NAME = 'INSERTING INTO dbo.nrt_hepatitis_case_group_key';
-
-
-        --     INSERT INTO dbo.nrt_hepatitis_case_group_key
-        --     (
-        --         public_health_case_uid
-        --     )
+                IF OBJECT_ID('#OLD_GRP_KEYS', 'U') IS NOT NULL
+            drop table #OLD_GRP_KEYS;
 
 
+            SELECT HEP_MULTI_VAL_GRP_KEY 
+            INTO #OLD_GRP_KEYS
+            FROM dbo.nrt_hepatitis_case_group_key
+            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
 
-        --     SELECT @RowCount_no = @@ROWCOUNT;
+            if
+                @debug = 'true'
+                select @Proc_Step_Name as step, *
+                from #OLD_GRP_KEYS;
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
 
 
-        --     INSERT INTO [dbo].[job_flow_log]
-        --     (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-        --     VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
-        --             @RowCount_no);
 
-        -- COMMIT TRANSACTION;
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'DELETE Old Keys from dbo.nrt_hepatitis_case_group_key';
+
+
+            DELETE FROM dbo.nrt_hepatitis_case_group_key
+            WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'DELETE Old Keys from dbo.nrt_hepatitis_case_multi_val_key';
+
+
+            DELETE FROM dbo.nrt_hepatitis_case_multi_val_key
+            WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','));
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'INSERTING INTO dbo.nrt_hepatitis_case_group_key';
+
+
+            INSERT INTO dbo.nrt_hepatitis_case_group_key
+            (
+                public_health_case_uid
+            )
+            SELECT DISTINCT public_health_case_uid
+            FROM #HEP_MULTI_VAL_IDS;
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'INSERTING INTO dbo.nrt_hepatitis_case_multi_val_key';
+
+
+            INSERT INTO dbo.nrt_hepatitis_case_multi_val_key
+            (
+                HEP_MULTI_VAL_GRP_KEY,
+                public_health_case_uid,
+                selection_number
+            )
+            SELECT 
+            hepgrp.HEP_MULTI_VAL_GRP_KEY,
+            ids.public_health_case_uid,
+            ids.row_num AS selection_number
+            FROM #HEP_MULTI_VAL_IDS ids
+            LEFT JOIN dbo.nrt_hepatitis_case_group_key hepgrp
+                ON ids.public_health_case_uid = hepgrp.public_health_case_uid;
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
 
         BEGIN TRANSACTION
             SET
@@ -491,7 +587,7 @@ BEGIN
             IF OBJECT_ID('#KEY_ATTR_INIT', 'U') IS NOT NULL
             drop table #KEY_ATTR_INIT;
 
-            select public_health_case_uid,
+            select inv.public_health_case_uid,
                    INVESTIGATION_KEY,
                    CONDITION_KEY,
                    patient_key,
@@ -502,10 +598,13 @@ BEGIN
                    ADT_HSPTL_KEY,
                    Inv_Assigned_dt_key,
                    LDF_GROUP_KEY,
-                   GEOCODING_LOCATION_KEY
+                   GEOCODING_LOCATION_KEY,
+                   COALESCE(hepgrp.HEP_MULTI_VAL_GRP_KEY, 1) AS HEP_MULTI_VAL_GRP_KEY
             INTO #KEY_ATTR_INIT
-            from dbo.v_nrt_inv_keys_attrs_mapping
-            where public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
+            from dbo.v_nrt_inv_keys_attrs_mapping inv
+            LEFT JOIN dbo.nrt_hepatitis_case_group_key hepgrp
+                ON inv.public_health_case_uid = hepgrp.public_health_case_uid
+            where inv.public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
               AND investigation_form_cd LIKE @inv_form_cd;
 
             if
@@ -528,7 +627,7 @@ BEGIN
             RETURN STATEMENT FOR DEBUGGING PURPOSES
             REMOVE WHEN DONE
         */
-        RETURN;
+        --RETURN;
 
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
@@ -543,6 +642,34 @@ BEGIN
             VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
                     @RowCount_no);
 
+
+BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'INSERTING INTO dbo.HEP_MULTI_VALUE_FIELD_GROUP';
+
+            SELECT * FROM #HEP_MULTI_VAL_IDS ids
+            LEFT JOIN dbo.nrt_hepatitis_case_group_key hepgrp
+                ON ids.public_health_case_uid = hepgrp.public_health_case_uid;
+
+            INSERT INTO dbo.HEP_MULTI_VALUE_FIELD_GROUP
+            (
+                HEP_MULTI_VAL_GRP_KEY
+            )
+            SELECT DISTINCT HEP_MULTI_VAL_GRP_KEY
+            FROM #HEP_MULTI_VAL_IDS ids
+            LEFT JOIN dbo.nrt_hepatitis_case_group_key hepgrp
+                ON ids.public_health_case_uid = hepgrp.public_health_case_uid;
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
 
         BEGIN TRANSACTION
             SET
@@ -591,7 +718,8 @@ BEGIN
         tgt.ADT_HSPTL_KEY = src.ADT_HSPTL_KEY,
         tgt.Inv_Assigned_dt_key = src.Inv_Assigned_dt_key,
         tgt.LDF_GROUP_KEY = src.LDF_GROUP_KEY,
-        tgt.GEOCODING_LOCATION_KEY = src.GEOCODING_LOCATION_KEY
+        tgt.GEOCODING_LOCATION_KEY = src.GEOCODING_LOCATION_KEY,
+        tgt.HEP_MULTI_VAL_GRP_KEY = src.HEP_MULTI_VAL_GRP_KEY
         ' + CASE
                 WHEN @obscoded_columns != '' THEN ',' + (SELECT STRING_AGG('tgt.' +
                                                         CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)) +
@@ -753,7 +881,8 @@ BEGIN
         ADT_HSPTL_KEY,
         Inv_Assigned_dt_key,
         LDF_GROUP_KEY,
-        GEOCODING_LOCATION_KEY
+        GEOCODING_LOCATION_KEY,
+        HEP_MULTI_VAL_GRP_KEY
         ' + CASE
                   WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
                   ELSE '' END
@@ -777,7 +906,8 @@ BEGIN
                             src.ADT_HSPTL_KEY,
                             src.Inv_Assigned_dt_key,
                             src.LDF_GROUP_KEY,
-                            src.GEOCODING_LOCATION_KEY
+                            src.GEOCODING_LOCATION_KEY,
+                            src.HEP_MULTI_VAL_GRP_KEY
             ' + CASE
             WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
                   ELSE '' END
@@ -887,6 +1017,218 @@ BEGIN
         (BATCH_ID, [DATAFLOW_NAME], [PACKAGE_NAME], [STATUS_TYPE], [STEP_NUMBER], [STEP_NAME], [ROW_COUNT])
         VALUES (@BATCH_ID, @datamart_nm, @datamart_nm, 'START', @PROC_STEP_NO, @PROC_STEP_NAME,
                 @ROWCOUNT_NO);
+
+        COMMIT TRANSACTION;
+
+
+
+
+
+
+        BEGIN TRANSACTION;
+
+        SET @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET @PROC_STEP_NAME = 'INSERT INTO dbo.' + @multival_tgt_table_nm;
+
+
+        -- Variables for the columns in the insert select statement
+        -- Must be ordered the same as the original column lists
+
+        SELECT @obscoded_columns =
+                   COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
+                            '')
+            FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_HEP_multi_value_field) AS cols;
+
+
+            SELECT @obstxt_columns =
+                   COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
+                            '')
+            FROM (SELECT DISTINCT col_nm FROM #OBS_TXT_HEP_multi_value_field) AS cols;
+
+            SELECT @obsnum_columns =
+                   COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
+                            '')
+            FROM (SELECT DISTINCT col_nm FROM #OBS_NUMERIC_HEP_multi_value_field) AS cols;
+
+            SELECT @obsdate_columns =
+                   COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
+                            '')
+            FROM (SELECT DISTINCT col_nm FROM #OBS_DATE_HEP_multi_value_field) AS cols;
+
+        
+            SELECT @obsnum_insert_columns = COALESCE(
+                STRING_AGG(CAST(converted_column AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm), '')
+            FROM (SELECT DISTINCT col_nm, converted_column FROM #OBS_NUMERIC_HEP_multi_value_field) AS cols;
+
+
+
+
+        SET @Insert_sql = '
+        INSERT INTO dbo. ' + @multival_tgt_table_nm + ' (
+        HEP_MULTI_VAL_GRP_KEY,
+        HEP_MULTI_VAL_DATA_KEY
+        ' + CASE
+                  WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsnum_columns != '' THEN ',' + @obsnum_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obstxt_columns != '' THEN ',' + @obstxt_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsdate_columns != '' THEN ',' + @obsdate_columns
+                  ELSE '' END +
+                          ') SELECT
+                            src.HEP_MULTI_VAL_GRP_KEY,
+                            src.HEP_MULTI_VAL_DATA_KEY
+            ' + CASE
+            WHEN @obscoded_columns != '' THEN ',' + @obscoded_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsnum_columns != '' THEN ',' + @obsnum_insert_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obstxt_columns != '' THEN ',' + @obstxt_columns
+                  ELSE '' END
+            + CASE
+                  WHEN @obsdate_columns != '' THEN ',' + @obsdate_columns
+                  ELSE '' END +
+            ' FROM dbo.nrt_hepatitis_case_multi_val_key src 
+            
+             '
+            + CASE
+                      WHEN @obscoded_columns != '' THEN
+                          ' LEFT JOIN (
+                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obscoded_columns + '
+        FROM (
+            SELECT
+                public_health_case_uid,
+                col_nm,
+                response
+            FROM
+                #OBS_CODED_HEP_multi_value_field 
+                WHERE public_health_case_uid IS NOT NULL 
+        ) AS SourceData
+        PIVOT (
+            MAX(response)
+            FOR col_nm IN (' + @obscoded_columns + ')
+        ) AS PivotTable) ovc
+        ON ovc.public_health_case_uid = src.public_health_case_uid and ovc.row_num = src.selection_number '
+                      ELSE ' ' END +
+                              + CASE
+                                    WHEN @obsnum_columns != '' THEN
+                                        ' LEFT JOIN (
+                                        SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obsnum_columns + '
+        FROM (
+            SELECT
+                public_health_case_uid,
+                col_nm,
+                response
+            FROM
+                #OBS_NUMERIC_HEP_multi_value_field 
+                WHERE public_health_case_uid IS NOT NULL 
+        ) AS SourceData
+        PIVOT (
+            MAX(response)
+            FOR col_nm IN (' + @obsnum_columns + ')
+        ) AS PivotTable) ovn
+        ON ovn.public_health_case_uid = src.public_health_case_uid and ovn.row_num = src.selection_number '
+                                    ELSE ' ' END
+                + CASE
+                      WHEN @obstxt_columns != '' THEN
+                          ' LEFT JOIN (
+                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obstxt_columns + '
+        FROM (
+            SELECT
+                public_health_case_uid,
+                col_nm,
+                response
+            FROM
+                #OBS_TXT_HEP_multi_value_field 
+                WHERE public_health_case_uid IS NOT NULL 
+        ) AS SourceData
+        PIVOT (
+            MAX(response)
+            FOR col_nm IN (' + @obstxt_columns + ')
+        ) AS PivotTable) ovt
+        ON ovt.public_health_case_uid = src.public_health_case_uid and ovt.row_num = src.selection_number '
+                      ELSE ' ' END
+                + CASE
+                      WHEN @obsdate_columns != '' THEN
+                          ' LEFT JOIN (
+                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obsdate_columns + '
+        FROM (
+            SELECT
+                public_health_case_uid,
+                col_nm,
+                response
+            FROM
+                #OBS_DATE_HEP_multi_value_field 
+                WHERE public_health_case_uid IS NOT NULL 
+        ) AS SourceData
+        PIVOT (
+            MAX(response)
+            FOR col_nm IN (' + @obsdate_columns + ')
+        ) AS PivotTable) ovd
+        ON ovd.public_health_case_uid = src.public_health_case_uid and ovd.row_num = src.selection_number '
+                      ELSE ' ' END
+                + ' WHERE src.public_health_case_uid IN (' + @phc_uids + ')';
+
+
+        if
+            @debug = 'true'
+            select @Proc_Step_Name as step, @Insert_sql;
+
+        exec sp_executesql @Insert_sql;
+
+
+        SELECT @ROWCOUNT_NO = @@ROWCOUNT;
+
+        INSERT INTO [DBO].[JOB_FLOW_LOG]
+        (BATCH_ID, [DATAFLOW_NAME], [PACKAGE_NAME], [STATUS_TYPE], [STEP_NUMBER], [STEP_NAME], [ROW_COUNT])
+        VALUES (@BATCH_ID, @datamart_nm, @datamart_nm, 'START', @PROC_STEP_NO, @PROC_STEP_NAME,
+                @ROWCOUNT_NO);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'DELETE Old Keys from dbo.HEP_MULTI_VALUE_FIELD';
+
+
+            DELETE FROM dbo.HEP_MULTI_VALUE_FIELD
+            WHERE HEP_MULTI_VAL_GRP_KEY in 
+            (SELECT HEP_MULTI_VAL_GRP_KEY FROM #OLD_GRP_KEYS);
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION
+            SET
+                @PROC_STEP_NO = @PROC_STEP_NO + 1;
+            SET
+                @PROC_STEP_NAME = 'DELETE Old Keys from dbo.HEP_MULTI_VALUE_FIELD_GROUP';
+
+
+            DELETE FROM dbo.HEP_MULTI_VALUE_FIELD_GROUP
+            WHERE HEP_MULTI_VAL_GRP_KEY in 
+            (SELECT HEP_MULTI_VAL_GRP_KEY FROM #OLD_GRP_KEYS);
+
+            SELECT @RowCount_no = @@ROWCOUNT;
+
+            INSERT INTO [dbo].[job_flow_log]
+            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+                    @RowCount_no);
 
         COMMIT TRANSACTION;
 
