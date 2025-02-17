@@ -25,5 +25,3 @@ CREATE TABLE data_sync_log
             ON DELETE CASCADE
 );
 END
-GO
-
