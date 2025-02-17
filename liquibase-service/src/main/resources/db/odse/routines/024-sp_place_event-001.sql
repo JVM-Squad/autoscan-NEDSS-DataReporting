@@ -145,16 +145,19 @@ BEGIN
                                                       ,[step_number]
                                                       ,[step_name]
                                                       ,[row_count]
-                                                      ,[Msg_Description1])
+                                                      ,[Msg_Description1]
+                                                    ,[Error_Description])
         VALUES (@batch_id
                ,'Place PRE-Processing Event'
                ,'NBS_ODSE.sp_place_event'
-               ,'ERROR: ' + @ErrorMessage
+               ,'ERROR'
                ,0
-               ,LEFT('Pre ID-' + @id_list, 199)
+               ,'Place PRE-Processing Event'
                ,0
-               ,LEFT(@id_list, 199));
-        return @ErrorMessage;
+               ,LEFT(@id_list, 199)
+                , @ErrorMessage
+            );
+        return -1;
 
     END CATCH
 

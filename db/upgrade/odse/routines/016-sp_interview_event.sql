@@ -74,17 +74,17 @@ BEGIN
                  LEFT JOIN nbs_srte.dbo.Code_value_general cvg4 WITH (NOLOCK)
                            ON ix.interview_loc_cd = cvg4.code and
                               cvg4.code_set_nm in ('NBS_INTVW_LOC', 'NBS_INTVW_LOC_STDHIV')
-                 LEFT JOIN NBS_ODSE.dbo.Act_relationship ar1 WITH (NOLOCK)
-                           ON ar1.source_act_uid = ix.interview_uid AND ar1.type_cd = 'IXS'
-                 LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae  WITH (NOLOCK)
-                           on ix.interview_uid = nae.act_uid
-                               AND nae.type_cd = 'IntrvwerOfInterview'
-                 LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae2  WITH (NOLOCK)
-                           on ix.interview_uid = nae2.act_uid
-                               AND nae2.type_cd = 'OrgAsSiteOfIntv'
-                 LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae3  WITH (NOLOCK)
-                           on ix.interview_uid = nae3.act_uid
-                               AND nae3.type_cd = 'IntrvweeOfInterview'
+                LEFT JOIN NBS_ODSE.dbo.Act_relationship ar1 WITH (NOLOCK)
+                    ON ar1.source_act_uid = ix.interview_uid AND ar1.type_cd = 'IXS'
+                LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae  WITH (NOLOCK)
+                    on ix.interview_uid = nae.act_uid
+                    AND nae.type_cd = 'IntrvwerOfInterview'
+                LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae2  WITH (NOLOCK)
+                    on ix.interview_uid = nae2.act_uid
+                    AND nae2.type_cd = 'OrgAsSiteOfIntv'
+                LEFT JOIN NBS_ODSE.dbo.NBS_act_entity nae3  WITH (NOLOCK)
+                    on ix.interview_uid = nae3.act_uid
+                    AND nae3.type_cd = 'IntrvweeOfInterview'
         where interview_uid in (SELECT value FROM STRING_SPLIT(@ix_uids, ','));
 
         if
@@ -1297,16 +1297,20 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description]
+        )
         VALUES ( @batch_id
                , 'Interview PRE-Processing Event'
                , 'NBS_ODSE.sp_interview_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT('Pre ID-' + @ix_uids, 199)
+               , 'Interview PRE-Processing Event'
                , 0
-               , LEFT(@ix_uids, 199));
-        return @ErrorMessage;
+               , LEFT(@ix_uids, 199)
+               , @ErrorMessage
+        );
+        return -1;
 
     END CATCH
 

@@ -47,12 +47,12 @@ BEGIN
                 )
                 LEFT JOIN dbo.Data_Source ds
                 ON ds.data_source_uid = rep.data_source_uid
-        where   
+        where
                 /*
                 For the case when the user_ids variable is NULL or an empty string, return all user report permissions
                 Otherwise, check to see if the user_id is contains in the user_ids variable
                 */
-                (CASE 
+                (CASE
                     WHEN COALESCE(@user_ids, '') = '' THEN 1
                     WHEN [user].user_id in (SELECT value FROM STRING_SPLIT(@user_ids, ',')) THEN 1
                     ELSE 0
@@ -63,7 +63,7 @@ BEGIN
                 )
                 and [operation_type].bus_op_nm in ('VIEWREPORTPRIVATE', 'VIEWREPORTPUBLIC', 'VIEWREPORTREPORTINGFACILITY', 'VIEWREPORTTEMPLATE')
 
-    
+
     END TRY
     BEGIN CATCH
 
@@ -85,16 +85,18 @@ BEGIN
                                          , [step_number]
                                          , [step_name]
                                          , [Error_Description]
-                                         , [row_count])
+                                         , [row_count]
+                                         , [Msg_Description1])
         VALUES ( @batch_id
                , 'USER_REPORT_PERMISSIONS'
                , 'USER_REPORT_PERMISSIONS'
                , 'ERROR'
                , @Proc_Step_no
-               , 'ERROR - ' + @Proc_Step_name
-               , 'Step -' + CAST(@Proc_Step_no AS VARCHAR(3)) + ' -' + CAST(@ErrorMessage AS VARCHAR(500))
-               , 0);
-
+               , @Proc_Step_name
+               , @ErrorMessage
+               , 0
+               , LEFT(@user_ids, 199)
+            );
 
         return -1;
 

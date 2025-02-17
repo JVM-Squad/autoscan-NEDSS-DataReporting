@@ -71,16 +71,21 @@ BEGIN
                                                       , [step_number]
                                                       , [step_name]
                                                       , [row_count]
-                                                      , [Msg_Description1])
+                                                      , [Msg_Description1]
+                                                        ,[Error_Description]
+                                                        )
+
         VALUES ( @batch_id
                , 'Auth_user PRE-Processing Event'
                , 'NBS_ODSE.sp_auth_user_event'
                , 'ERROR: ' + @ErrorMessage
                , 0
-               , LEFT('Pre ID-' + @user_id_list, 199)
+               , 'Auth_user PRE-Processing Event'
                , 0
-               , LEFT(@user_id_list, 199));
-        return @ErrorMessage;
+               , LEFT(@user_id_list, 199)
+                ,@ErrorMessage
+            );
+        return -1;
 
     END CATCH
 

@@ -1297,16 +1297,20 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description]
+        )
         VALUES ( @batch_id
                , 'Interview PRE-Processing Event'
                , 'NBS_ODSE.sp_interview_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT('Pre ID-' + @ix_uids, 199)
+               , 'Interview PRE-Processing Event'
                , 0
-               , LEFT(@ix_uids, 199));
-        return @ErrorMessage;
+               , LEFT(@ix_uids, 199)
+               , @ErrorMessage
+        );
+        return -1;
 
     END CATCH
 

@@ -172,7 +172,7 @@ BEGIN
                ,'NBS_ODSE.sp_provider_event'
                ,'COMPLETE'
                ,0
-               ,LEFT('Pre ID-' + @user_id_list, 199)
+               ,'PRE-Processing'
                ,0
                ,LEFT(@user_id_list, 199));
 
@@ -190,16 +190,18 @@ BEGIN
                                                       ,[step_number]
                                                       ,[step_name]
                                                       ,[row_count]
-                                                      ,[Msg_Description1])
+                                                      ,[Msg_Description1]
+                                                      ,[Error_Description])
         VALUES (@batch_id
                ,'Provider PRE-Processing Event'
                ,'NBS_ODSE.sp_provider_event'
-               ,'ERROR: ' + @ErrorMessage
+               ,'ERROR'
                ,0
-               ,LEFT('Pre ID-' + @user_id_list, 199)
+               ,'Provider PRE-Processing Event'
                ,0
-               ,LEFT(@user_id_list, 199));
-        return @ErrorMessage;
+                ,LEFT(@user_id_list, 199)
+               ,@ErrorMessage);
+        return -1;
 
     END CATCH
 

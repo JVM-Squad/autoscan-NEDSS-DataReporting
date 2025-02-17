@@ -92,7 +92,7 @@ BEGIN
                              -- org name
                              (SELECT (SELECT on2.organization_uid                       AS [on_org_uid],
                                              LTRIM(RTRIM(SUBSTRING(on2.nm_txt, 1, 50))) AS [organization_name]
-                                      FROM dbo.Organization_name on2
+                                      FROM dbo.Organization_name on2 WITH (NOLOCK)
                                       WHERE o.organization_uid = on2.organization_uid
                                       FOR json path, INCLUDE_NULL_VALUES) AS name) AS name,
                              -- org phone
@@ -138,8 +138,9 @@ BEGIN
                                                  end             as facility_id_auth
                                       FROM dbo.Entity_id ei WITH (NOLOCK)
                                       WHERE ei.entity_uid = o.organization_uid
-                                      FOR json path, INCLUDE_NULL_VALUES) AS entity_id) AS entity_id) AS nested
-            LEFT JOIN nbs_srte.dbo.NAICS_INDUSTRY_CODE naics ON (NAICS.CODE = o.STANDARD_INDUSTRY_CLASS_CD)
+                                      FOR json path, INCLUDE_NULL_VALUES) AS entity_id) AS entity_id
+            ) AS nested
+            LEFT JOIN nbs_srte.dbo.NAICS_INDUSTRY_CODE naics WITH (NOLOCK) ON (NAICS.CODE = o.STANDARD_INDUSTRY_CLASS_CD)
         WHERE o.organization_uid in (SELECT value FROM STRING_SPLIT(@org_id_list, ','))
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
@@ -180,18 +181,21 @@ BEGIN
                                                       ,[step_name]
                                                       ,[row_count]
                                                       ,[Msg_Description1]
+                                                      ,[Error_Description]
         )
         VALUES (
                 @batch_id
                ,'Organization PRE-Processing Event'
                ,'NBS_ODSE.sp_organization_event'
-               ,'ERROR: ' + @ErrorMessage
+               ,'ERROR'
                ,0
-               ,LEFT('Pre ID-' + @org_id_list,199)
+               ,'Organization PRE-Processing Event'
                ,0
-               ,LEFT(@org_id_list,199)
-               );
-        return @ErrorMessage;
+                ,LEFT(@org_id_list,199)
+                ,@ErrorMessage
+        );
+
+        return -1;
 
     END CATCH
 

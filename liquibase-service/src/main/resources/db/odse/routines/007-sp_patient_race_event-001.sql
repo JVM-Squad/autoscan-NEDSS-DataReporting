@@ -906,6 +906,7 @@ BEGIN
         ,[step_name]
         ,[row_count]
         ,[Msg_Description1]
+        ,[Error_Description]
         )
         VALUES (
                  @batch_id
@@ -913,11 +914,12 @@ BEGIN
                ,'NBS_ODSE.sp_patient_race_event'
                ,'ERROR: ' + @ErrorMessage
                ,0
-               ,LEFT('Pre ID-' + @user_id_list,199)
+               ,'Patient PRE-Processing Event:Person Race'
                ,0
                ,LEFT(@user_id_list,199)
+                ,@ErrorMessage
                );
-        return @ErrorMessage;
+        return -1;
 
     END CATCH
 

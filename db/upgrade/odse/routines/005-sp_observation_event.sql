@@ -460,19 +460,21 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description])
         VALUES (
                  @batch_id
                , 'Observation PRE-Processing Event'
                , 'NBS_ODSE.sp_observation_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT ('Pre ID-' + @obs_id_list, 199)
+               , 'Observation PRE-Processing Event'
                , 0
                , LEFT (@obs_id_list, 199)
+               , @ErrorMessage
                );
 
-        return @ErrorMessage;
+        return -1;
 
     END CATCH
 
