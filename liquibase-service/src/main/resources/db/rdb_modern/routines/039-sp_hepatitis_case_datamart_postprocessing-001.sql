@@ -430,12 +430,16 @@ BEGIN
                        branch_id
                 FROM #OBS_NUMERIC_HEP_multi_value_field
                 WHERE public_health_case_uid IS NOT NULL
-            )
-            SELECT ids.public_health_case_uid,
-                   ids.branch_id,
-                   ROW_NUMBER() OVER (PARTITION BY ids.public_health_case_uid, ids.branch_id ORDER BY ids.branch_id) as row_num
+            ),
+            ordered_selection as 
+            (SELECT public_health_case_uid,
+                   branch_id,
+                   ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, branch_id ORDER BY branch_id) as row_num
+            FROM id_cte)
+            SELECT DISTINCT ids.public_health_case_uid,
+                            ids.row_num
             INTO #HEP_MULTI_VAL_IDS
-            FROM id_cte ids 
+            FROM ordered_selection ids 
             LEFT JOIN dbo.nrt_hepatitis_case_group_key hcgk
                 ON ids.public_health_case_uid = hcgk.public_health_case_uid;
 
