@@ -1241,7 +1241,6 @@ WHERE EVENT_DATE is null;';
 
         COMMIT TRANSACTION;
 
-        RETURN 0;
 
     END TRY
     BEGIN CATCH
