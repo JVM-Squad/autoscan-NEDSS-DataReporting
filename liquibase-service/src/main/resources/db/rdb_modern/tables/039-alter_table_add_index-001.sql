@@ -45,7 +45,8 @@ BEGIN
 ALTER TABLE dbo.nrt_contact_key ADD CONSTRAINT pk_d_contact_record_key PRIMARY KEY (d_contact_record_key);
 END
 
-IF NOT EXISTS(SELECT * FROM sys.indexes WHERE name = 'idx_contact_uid_rdb_column' AND object_id = OBJECT_ID('dbo.nrt_interview_answer'))
+
+IF NOT EXISTS(SELECT * FROM sys.indexes WHERE name = 'idx_interview_uid_rdb_column' AND object_id = OBJECT_ID('dbo.nrt_interview_answer'))
 BEGIN
 	CREATE INDEX idx_interview_uid_rdb_column ON dbo.nrt_interview_answer (interview_uid, rdb_column_nm);
 END
