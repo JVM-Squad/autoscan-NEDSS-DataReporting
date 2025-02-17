@@ -12,7 +12,7 @@ CREATE TABLE data_sync_config
     query_count                NVARCHAR( MAX) NOT NULL,
     query_with_pagination      NVARCHAR( MAX) NOT NULL,
     query_with_null_timestamp  NVARCHAR( MAX) NULL,
-    created_at                 DATETIME2 GETDATE(),
+    created_at                 DATETIME2 DEFAULT GETDATE(),
     last_executed_timestamp    DATETIME2 NULL,
     last_executed_run_time     NVARCHAR(255) NULL,
     last_executed_result_count INTEGER NULL,
