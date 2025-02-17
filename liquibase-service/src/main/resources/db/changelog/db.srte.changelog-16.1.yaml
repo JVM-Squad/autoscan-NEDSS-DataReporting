@@ -21,5 +21,5 @@ databaseChangeLog:
       runOnChange: true
       changes:
         - sqlFile:
-            path: 001-alter_imrdbmapping_code-001.sql
+            path: 001-alter_imrdbmapping-001.sql
             splitStatements: false
