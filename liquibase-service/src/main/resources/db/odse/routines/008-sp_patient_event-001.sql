@@ -384,7 +384,7 @@ BEGIN
         VALUES (@batch_id
                ,'Patient PRE-Processing Event'
                ,'NBS_ODSE.sp_patient_event'
-               ,'ERROR: ' + @ErrorMessage
+               ,'ERROR'
                ,0
                ,'Patient PRE-Processing Event'
                ,0

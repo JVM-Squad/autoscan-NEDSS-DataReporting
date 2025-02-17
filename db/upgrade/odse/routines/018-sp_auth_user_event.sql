@@ -78,7 +78,7 @@ BEGIN
         VALUES ( @batch_id
                , 'Auth_user PRE-Processing Event'
                , 'NBS_ODSE.sp_auth_user_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
                , 'Auth_user PRE-Processing Event'
                , 0
