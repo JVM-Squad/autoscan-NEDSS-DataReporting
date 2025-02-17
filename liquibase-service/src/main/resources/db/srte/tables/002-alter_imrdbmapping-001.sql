@@ -51,7 +51,6 @@ BEGIN
     )
     INSERT INTO dbo.IMRDBMapping
     (
-        IMRDBMAPPING_id,
         unique_cd,
         unique_name,
         [description],
@@ -62,7 +61,7 @@ BEGIN
         other_attributes,
         condition_cd
     )
-    SELECT (SELECT COUNT(*) FROM dbo.IMRDBMAPPING) + ROW_NUMBER() OVER (ORDER BY UNIQUE_CD) AS IMRDBMapping_id,
+    SELECT
     unique_cd,
     unique_name,
     [description],
@@ -73,7 +72,8 @@ BEGIN
     other_attributes,
     condition_cd
     from missing_records_imrdbmapping
-    WHERE unique_cd NOT IN (SELECT unique_cd FROM NBS_SRTE.dbo.IMRDBMAPPING);
+    WHERE unique_cd NOT IN (SELECT unique_cd FROM dbo.IMRDBMAPPING);
+
 
     update dbo.IMRDBMapping
         SET DB_table = 'Obs_value_numeric',
@@ -83,3 +83,4 @@ BEGIN
               AND DB_field = 'from_time';
 
 END;
+
