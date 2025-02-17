@@ -435,7 +435,8 @@ BEGIN
                    ids.branch_id,
                    CASE WHEN hcgk.HEP_MULTI_VAL_GRP_KEY IS NULL THEN 'I'
                    ELSE 'U'
-                   END AS DML_IND
+                   END AS DML_IND,
+                   ROW_NUMBER() OVER (PARTITION BY ids.public_health_case_uid, ids.branch_id ORDER BY ids.branch_id) as row_num
             INTO #HEP_MULTI_VAL_IDS
             FROM id_cte ids 
             LEFT JOIN dbo.nrt_hepatitis_case_group_key hcgk
@@ -457,29 +458,29 @@ BEGIN
         COMMIT TRANSACTION;
 
 
-        BEGIN TRANSACTION
-            SET
-                @PROC_STEP_NO = @PROC_STEP_NO + 1;
-            SET
-                @PROC_STEP_NAME = 'INSERTING INTO dbo.nrt_hepatitis_case_group_key';
+        -- BEGIN TRANSACTION
+        --     SET
+        --         @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        --     SET
+        --         @PROC_STEP_NAME = 'INSERTING INTO dbo.nrt_hepatitis_case_group_key';
 
 
-            INSERT INTO dbo.nrt_hepatitis_case_group_key
-            (
-                public_health_case_uid
-            )
+        --     INSERT INTO dbo.nrt_hepatitis_case_group_key
+        --     (
+        --         public_health_case_uid
+        --     )
 
 
 
-            SELECT @RowCount_no = @@ROWCOUNT;
+        --     SELECT @RowCount_no = @@ROWCOUNT;
 
 
-            INSERT INTO [dbo].[job_flow_log]
-            (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
-            VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
-                    @RowCount_no);
+        --     INSERT INTO [dbo].[job_flow_log]
+        --     (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        --     VALUES (@batch_id, @datamart_nm, @datamart_nm, 'START', @Proc_Step_no, @Proc_Step_Name,
+        --             @RowCount_no);
 
-        COMMIT TRANSACTION;
+        -- COMMIT TRANSACTION;
 
         BEGIN TRANSACTION
             SET
