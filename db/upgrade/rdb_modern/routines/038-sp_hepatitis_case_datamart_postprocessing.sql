@@ -1318,7 +1318,7 @@ BEGIN
                , 'ERROR'
                , @Proc_Step_no
                , @Proc_Step_name
-               , @ErrorMessage
+               , LEFT(@ErrorMessage, 500)
                , 0);
 
 
