@@ -2795,6 +2795,6 @@ BEGIN
                , LEFT(@phc_id_list, 199)
                );
 
-        RETURN -1;
+        RETURN @ErrorMessage;
     END CATCH
 END;

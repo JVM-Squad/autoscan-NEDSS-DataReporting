@@ -195,7 +195,7 @@ BEGIN
                 ,@ErrorMessage
         );
 
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 

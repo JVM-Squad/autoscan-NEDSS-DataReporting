@@ -223,7 +223,7 @@ BEGIN
                , LEFT (@notification_list, 199)
                , @ErrorMessage
                );
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 

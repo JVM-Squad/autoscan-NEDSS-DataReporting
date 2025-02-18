@@ -1306,7 +1306,7 @@ BEGIN
                , LEFT(@cc_uids, 199)
                ,@ErrorMessage
         );
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 

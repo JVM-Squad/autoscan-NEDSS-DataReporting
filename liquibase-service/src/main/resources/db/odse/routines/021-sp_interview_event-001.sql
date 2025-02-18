@@ -1310,7 +1310,7 @@ BEGIN
                , LEFT(@ix_uids, 199)
                , @ErrorMessage
         );
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 

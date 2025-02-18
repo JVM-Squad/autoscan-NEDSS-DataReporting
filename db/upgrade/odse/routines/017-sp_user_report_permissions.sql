@@ -98,7 +98,7 @@ BEGIN
                , LEFT(@user_ids, 199)
             );
 
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 
