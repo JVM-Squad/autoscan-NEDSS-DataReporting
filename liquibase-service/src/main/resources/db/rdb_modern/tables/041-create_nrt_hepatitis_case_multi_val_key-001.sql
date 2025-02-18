@@ -1,6 +1,3 @@
--- table is not dropped and recreated so as to stay consistent with the design of nrt_interview_key
-DROP TABLE dbo.nrt_hepatitis_case_multi_val_key;
-
 IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_hepatitis_case_multi_val_key' and xtype = 'U')
     BEGIN
 
@@ -19,3 +16,14 @@ IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_hepatitis_case_multi_v
 
     END
 
+IF NOT EXISTS (SELECT 1 FROM dbo.hep_multi_value_field)
+    BEGIN
+
+        INSERT INTO dbo.HEP_MULTI_VALUE_FIELD
+        (
+            HEP_MULTI_VAL_GRP_KEY,
+            HEP_MULTI_VAL_DATA_KEY
+        )
+        SELECT 1,1;
+
+    END;
