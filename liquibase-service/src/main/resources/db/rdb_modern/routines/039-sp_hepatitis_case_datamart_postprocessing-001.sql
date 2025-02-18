@@ -1104,14 +1104,15 @@ BEGIN TRANSACTION
             + CASE
                       WHEN @obscoded_columns != '' THEN
                           ' LEFT JOIN (
-                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obscoded_columns + '
+                          SELECT public_health_case_uid, row_num, ' + @obscoded_columns + ' 
         FROM (
             SELECT
                 public_health_case_uid,
                 col_nm,
-                response
-            FROM
-                #OBS_CODED_HEP_multi_value_field 
+                ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, branch_id ORDER BY branch_id) AS row_num,
+                response 
+            FROM 
+                 #OBS_CODED_HEP_multi_value_field 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -1123,14 +1124,15 @@ BEGIN TRANSACTION
                               + CASE
                                     WHEN @obsnum_columns != '' THEN
                                         ' LEFT JOIN (
-                                        SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obsnum_columns + '
+                                        SELECT public_health_case_uid, row_num, ' + @obsnum_columns + ' 
         FROM (
             SELECT
                 public_health_case_uid,
                 col_nm,
-                response
-            FROM
-                #OBS_NUMERIC_HEP_multi_value_field 
+                ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, branch_id ORDER BY branch_id) AS row_num,
+                response 
+            FROM 
+                 #OBS_NUMERIC_HEP_multi_value_field 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -1142,14 +1144,15 @@ BEGIN TRANSACTION
                 + CASE
                       WHEN @obstxt_columns != '' THEN
                           ' LEFT JOIN (
-                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obstxt_columns + '
+                          SELECT public_health_case_uid, row_num, ' + @obstxt_columns + ' 
         FROM (
             SELECT
                 public_health_case_uid,
                 col_nm,
-                response
-            FROM
-                #OBS_TXT_HEP_multi_value_field 
+                ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, branch_id ORDER BY branch_id) AS row_num,
+                response 
+            FROM 
+                 #OBS_TXT_HEP_multi_value_field 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -1161,14 +1164,15 @@ BEGIN TRANSACTION
                 + CASE
                       WHEN @obsdate_columns != '' THEN
                           ' LEFT JOIN (
-                          SELECT public_health_case_uid, ROW_NUMBER() OVER (PARTITION BY public_health_case_uid ORDER BY public_health_case_uid) AS row_num, ' + @obsdate_columns + '
+                          SELECT public_health_case_uid, row_num, ' + @obsdate_columns + ' 
         FROM (
             SELECT
                 public_health_case_uid,
                 col_nm,
-                response
-            FROM
-                #OBS_DATE_HEP_multi_value_field 
+                ROW_NUMBER() OVER (PARTITION BY public_health_case_uid, branch_id ORDER BY branch_id) AS row_num,
+                response 
+            FROM 
+                 #OBS_DATE_HEP_multi_value_field 
                 WHERE public_health_case_uid IS NOT NULL 
         ) AS SourceData
         PIVOT (
@@ -1185,6 +1189,7 @@ BEGIN TRANSACTION
             select @Proc_Step_Name as step, @Insert_sql;
 
         exec sp_executesql @Insert_sql;
+
 
 
         SELECT @ROWCOUNT_NO = @@ROWCOUNT;
