@@ -815,3 +815,12 @@ databaseChangeLog:
         - sqlFile:
             path: 038-sp_f_contact_record_case_postprocessing-001.sql
             splitStatements: false
+  - changeSet:
+      id: 119
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 039-alter_table_add_index-001.sql
+            splitStatements: false            
+            

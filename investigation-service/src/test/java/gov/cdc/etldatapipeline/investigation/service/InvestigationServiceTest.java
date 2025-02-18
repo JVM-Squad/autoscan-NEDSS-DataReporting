@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -87,6 +88,8 @@ class InvestigationServiceTest {
         investigationService = new InvestigationService(investigationRepository, notificationRepository, interviewRepository, contactRepository, kafkaTemplate, transformer);
 
         investigationService.setPhcDatamartEnable(true);
+        investigationService.setBmirdCaseEnable(true);
+        investigationService.setContactRecordEnable(true);
         investigationService.setInvestigationTopic(investigationTopic);
         investigationService.setNotificationTopic(notificationTopic);
         investigationService.setInvestigationTopicReporting(investigationTopicOutput);
@@ -98,6 +101,11 @@ class InvestigationServiceTest {
         transformer.setInvestigationNotificationsOutputTopicName(notificationTopicOutput);
         transformer.setInterviewOutputTopicName(interviewTopicOutput);
         transformer.setContactOutputTopicName(contactTopicOutput);
+        transformer.setPageCaseAnswerOutputTopicName("pageCaseAnswer");
+        transformer.setInvestigationCaseManagementTopicName("investigationCaseManagement");
+        transformer.setInterviewAnswerOutputTopicName("interviewAnswer");
+        transformer.setInterviewNoteOutputTopicName("interviewNote");
+        transformer.setRdbMetadataColumnsOutputTopicName("metadataColumns");
     }
 
     @AfterEach
@@ -108,16 +116,29 @@ class InvestigationServiceTest {
     @Test
     void testProcessInvestigationMessage() throws JsonProcessingException {
         Long investigationUid = 234567890L;
-        String payload = "{\"payload\": {\"after\": {\"public_health_case_uid\": \"" + investigationUid + "\"}}}";
+        String payload = "{\"payload\": {\"after\": {\"public_health_case_uid\": \"" + investigationUid + "\", \"prog_area_cd\": \"BMIRD\"}}}";
 
         final Investigation investigation = constructInvestigation(investigationUid);
         when(investigationRepository.computeInvestigations(String.valueOf(investigationUid))).thenReturn(Optional.of(investigation));
-        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
-
+        when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(CompletableFuture.completedFuture(null));
+        when(kafkaTemplate.send(anyString(), anyString(), notNull())).thenReturn(CompletableFuture.completedFuture(null));
         validateInvestigationData(payload, investigation);
 
         verify(investigationRepository).computeInvestigations(String.valueOf(investigationUid));
         verify(investigationRepository).populatePhcFact(String.valueOf(investigationUid));
+    }
+
+    @Test
+    void testProcessInvestigationBmirdFeatureDisabled() {
+        Long investigationUid = 234567890L;
+        String payload = "{\"payload\": {\"after\": {\"public_health_case_uid\": \"" + investigationUid + "\", \"prog_area_cd\": \"BMIRD\"}}}";
+
+        final Investigation investigation = constructInvestigation(investigationUid);
+        when(investigationRepository.computeInvestigations(String.valueOf(investigationUid))).thenReturn(Optional.of(investigation));
+
+        investigationService.setBmirdCaseEnable(false);
+        investigationService.processMessage(payload, investigationTopic, consumer);
+        verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -154,7 +175,7 @@ class InvestigationServiceTest {
         String invalidPayload = "{\"payload\": {\"after\": {}}}";
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> investigationService.processMessage(invalidPayload, notificationTopic, consumer));
-        assertEquals(ex.getCause().getClass(), NoSuchElementException.class);
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
     }
 
     @Test
@@ -171,9 +192,10 @@ class InvestigationServiceTest {
         Long interviewUid = 234567890L;
         String payload = "{\"payload\": {\"after\": {\"interview_uid\": \"" + interviewUid + "\"}}}";
 
-        final gov.cdc.etldatapipeline.investigation.repository.model.dto.Interview interview = constructInterview(interviewUid);
+        final Interview interview = constructInterview(interviewUid);
         when(interviewRepository.computeInterviews(String.valueOf(interviewUid))).thenReturn(Optional.of(interview));
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+        when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(CompletableFuture.completedFuture(null));
 
         investigationService.processMessage(payload, interviewTopic, consumer);
 
@@ -187,10 +209,9 @@ class InvestigationServiceTest {
                         verify(kafkaTemplate, times(6)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
 
-        String actualTopic = topicCaptor.getAllValues().get(0);
-        String actualKey = keyCaptor.getAllValues().get(0);
-        String actualValue = messageCaptor.getAllValues().get(0);
-
+        String actualTopic = topicCaptor.getAllValues().getFirst();
+        String actualKey = keyCaptor.getAllValues().getFirst();
+        String actualValue = messageCaptor.getAllValues().getFirst();
 
         var actualInterviewKey = objectMapper.readValue(
                 objectMapper.readTree(actualKey).path("payload").toString(), InterviewReportingKey.class);
@@ -209,7 +230,7 @@ class InvestigationServiceTest {
         String invalidPayload = "{\"payload\": {\"after\": {}}}";
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> investigationService.processMessage(invalidPayload, interviewTopic, consumer));
-        assertEquals(ex.getCause().getClass(), NoSuchElementException.class);
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
     }
 
     @Test
@@ -243,10 +264,9 @@ class InvestigationServiceTest {
                         verify(kafkaTemplate, times(3)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
 
-        String actualTopic = topicCaptor.getAllValues().get(0);
-        String actualKey = keyCaptor.getAllValues().get(0);
-        String actualValue = messageCaptor.getAllValues().get(0);
-
+        String actualTopic = topicCaptor.getAllValues().getFirst();
+        String actualKey = keyCaptor.getAllValues().getFirst();
+        String actualValue = messageCaptor.getAllValues().getFirst();
 
         var actualContactKey = objectMapper.readValue(
                 objectMapper.readTree(actualKey).path("payload").toString(), ContactReportingKey.class);
@@ -261,11 +281,24 @@ class InvestigationServiceTest {
     }
 
     @Test
+    void testProcessContactMessageWhenFeatureDisabled() {
+        Long contactUid = 234567890L;
+        String payload = "{\"payload\": {\"after\": {\"ct_contact_uid\": \"" + contactUid + "\"}}}";
+
+        final Contact contact = constructContact(contactUid);
+        when(contactRepository.computeContact(String.valueOf(contactUid))).thenReturn(Optional.of(contact));
+
+        investigationService.setContactRecordEnable(false);
+        investigationService.processMessage(payload, contactTopic, consumer);
+        verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
     void testProcessContactException() {
         String invalidPayload = "{\"payload\": {\"after\": {}}}";
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> investigationService.processMessage(invalidPayload, contactTopic, consumer));
-        assertEquals(ex.getCause().getClass(), NoSuchElementException.class);
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
     }
 
     @Test
@@ -284,9 +317,19 @@ class InvestigationServiceTest {
 
         verify(kafkaTemplate, times(18)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
 
-        String actualTopic = topicCaptor.getAllValues().get(15);
-        String actualKey = keyCaptor.getAllValues().get(15);
-        String actualValue = messageCaptor.getAllValues().get(15);
+        String actualTopic = null;
+        String actualKey = null;
+        String actualValue = null;
+
+        List<String> topics = topicCaptor.getAllValues();
+        for (int i = 0; i < topics.size(); i++) {
+            if (topics.get(i).equals(investigationTopicOutput)) {
+                actualTopic = topics.get(i);
+                actualKey = keyCaptor.getAllValues().get(i);
+                actualValue = messageCaptor.getAllValues().get(i);
+                break;
+            }
+        }
 
         var actualReporting = objectMapper.readValue(
                 objectMapper.readTree(actualValue).path("payload").toString(), InvestigationReporting.class);
