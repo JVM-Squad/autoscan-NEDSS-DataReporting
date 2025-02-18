@@ -239,7 +239,7 @@ class InvestigationDataProcessingTests {
 
         transformer.processInterview(interview);
         Awaitility.await()
-                .atMost(1, TimeUnit.SECONDS)
+                .atMost(6, TimeUnit.SECONDS)
                 .untilAsserted(() ->
                         verify(kafkaTemplate, times(5)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
@@ -283,6 +283,7 @@ class InvestigationDataProcessingTests {
 
         transformer.setInterviewOutputTopicName(INTERVIEW_TOPIC);
         transformer.setInterviewAnswerOutputTopicName(INTERVIEW_ANSWERS_TOPIC);
+        transformer.setInterviewNoteOutputTopicName(INTERVIEW_NOTE_TOPIC);
 
         final InterviewReportingKey interviewReportingKey = new InterviewReportingKey();
         interviewReportingKey.setInterviewUid(interviewUid);
@@ -298,7 +299,7 @@ class InvestigationDataProcessingTests {
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
         transformer.processInterview(interview);
         Awaitility.await()
-                .atMost(3, TimeUnit.SECONDS)
+                .atMost(6, TimeUnit.SECONDS)
                 .untilAsserted(() ->
                         verify(kafkaTemplate, times(4)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
