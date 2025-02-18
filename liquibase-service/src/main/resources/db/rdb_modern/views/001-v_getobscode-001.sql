@@ -46,6 +46,7 @@ WITH InvFormQObservations AS
                                       'DEM126','DEM132','DEM167','HEP140','HEP142','HEP242','HEP255','NPP024',
                                       'ORD116','RUB146') THEN 'country'
                         WHEN o.cd IN ('INV107','GEO100','LAB168','MRB137','OBS1017','PHC127') THEN 'jurcode'
+                        WHEN o.cd IN ('HEP128','INV169','MRB121','PHC108','SUM106') THEN 'DISEASE'
                         ELSE 'cvg_code' END AS label
              FROM
                  dbo.nrt_investigation_observation tnio with (nolock)
@@ -67,6 +68,7 @@ SELECT
           WHEN label = 'state' THEN sc.state_nm
           WHEN label = 'county' THEN sccv.code_desc_txt
           WHEN label = 'jurcode' THEN jc.code_short_desc_txt
+          WHEN label = 'DISEASE' THEN con_code.condition_short_nm
           ELSE NULL
     END AS response
      ,CASE
@@ -85,4 +87,4 @@ FROM InvFormQObservations obs
          LEFT JOIN nbs_srte.dbo.State_code sc with (nolock) on sc.state_cd = obs.ovc_code
          LEFT JOIN nbs_srte.dbo.State_county_code_value sccv with (nolock) on sccv.code = obs.ovc_code
          LEFT JOIN nbs_srte.dbo.Jurisdiction_code jc with (nolock) on jc.code = obs.ovc_code
-;
+         LEFT JOIN nbs_srte.dbo.Condition_code con_code with (nolock) on con_code.condition_cd = obs.ovc_code;
