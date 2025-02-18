@@ -556,7 +556,7 @@ BEGIN
             ,LEFT(@id_list,500)
             );
 
-        return @ErrorMessage;
+        return -1;
 
     END CATCH
 
