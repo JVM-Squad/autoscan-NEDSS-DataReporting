@@ -678,7 +678,7 @@ BEGIN
                     */
 
 
-BEGIN TRANSACTION
+        BEGIN TRANSACTION
             SET
                 @PROC_STEP_NO = @PROC_STEP_NO + 1;
             SET
@@ -1069,7 +1069,7 @@ BEGIN TRANSACTION
         -- Variables for the columns in the insert select statement
         -- Must be ordered the same as the original column lists
 
-        SELECT @obscoded_columns =
+            SELECT @obscoded_columns =
                    COALESCE(STRING_AGG(CAST(QUOTENAME(col_nm) AS NVARCHAR(MAX)), ',') WITHIN GROUP (ORDER BY col_nm),
                             '')
             FROM (SELECT DISTINCT col_nm FROM #OBS_CODED_HEP_multi_value_field) AS cols;

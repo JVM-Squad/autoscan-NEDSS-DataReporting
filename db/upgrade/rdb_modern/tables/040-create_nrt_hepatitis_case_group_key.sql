@@ -5,12 +5,9 @@ IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_hepatitis_case_group_k
           HEP_MULTI_VAL_GRP_KEY bigint IDENTITY(1,1) NOT NULL,
           public_health_case_uid bigint NULL
         );
-        declare @max bigint;
-        select @max=max(HEP_MULTI_VAL_GRP_KEY)+1 from dbo.hep_multi_value_field_group;
-        select @max;
-        if @max IS NULL   --check when max is returned as null
-            SET @max = 2; -- default to 2
-        DBCC CHECKIDENT ('dbo.nrt_hepatitis_case_group_key', RESEED, @max);
+        --check for null and set default to 2
+        DECLARE @max bigint = (SELECT ISNULL(MAX(HEP_MULTI_VAL_GRP_KEY) + 1, 2) FROM dbo.hep_multi_value_field_group);
+        DBCC CHECKIDENT('dbo.nrt_hepatitis_case_group_key', RESEED, @max);
 
     END;
 
