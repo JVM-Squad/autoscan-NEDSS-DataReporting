@@ -3,6 +3,9 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_treatment_event]
     @debug bit = 'false'
 AS
 BEGIN
+
+    DECLARE @DATAFLOW_NAME VARCHAR(100) = 'Treatment PRE-Processing Event';
+    DECLARE @PACKAGE_NAME VARCHAR(100) = 'NBS_ODSE.sp_treatment_event';
     DECLARE @RowCount_no INT;
     DECLARE @Proc_Step_no FLOAT = 0;
     DECLARE @Proc_Step_Name VARCHAR(200) = '';
@@ -13,10 +16,18 @@ BEGIN
 
         -- Initial log entry
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        ( batch_id
+        , [Dataflow_Name]
+        , [package_Name]
+        , [Status_Type]
+        , [step_number]
+        , [step_name]
+        , [row_count]
+        , [Msg_Description1])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'NBS_ODSE.sp_treatment_event',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'START',
                    0,
                    LEFT('Pre ID-' + @treatment_uids, 199),
@@ -70,10 +81,17 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        ( batch_id
+        , [Dataflow_Name]
+        , [package_Name]
+        , [Status_Type]
+        , [step_number]
+        , [step_name]
+        , [row_count])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'nrt_treatment',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'START',
                    @Proc_Step_no,
                    @Proc_Step_Name,
@@ -127,10 +145,11 @@ BEGIN
         SELECT @RowCount_no = @@ROWCOUNT;
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'nrt_treatment',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'START',
                    @Proc_Step_no,
                    @Proc_Step_Name,
@@ -170,16 +189,17 @@ BEGIN
             t.LAST_CHG_TIME,
             t.LAST_CHG_USER_ID,
             t.VERSION_CTRL_NBR
-        FROM #TREATMENT_DETAILS t
-        FOR JSON PATH;
+        FROM #TREATMENT_DETAILS t;
+
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'nrt_treatment',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'START',
                    @Proc_Step_no,
                    @Proc_Step_Name,
@@ -189,10 +209,11 @@ BEGIN
 
         -- Log successful completion
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count],[Msg_Description1])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'NBS_ODSE.sp_treatment_event',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'COMPLETE',
                    0,
                    LEFT('Pre ID-' + @treatment_uids, 199),
@@ -207,17 +228,27 @@ BEGIN
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
 
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
+        ( batch_id
+        , [Dataflow_Name]
+        , [package_Name]
+        , [Status_Type]
+        , [step_number]
+        , [step_name]
+        , [row_count]
+        , [Msg_Description1],
+          [Error_Description])
         VALUES (
                    @batch_id,
-                   'Treatment PRE-Processing Event',
-                   'NBS_ODSE.sp_treatment_event',
+                   @DATAFLOW_NAME,
+                   @PACKAGE_NAME,
                    'ERROR: ' + @ErrorMessage,
                    0,
                    LEFT('Pre ID-' + @treatment_uids, 199),
                    0,
-                   LEFT(@treatment_uids, 199)
+                   LEFT(@treatment_uids, 199),
+                   @ErrorMessage
                );
 
-        THROW;
+        return @ErrorMessage;
     END CATCH
 END;
