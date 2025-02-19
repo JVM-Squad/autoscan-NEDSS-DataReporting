@@ -215,8 +215,8 @@ BEGIN
                    @DATAFLOW_NAME,
                    @PACKAGE_NAME,
                    'COMPLETE',
-                   0,
-                   LEFT('Pre ID-' + @treatment_uids, 199),
+                   @PROC_STEP_NO,
+                   @Proc_Step_Name,
                    0,
                    LEFT(@treatment_uids, 199)
                );
@@ -241,9 +241,9 @@ BEGIN
                    @batch_id,
                    @DATAFLOW_NAME,
                    @PACKAGE_NAME,
-                   'ERROR: ' + @ErrorMessage,
-                   0,
-                   LEFT('Pre ID-' + @treatment_uids, 199),
+                   'ERROR',
+                   @PROC_STEP_NO,
+                   @PROC_STEP_NAME,
                    0,
                    LEFT(@treatment_uids, 199),
                    @ErrorMessage
