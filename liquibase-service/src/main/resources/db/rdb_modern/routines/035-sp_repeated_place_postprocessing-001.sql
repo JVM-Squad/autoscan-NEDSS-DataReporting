@@ -630,7 +630,7 @@ BEGIN
                );
 
 
-        return @ErrorMessage;
+        return -1;
 
     END CATCH
 

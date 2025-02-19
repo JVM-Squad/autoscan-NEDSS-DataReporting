@@ -363,7 +363,7 @@ BEGIN
             );
 
 
-        RETURN @ErrorMessage;
+        RETURN -1;
 
     END CATCH
 END;

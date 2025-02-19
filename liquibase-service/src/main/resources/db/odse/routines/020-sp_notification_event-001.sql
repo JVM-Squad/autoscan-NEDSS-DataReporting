@@ -210,16 +210,18 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description])
         VALUES (
                  @batch_id
                , 'Notification PRE-Processing Event'
                , 'NBS_ODSE.sp_notification_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT ('Pre ID-' + @notification_list, 199)
+               , 'Notification PRE-Processing Event'
                , 0
                , LEFT (@notification_list, 199)
+               , @ErrorMessage
                );
         return @ErrorMessage;
 

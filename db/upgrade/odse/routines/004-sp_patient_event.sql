@@ -26,37 +26,37 @@ BEGIN
                ,LEFT(@user_id_list, 199));
 
         create table #temp_race_table
-            (
-                race_calculated       varchar(50)   null,
-                race_calc_details     varchar(4000) null,
-                race_all              varchar(4000) null,
-                race_nat_hi_1         varchar(50)   null,
-                race_nat_hi_2         varchar(50)   null,
-                race_nat_hi_3         varchar(50)   null,
-                race_nat_hi_gt3_ind   varchar(50)   null,
-                race_nat_hi_all       varchar(2000) null,
-                race_asian_1          varchar(50)   null,
-                race_asian_2          varchar(50)   null,
-                race_asian_3          varchar(50)   null,
-                race_asian_gt3_ind    varchar(50)   null,
-                race_asian_all        varchar(2000) null,
-                race_amer_ind_1       varchar(50)   null,
-                race_amer_ind_2       varchar(50)   null,
-                race_amer_ind_3       varchar(50)   null,
-                race_amer_ind_gt3_ind varchar(50)   null,
-                race_amer_ind_all     varchar(2000) null,
-                race_black_1          varchar(50)   null,
-                race_black_2          varchar(50)   null,
-                race_black_3          varchar(50)   null,
-                race_black_gt3_ind    varchar(50)   null,
-                race_black_all        varchar(2000) null,
-                race_white_1          varchar(50)   null,
-                race_white_2          varchar(50)   null,
-                race_white_3          varchar(50)   null,
-                race_white_gt3_ind    varchar(50)   null,
-                race_white_all        varchar(2000) null,
-                patient_uid_race_out  bigint        null
-            )
+        (
+            race_calculated       varchar(50)   null,
+            race_calc_details     varchar(4000) null,
+            race_all              varchar(4000) null,
+            race_nat_hi_1         varchar(50)   null,
+            race_nat_hi_2         varchar(50)   null,
+            race_nat_hi_3         varchar(50)   null,
+            race_nat_hi_gt3_ind   varchar(50)   null,
+            race_nat_hi_all       varchar(2000) null,
+            race_asian_1          varchar(50)   null,
+            race_asian_2          varchar(50)   null,
+            race_asian_3          varchar(50)   null,
+            race_asian_gt3_ind    varchar(50)   null,
+            race_asian_all        varchar(2000) null,
+            race_amer_ind_1       varchar(50)   null,
+            race_amer_ind_2       varchar(50)   null,
+            race_amer_ind_3       varchar(50)   null,
+            race_amer_ind_gt3_ind varchar(50)   null,
+            race_amer_ind_all     varchar(2000) null,
+            race_black_1          varchar(50)   null,
+            race_black_2          varchar(50)   null,
+            race_black_3          varchar(50)   null,
+            race_black_gt3_ind    varchar(50)   null,
+            race_black_all        varchar(2000) null,
+            race_white_1          varchar(50)   null,
+            race_white_2          varchar(50)   null,
+            race_white_3          varchar(50)   null,
+            race_white_gt3_ind    varchar(50)   null,
+            race_white_all        varchar(2000) null,
+            patient_uid_race_out  bigint        null
+        )
 
         insert into #temp_race_table
         (race_calculated,
@@ -227,17 +227,17 @@ BEGIN
                                                   case when elp.use_cd = 'BIR' then cc.code_short_desc_txt else null end AS [birth_country]
                                            FROM nbs_odse.dbo.Entity_locator_participation elp WITH (NOLOCK)
                                                     LEFT OUTER JOIN nbs_odse.dbo.Postal_locator pl WITH (NOLOCK)
-                                                                     ON elp.locator_uid = pl.postal_locator_uid
+                                                                    ON elp.locator_uid = pl.postal_locator_uid
                                                     LEFT OUTER JOIN nbs_srte.dbo.State_code sc with (NOLOCK) ON sc.state_cd = pl.state_cd
                                                     LEFT OUTER JOIN nbs_srte.dbo.State_county_code_value scc with (NOLOCK)
                                                                     ON scc.code = pl.cnty_cd
                                                     LEFT OUTER JOIN (
-                                                        select tmp.code, tmp.code_short_desc_txt from (
-                                                            -- ranking added to pick the latest valid short desc
-                                                            select code, code_short_desc_txt, rank () OVER (PARTITION BY code order by nbs_uid desc) rnk
-                                                            from nbs_srte.dbo.CODE_VALUE_GENERAL with (nolock) where CODE_SET_NM in( 'PHVS_BIRTHCOUNTRY_CDC', 'PHVS_TB_BIRTH_CNTRY', 'PSL_CNTRY')
-                                                        ) tmp where rnk=1
-                                                    ) cc ON cc.code = pl.cntry_cd
+                                               select tmp.code, tmp.code_short_desc_txt from (
+                                                                                                 -- ranking added to pick the latest valid short desc
+                                                                                                 select code, code_short_desc_txt, rank () OVER (PARTITION BY code order by nbs_uid desc) rnk
+                                                                                                 from nbs_srte.dbo.CODE_VALUE_GENERAL with (nolock) where CODE_SET_NM in( 'PHVS_BIRTHCOUNTRY_CDC', 'PHVS_TB_BIRTH_CNTRY', 'PSL_CNTRY')
+                                                                                             ) tmp where rnk=1
+                                           ) cc ON cc.code = pl.cntry_cd
                                            WHERE elp.entity_uid = p.person_uid
                                              AND elp.class_cd = 'PST'
                                              AND elp.use_cd IN ('H', 'BIR')
@@ -378,15 +378,19 @@ BEGIN
         ,[step_number]
         ,[step_name]
         ,[row_count]
-        ,[Msg_Description1])
+        ,[Msg_Description1]
+        ,[Error_Description]
+        )
         VALUES (@batch_id
                ,'Patient PRE-Processing Event'
                ,'NBS_ODSE.sp_patient_event'
-               ,'ERROR: ' + @ErrorMessage
+               ,'ERROR'
                ,0
-               ,LEFT('Pre ID-' + @user_id_list, 199)
+               ,'Patient PRE-Processing Event'
                ,0
-               ,LEFT(@user_id_list, 199));
+               ,LEFT(@user_id_list, 199)
+               ,@ErrorMessage
+        );
         return @ErrorMessage;
 
     END CATCH
