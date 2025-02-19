@@ -372,6 +372,11 @@ public class PostProcessingService {
                         investigationRepository.executeStoredProcForBmirdCaseDatamart(cases);
                         completeLog(BMIRD_CASE.getStoredProcedure());
                         break;
+                    case HEPATITIS_CASE:
+                        logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, HEPATITIS_CASE.getStoredProcedure(), cases);
+                        investigationRepository.executeStoredProcForHepatitisCaseDatamart(cases);
+                        completeLog(HEPATITIS_CASE.getStoredProcedure());
+                        break;
                     default:
                         logger.info("No associated datamart processing logic found for the key: {} ",dmType);
                 }

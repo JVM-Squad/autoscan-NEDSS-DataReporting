@@ -520,7 +520,12 @@ class PostProcessingServiceTest {
                         BMIRD_CASE.getEntityName(),
                         BMIRD_CASE.getStoredProcedure(),
                         3,
-                        (repo, uid) -> verify(repo).executeStoredProcForBmirdCaseDatamart(uid))
+                        (repo, uid) -> verify(repo).executeStoredProcForBmirdCaseDatamart(uid)),
+                new DatamartTestCase(
+                "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456,\"condition_cd\":\"12020\"," +
+                        "\"datamart\":\"Hepatitis_Case\",\"stored_procedure\":\"sp_hepatitis_case_datamart_postprocessing\"}}",
+                        HEPATITIS_CASE.getEntityName(), HEPATITIS_CASE.getStoredProcedure(), 3,
+                (repo, uid) -> verify(repo).executeStoredProcForHepatitisCaseDatamart(uid))
         );
     }
 
