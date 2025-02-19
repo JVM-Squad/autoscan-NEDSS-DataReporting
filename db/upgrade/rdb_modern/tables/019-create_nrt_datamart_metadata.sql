@@ -179,7 +179,7 @@ IF EXISTS (SELECT 1 FROM sysobjects WHERE name = 'nrt_datamart_metadata' and xty
                 FROM
                     (SELECT distinct cc.condition_cd, cc.condition_desc_txt
                      FROM NBS_SRTE.[dbo].[Condition_code] cc WITH (NOLOCK)
-                     WHERE CONDITION_CD IN ( '999999','10481', '10102' )
+                     WHERE (cc.investigation_form_cd IS NOT NULL and cc.investigation_form_cd LIKE 'INV_FORM_HEP%')
                     ) hep_codes
                 WHERE NOT EXISTS
                           (SELECT 1
