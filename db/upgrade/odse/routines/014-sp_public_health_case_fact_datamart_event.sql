@@ -2781,6 +2781,7 @@ BEGIN
                                                       ,[step_name]
                                                       ,[Error_Description]
                                                       ,[row_count]
+                                                      ,[Msg_Description1]
         )
         VALUES (
                  @batch_id
@@ -2788,11 +2789,12 @@ BEGIN
                ,'PCHMartETL'
                ,'ERROR'
                ,@Proc_Step_no
-               ,'ERROR - ' + @Proc_Step_name
-               ,'Step -' + CAST(@Proc_Step_no AS VARCHAR(3)) + ' -' + CAST(@ErrorMessage AS VARCHAR(500))
+               , @Proc_Step_name
+               ,@ErrorMessage
                ,0
+               , LEFT(@phc_id_list, 199)
                );
 
-        RETURN 'ERROR - ' + @ErrorMessage;
+        RETURN @ErrorMessage;
     END CATCH
 END;

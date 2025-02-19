@@ -9,7 +9,7 @@ BEGIN
 
         SET @batch_id = cast((format(getdate(),'yyMMddHHmmss')) as bigint);
         INSERT INTO [rdb_modern].[dbo].[job_flow_log]
-        (      batch_id
+        ( batch_id
         , [Dataflow_Name]
         , [package_Name]
         , [Status_Type]
@@ -91,47 +91,47 @@ BEGIN
                               select
                                   (
                                       select distinct min(case
-                                          when version_ctrl_nbr = 1
-                                              then nf.record_status_cd
+                                                              when version_ctrl_nbr = 1
+                                                                  then nf.record_status_cd
                                           end) as first_notification_status
                                                     ,sum(case
-                                          when nf.record_status_cd = 'REJECTED'
-                                              then 1
-                                          else 0
+                                                             when nf.record_status_cd = 'REJECTED'
+                                                                 then 1
+                                                             else 0
                                           end) notif_rejected_count
                                                     ,sum(case
-                                          when nf.record_status_cd = 'APPROVED'
-                                              or nf.record_status_cd = 'PEND_APPR'
-                                              then 1
-                                          when nf.record_status_cd = 'REJECTED'
-                                              then -1
-                                          else 0
+                                                             when nf.record_status_cd = 'APPROVED'
+                                                                 or nf.record_status_cd = 'PEND_APPR'
+                                                                 then 1
+                                                             when nf.record_status_cd = 'REJECTED'
+                                                                 then -1
+                                                             else 0
                                           end) notif_created_count
                                                     ,sum(case
-                                          when nf.record_status_cd = 'COMPLETED'
-                                              then 1
-                                          else 0
+                                                             when nf.record_status_cd = 'COMPLETED'
+                                                                 then 1
+                                                             else 0
                                           end) notif_sent_count
                                                     ,min(case
-                                          when nf.record_status_cd = 'COMPLETED'
-                                              then rpt_sent_time
+                                                             when nf.record_status_cd = 'COMPLETED'
+                                                                 then rpt_sent_time
                                           end) as first_notification_send_date
                                                     ,
                                           sum(case
-                                              when nf.record_status_cd = 'PEND_APPR'
-                                                  then 1
-                                              else 0
+                                                  when nf.record_status_cd = 'PEND_APPR'
+                                                      then 1
+                                                  else 0
                                               end) notif_created_pendings_count
                                                     ,max(case
-                                          when nf.record_status_cd = 'APPROVED'
-                                              or nf.record_status_cd = 'PEND_APPR'
-                                              then nf.last_chg_time
+                                                             when nf.record_status_cd = 'APPROVED'
+                                                                 or nf.record_status_cd = 'PEND_APPR'
+                                                                 then nf.last_chg_time
                                           end) as last_notification_date
                                                     ,
                                                     --done?
                                           max(case
-                                              when nf.record_status_cd = 'COMPLETED'
-                                                  then rpt_sent_time
+                                                  when nf.record_status_cd = 'COMPLETED'
+                                                      then rpt_sent_time
                                               end) as last_notification_send_date
                                                     ,
                                                     --done?
@@ -145,9 +145,9 @@ BEGIN
                                                     --done
                                                     --min(case when record_status_cd='completed' then  last_chg_user_id end) as firstnotificationsubmittedby,
                                                     ,min(case
-                                          when nf.record_status_cd = 'COMPLETED'
-                                              and rpt_sent_time is not null
-                                              then rpt_sent_time
+                                                             when nf.record_status_cd = 'COMPLETED'
+                                                                 and rpt_sent_time is not null
+                                                                 then rpt_sent_time
                                           end) as notificationdate
                                       from nbs_odse.dbo.act_relationship ar with (nolock)
                                                inner join nbs_odse.dbo.notification_hist nf with (nolock) on ar.source_act_uid = nf.notification_uid
@@ -210,16 +210,18 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description])
         VALUES (
                  @batch_id
                , 'Notification PRE-Processing Event'
                , 'NBS_ODSE.sp_notification_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT ('Pre ID-' + @notification_list, 199)
+               , 'Notification PRE-Processing Event'
                , 0
                , LEFT (@notification_list, 199)
+               , @ErrorMessage
                );
         return @ErrorMessage;
 

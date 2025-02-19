@@ -116,27 +116,27 @@ BEGIN
         act_entities2.entity_uid as PROVIDER_CONTACT_INVESTIGATOR_UID,
         act_entities3.entity_uid as DISPOSITIONED_BY_UID
     into #CONTACT_RECORD_INIT
-    from nbs_odse.dbo.CT_CONTACT cc
-    left outer join nbs_srte.dbo.PROGRAM_AREA_CODE pac on cc.prog_area_cd  = pac.prog_area_cd
-    left outer join nbs_srte.dbo.JURISDICTION_CODE jc on cc.JURISDICTION_CD  = jc.code and jc.code_set_nm = 'S_JURDIC_C'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg1 on cc.SHARED_IND_CD  = cvg1.code and cvg1.code_set_nm = 'YN'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg2 on cc.SYMPTOM_CD  = cvg2.code and cvg2.code_set_nm = 'YNU'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg3 on cc.RISK_FACTOR_CD  = cvg3.code and cvg3.code_set_nm = 'YNU'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg4 on cc.EVALUATION_COMPLETED_CD  = cvg4.code and cvg4.code_set_nm = 'YNU'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg5 on cc.TREATMENT_INITIATED_CD  = cvg5.code and cvg5.code_set_nm = 'YNU'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg6 on cc.DISPOSITION_CD  = cvg6.code and cvg6.code_set_nm in ( 'NBS_DISPO', 'FIELD_FOLLOWUP_DISPOSITION_STD')
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg7 on cc.PRIORITY_CD  = cvg7.code and cvg7.code_set_nm = 'NBS_PRIORITY'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg8 on cc.RELATIONSHIP_CD  = cvg8.code and cvg8.code_set_nm = 'NBS_RELATIONSHIP'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg9 on cc.TREATMENT_NOT_START_RSN_CD  = cvg9.code and cvg9.code_set_nm = 'NBS_NO_TRTMNT_REAS'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg10 on cc.TREATMENT_NOT_END_RSN_CD  = cvg10.code and cvg10.code_set_nm = 'NBS_NO_TRTMNT_REAS'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg11 on cc.PROCESSING_DECISION_CD  = cvg11.code and cvg11.code_set_nm = 'STD_CONTACT_RCD_PROCESSING_DECISION'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg12 on cc.GROUP_NAME_CD  = cvg12.code and cvg12.code_set_nm = 'NBS_GROUP_NM'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg13 on cc.TREATMENT_END_CD  = cvg13.code and cvg13.code_set_nm = 'YNU'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg14 on cc.HEALTH_STATUS_CD  = cvg14.code and cvg14.code_set_nm = 'NBS_HEALTH_STATUS'
-    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg15 on cc.CONTACT_REFERRAL_BASIS_CD  = cvg15.code and cvg15.code_set_nm = 'REFERRAL_BASIS'
-	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities1 on cc.CT_CONTACT_UID = act_entities1.ACT_UID and act_entities1.TYPE_CD='SiteOfExposure'
-	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities2 on cc.CT_CONTACT_UID = act_entities2.ACT_UID and act_entities2.TYPE_CD='InvestgrOfContact'
-	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities3 on cc.CT_CONTACT_UID = act_entities3.ACT_UID and act_entities3.TYPE_CD='DispoInvestgrOfConRec'
+    from nbs_odse.dbo.CT_CONTACT cc  with (nolock)
+    left outer join nbs_srte.dbo.PROGRAM_AREA_CODE pac with (nolock) on cc.prog_area_cd  = pac.prog_area_cd
+    left outer join nbs_srte.dbo.JURISDICTION_CODE jc with (nolock) on cc.JURISDICTION_CD  = jc.code and jc.code_set_nm = 'S_JURDIC_C'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg1 with (nolock) on cc.SHARED_IND_CD  = cvg1.code and cvg1.code_set_nm = 'YN'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg2 with (nolock) on cc.SYMPTOM_CD  = cvg2.code and cvg2.code_set_nm = 'YNU'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg3 with (nolock) on cc.RISK_FACTOR_CD  = cvg3.code and cvg3.code_set_nm = 'YNU'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg4 with (nolock) on cc.EVALUATION_COMPLETED_CD  = cvg4.code and cvg4.code_set_nm = 'YNU'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg5 with (nolock) on cc.TREATMENT_INITIATED_CD  = cvg5.code and cvg5.code_set_nm = 'YNU'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg6 with (nolock) on cc.DISPOSITION_CD  = cvg6.code and cvg6.code_set_nm in ( 'NBS_DISPO', 'FIELD_FOLLOWUP_DISPOSITION_STD')
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg7 with (nolock) on cc.PRIORITY_CD  = cvg7.code and cvg7.code_set_nm = 'NBS_PRIORITY'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg8 with (nolock) on cc.RELATIONSHIP_CD  = cvg8.code and cvg8.code_set_nm = 'NBS_RELATIONSHIP'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg9 with (nolock) on cc.TREATMENT_NOT_START_RSN_CD  = cvg9.code and cvg9.code_set_nm = 'NBS_NO_TRTMNT_REAS'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg10 with (nolock) on cc.TREATMENT_NOT_END_RSN_CD  = cvg10.code and cvg10.code_set_nm = 'NBS_NO_TRTMNT_REAS'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg11 with (nolock) on cc.PROCESSING_DECISION_CD  = cvg11.code and cvg11.code_set_nm = 'STD_CONTACT_RCD_PROCESSING_DECISION'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg12 with (nolock) on cc.GROUP_NAME_CD  = cvg12.code and cvg12.code_set_nm = 'NBS_GROUP_NM'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg13 with (nolock) on cc.TREATMENT_END_CD  = cvg13.code and cvg13.code_set_nm = 'YNU'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg14 with (nolock) on cc.HEALTH_STATUS_CD  = cvg14.code and cvg14.code_set_nm = 'NBS_HEALTH_STATUS'
+    left outer join nbs_srte.dbo.CODE_VALUE_GENERAL cvg15 with (nolock) on cc.CONTACT_REFERRAL_BASIS_CD  = cvg15.code and cvg15.code_set_nm = 'REFERRAL_BASIS'
+	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities1 with (nolock) on cc.CT_CONTACT_UID = act_entities1.ACT_UID and act_entities1.TYPE_CD='SiteOfExposure'
+	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities2 with (nolock) on cc.CT_CONTACT_UID = act_entities2.ACT_UID and act_entities2.TYPE_CD='InvestgrOfContact'
+	left outer join nbs_odse.dbo.NBS_ACT_ENTITY act_entities3 with (nolock) on cc.CT_CONTACT_UID = act_entities3.ACT_UID and act_entities3.TYPE_CD='DispoInvestgrOfConRec'
     where CT_CONTACT_UID in (SELECT value FROM STRING_SPLIT(@cc_uids, ','));
 
     if
@@ -1294,15 +1294,18 @@ BEGIN
         , [step_number]
         , [step_name]
         , [row_count]
-        , [Msg_Description1])
+        , [Msg_Description1]
+        , [Error_Description])
         VALUES ( @batch_id
                , 'Contact_Record PRE-Processing Event'
                , 'NBS_ODSE.sp_contact_record_event'
-               , 'ERROR: ' + @ErrorMessage
+               , 'ERROR'
                , 0
-               , LEFT('Pre ID-' + @cc_uids, 199)
+               , 'Contact_Record PRE-Processing Event'
                , 0
-               , LEFT(@cc_uids, 199));
+               , LEFT(@cc_uids, 199)
+               ,@ErrorMessage
+        );
         return @ErrorMessage;
 
     END CATCH

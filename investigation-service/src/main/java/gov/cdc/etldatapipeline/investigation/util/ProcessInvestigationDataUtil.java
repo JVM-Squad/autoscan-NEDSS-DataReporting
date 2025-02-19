@@ -106,7 +106,6 @@ public class ProcessInvestigationDataUtil {
                 kafkaTemplate.send(investigationCaseManagementTopicName, jsonKey, jsonValue)
                         .whenComplete((res, e) -> logger.info("Case Management data (uid={}) sent to {}", publicHealthCaseUid, investigationCaseManagementTopicName));
             }
-
         } catch (IllegalArgumentException ex) {
             logger.info(ex.getMessage(), "InvestigationCaseManagement");
         } catch (Exception e) {

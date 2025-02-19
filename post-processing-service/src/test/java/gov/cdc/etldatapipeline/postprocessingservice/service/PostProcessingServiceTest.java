@@ -77,7 +77,7 @@ class PostProcessingServiceTest {
             "dummy_investigation, '{\"payload\":{\"public_health_case_uid\":123}}', 123",
             "dummy_notification, '{\"payload\":{\"notification_uid\":123}}', 123",
             "dummy_ldf_data, '{\"payload\":{\"ldf_uid\":123}}', 123",
-            "dummy_user_profile, '{\"payload\":{\"userProfileUids\":123}}', 123"
+            "dummy_auth_user, '{\"payload\":{\"auth_user_uid\":123}}', 123"
     })
     void testPostProcessMessage(String topic, String messageKey, Long expectedId) {
         postProcessingServiceMock.postProcessMessage(topic, messageKey, messageKey);
@@ -404,7 +404,7 @@ class PostProcessingServiceTest {
         String orgKey = "{\"payload\":{\"organization_uid\":123}}";
         String providerKey = "{\"payload\":{\"provider_uid\":124}}";
         String patientKey = "{\"payload\":{\"patient_uid\":125}}";
-        String userProfileKey = "{\"payload\":{\"userProfileUids\":132}}";
+        String userProfileKey = "{\"payload\":{\"auth_user_uid\":132}}";
         String placeKey = "{\"payload\":{\"place_uid\":131}}";
         String investigationKey = "{\"payload\":{\"public_health_case_uid\":126}}";
         String notificationKey = "{\"payload\":{\"notification_uid\":127}}";
@@ -418,7 +418,7 @@ class PostProcessingServiceTest {
         String orgTopic = "dummy_organization";
         String providerTopic = "dummy_provider";
         String patientTopic = "dummy_patient";
-        String userProfileTopic = "dummy_user_profile";
+        String userProfileTopic = "dummy_auth_user";
         String placeTopic = "dummy_place";
         String invTopic = "dummy_investigation";
         String ntfTopic = "dummy_notification";
@@ -520,7 +520,12 @@ class PostProcessingServiceTest {
                         BMIRD_CASE.getEntityName(),
                         BMIRD_CASE.getStoredProcedure(),
                         3,
-                        (repo, uid) -> verify(repo).executeStoredProcForBmirdCaseDatamart(uid))
+                        (repo, uid) -> verify(repo).executeStoredProcForBmirdCaseDatamart(uid)),
+                new DatamartTestCase(
+                "{\"payload\":{\"public_health_case_uid\":123,\"patient_uid\":456,\"condition_cd\":\"12020\"," +
+                        "\"datamart\":\"Hepatitis_Case\",\"stored_procedure\":\"sp_hepatitis_case_datamart_postprocessing\"}}",
+                        HEPATITIS_CASE.getEntityName(), HEPATITIS_CASE.getStoredProcedure(), 3,
+                (repo, uid) -> verify(repo).executeStoredProcForHepatitisCaseDatamart(uid))
         );
     }
 
@@ -621,8 +626,8 @@ class PostProcessingServiceTest {
 
     @Test
     void testPostProcessUserProfileMessage() {
-        String topic = "dummy_user_profile";
-        String key = "{\"payload\":{\"userProfileUids\":123}}";
+        String topic = "dummy_auth_user";
+        String key = "{\"payload\":{\"auth_user_uid\":123}}";
 
         postProcessingServiceMock.postProcessMessage(topic, key, key);
         postProcessingServiceMock.processCachedIds();
@@ -632,15 +637,15 @@ class PostProcessingServiceTest {
 
         List<ILoggingEvent> logs = listAppender.list;
         assertEquals(5, logs.size());
-        assertTrue(logs.get(2).getFormattedMessage().contains(USER_PROFILE.getStoredProcedure()));
+        assertTrue(logs.get(2).getFormattedMessage().contains(AUTH_USER.getStoredProcedure()));
         assertTrue(logs.get(3).getMessage().contains(PostProcessingService.SP_EXECUTION_COMPLETED));
     }
 
     @Test
     void testPostProcessMultipleMessages_WithUserProfile() {
-        String userProfileKey1 = "{\"payload\":{\"userProfileUids\":123}}";
-        String userProfileKey2 = "{\"payload\":{\"userProfileUids\":124}}";
-        String userProfileTopic = "dummy_user_profile";
+        String userProfileKey1 = "{\"payload\":{\"auth_user_uid\":123}}";
+        String userProfileKey2 = "{\"payload\":{\"auth_user_uid\":124}}";
+        String userProfileTopic = "dummy_auth_user";
 
         postProcessingServiceMock.postProcessMessage(userProfileTopic, userProfileKey1, userProfileKey1);
         postProcessingServiceMock.postProcessMessage(userProfileTopic, userProfileKey2, userProfileKey2);

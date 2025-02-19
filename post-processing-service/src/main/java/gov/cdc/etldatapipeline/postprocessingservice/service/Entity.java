@@ -7,7 +7,7 @@ enum Entity {
     ORGANIZATION(1, "organization", "organization_uid", "sp_nrt_organization_postprocessing"),
     PROVIDER(2, "provider", "provider_uid", "sp_nrt_provider_postprocessing"),
     PATIENT(3, "patient", "patient_uid", "sp_nrt_patient_postprocessing"),
-    USER_PROFILE(4, "user_profile", "userProfileUids", "sp_user_profile_postprocessing"),
+    AUTH_USER(4, "auth_user", "auth_user_uid", "sp_user_profile_postprocessing"),
     D_PLACE(5, "place", "place_uid", "sp_nrt_place_postprocessing"),
     INVESTIGATION(6, "investigation", Constants.PHC_UID, "sp_nrt_investigation_postprocessing"),
     NOTIFICATION(7, "notification", "notification_uid", "sp_nrt_notification_postprocessing"),
@@ -28,6 +28,7 @@ enum Entity {
     MEASLES_CASE(0, "Measles_Case", Constants.PHC_UID, "sp_measles_case_datamart_postprocessing"),
     CASE_LAB_DATAMART(0, "Case_Lab_Datamart", Constants.PHC_UID, "sp_case_lab_datamart_postprocessing"),
     BMIRD_CASE(0, "BMIRD_Case", Constants.PHC_UID, "sp_bmird_case_datamart_postprocessing"),
+    HEPATITIS_CASE(0, "Hepatitis_Case", Constants.PHC_UID, "sp_hepatitis_case_datamart_postprocessing"),
     UNKNOWN(-1, "unknown", "unknown_uid", "sp_nrt_unknown_postprocessing");
 
     private final int priority;

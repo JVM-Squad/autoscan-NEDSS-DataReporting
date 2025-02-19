@@ -95,7 +95,7 @@ public class PostProcessingService {
             "${spring.kafka.topic.ldf_data}",
             "${spring.kafka.topic.observation}",
             "${spring.kafka.topic.place}",
-            "${spring.kafka.topic.user_profile}",
+            "${spring.kafka.topic.auth_user}",
             "${spring.kafka.topic.contact_record}"
     })
     public void postProcessMessage(
@@ -212,7 +212,7 @@ public class PostProcessingService {
                     case PATIENT:
                         processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForPatientIds);
                         break;
-                    case USER_PROFILE:
+                    case AUTH_USER:
                         processTopic(keyTopic, entity, ids, postProcRepository::executeStoredProcForUserProfile);
                         break;
                     case D_PLACE:
@@ -371,6 +371,11 @@ public class PostProcessingService {
                         logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, BMIRD_CASE.getStoredProcedure(), cases);
                         investigationRepository.executeStoredProcForBmirdCaseDatamart(cases);
                         completeLog(BMIRD_CASE.getStoredProcedure());
+                        break;
+                    case HEPATITIS_CASE:
+                        logger.info(PROCESSING_MESSAGE_TOPIC_LOG_MSG, dmType, HEPATITIS_CASE.getStoredProcedure(), cases);
+                        investigationRepository.executeStoredProcForHepatitisCaseDatamart(cases);
+                        completeLog(HEPATITIS_CASE.getStoredProcedure());
                         break;
                     default:
                         logger.info("No associated datamart processing logic found for the key: {} ",dmType);

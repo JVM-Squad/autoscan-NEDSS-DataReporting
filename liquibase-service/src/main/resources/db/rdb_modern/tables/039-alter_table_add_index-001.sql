@@ -200,6 +200,12 @@ BEGIN
 ALTER TABLE dbo.nrt_provider_key ADD CONSTRAINT pk_d_provider_key PRIMARY KEY (d_provider_key);
 END
 
+IF NOT EXISTS(SELECT * FROM sys.indexes WHERE name = 'idx_nrt_obs_coded_obs_uid_code' AND object_id = OBJECT_ID('dbo.nrt_observation_coded'))
+BEGIN
+CREATE INDEX idx_nrt_obs_coded_obs_uid_code ON dbo.nrt_observation_coded (observation_uid, ovc_code);
+END
+
+
 
 
 

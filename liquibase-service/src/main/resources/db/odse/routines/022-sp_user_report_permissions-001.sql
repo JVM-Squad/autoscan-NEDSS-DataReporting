@@ -85,18 +85,20 @@ BEGIN
                                          , [step_number]
                                          , [step_name]
                                          , [Error_Description]
-                                         , [row_count])
+                                         , [row_count]
+                                         , [Msg_Description1])
         VALUES ( @batch_id
                , 'USER_REPORT_PERMISSIONS'
                , 'USER_REPORT_PERMISSIONS'
                , 'ERROR'
                , @Proc_Step_no
-               , 'ERROR - ' + @Proc_Step_name
-               , 'Step -' + CAST(@Proc_Step_no AS VARCHAR(3)) + ' -' + CAST(@ErrorMessage AS VARCHAR(500))
-               , 0);
+               , @Proc_Step_name
+               , @ErrorMessage
+               , 0
+               , LEFT(@user_ids, 199)
+            );
 
-
-        return -1;
+        return @ErrorMessage;
 
     END CATCH
 
