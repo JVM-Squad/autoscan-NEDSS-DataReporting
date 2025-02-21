@@ -855,4 +855,20 @@ databaseChangeLog:
         - sqlFile:
             path: 042-create_nrt_treatment-001.sql
             splitStatements: false
+  - changeSet:
+      id: 124
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 040-fn_get_proper_case-001.sql
+            splitStatements: false
+  - changeSet:
+      id: 125
+      author: liquibase
+      runOnChange: true
+      changes:
+        - sqlFile:
+            path: 041-sp_hep100_datamart_postprocessing-001.sql
+            splitStatements: false
             
