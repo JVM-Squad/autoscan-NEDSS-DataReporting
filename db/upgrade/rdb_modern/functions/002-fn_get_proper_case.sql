@@ -6,8 +6,8 @@
     INPUT: 'teST eXamPLe'
     OUTPUT: 'Test Example'
 */
-create function dbo.fn_get_proper_case(@txt as NVARCHAR(MAX))
-returns NVARCHAR(MAX)
+CREATE OR ALTER FUNCTION dbo.fn_get_proper_case(@txt as NVARCHAR(MAX))
+RETURNS NVARCHAR(MAX)
 as
 begin
    declare @reset bit;
@@ -23,4 +23,4 @@ begin
                @reset = case when @c like '[a-zA-Z]' then 0 else 1 end,
                @i = @i +1
    return @ret
-end
+end;
