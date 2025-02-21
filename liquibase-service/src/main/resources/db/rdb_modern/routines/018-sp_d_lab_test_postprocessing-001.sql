@@ -197,7 +197,7 @@ BEGIN
         from cte where rn=1;
 
         with cte as (
-            select obsres.*, row_number() over(partition by obsres.observation_uid, obsres.ovt_seq order by obsres.batch_id desc) rn
+            select obsres.*, row_number() over(partition by obsres.observation_uid, obsres.reason_cd order by obsres.batch_id desc) rn
             from (
                  select *
                  from dbo.nrt_observation_reasons
