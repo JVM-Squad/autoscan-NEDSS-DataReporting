@@ -181,6 +181,37 @@ BEGIN
         COMMIT TRANSACTION;
 
 
+        with cte as (
+            select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
+            from (
+                 select *
+                 from dbo.nrt_observation_txt
+                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+             ) obstxt
+             left outer join dbo.nrt_observation obs
+              on obs.observation_uid = obstxt.observation_uid
+              where obs.batch_id >= obstxt.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_txt
+        from cte where rn=1;
+
+        with cte as (
+            select obsres.*, row_number() over(partition by obsres.observation_uid, obsres.ovt_seq order by obsres.batch_id desc) rn
+            from (
+                 select *
+                 from dbo.nrt_observation_reasons
+                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+             ) obsres
+             left outer join dbo.nrt_observation obs
+              on obs.observation_uid = obsres.observation_uid
+              where obs.batch_id >= obsres.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_reasons
+        from cte where rn=1;
+
+
         BEGIN
             TRANSACTION;
         SET
@@ -374,7 +405,7 @@ BEGIN
                cast(null as varchar(2000)) as REASON_FOR_TEST_CD
         into #OBS_REASON
         from #LAB_TESTinit_a obs
-                 left join dbo.nrt_observation_reason rsn
+                 left join #tmp_nrt_observation_reasons rsn
                            on obs.lab_test_uid_test = rsn.observation_uid
         -- where rsn.observation_uid in (SELECT value FROM STRING_SPLIT(@obs_ids, ','));
         if
@@ -2901,7 +2932,7 @@ BEGIN
         from #D_LAB_TEST_N as tdltn,
              dbo.nrt_observation as obs,
              dbo.nrt_observation as lab214,
-             dbo.nrt_observation_txt as ovt
+             #tmp_nrt_observation_txt as ovt
         where ovt.ovt_value_txt is not null
           and obs.observation_uid IN (SELECT value FROM STRING_SPLIT(tdltn.followup_observation_uid, ','))
           and obs.obs_domain_cd_st_1 = 'C_Order'
@@ -3003,7 +3034,7 @@ BEGIN
         from #D_LAB_TEST_U as tdltn,
              dbo.nrt_observation as obs,
              dbo.nrt_observation as lab214,
-             dbo.nrt_observation_txt as ovt
+             #tmp_nrt_observation_txt as ovt
         where ovt.ovt_value_txt is not null
           and obs.observation_uid IN (SELECT value FROM STRING_SPLIT(tdltn.followup_observation_uid, ','))
           and obs.obs_domain_cd_st_1 = 'C_Order'
