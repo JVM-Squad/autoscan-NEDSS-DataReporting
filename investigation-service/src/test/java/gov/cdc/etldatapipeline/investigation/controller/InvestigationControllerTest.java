@@ -49,7 +49,8 @@ class InvestigationControllerTest {
             "/reporting/investigation-svc/investigation",
             "/reporting/investigation-svc/notification",
             "/reporting/investigation-svc/interview",
-            "/reporting/investigation-svc/contact"
+            "/reporting/investigation-svc/contact",
+            "/reporting/investigation-svc/treatment"
     })
     void testControllerMethods(String endpoint) throws Exception  {
         String jsonData = "{\"key\":\"value\"}";

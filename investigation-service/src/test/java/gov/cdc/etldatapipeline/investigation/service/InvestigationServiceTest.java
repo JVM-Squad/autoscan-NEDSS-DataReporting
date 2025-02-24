@@ -3,15 +3,9 @@ package gov.cdc.etldatapipeline.investigation.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cdc.etldatapipeline.commonutil.NoDataException;
-import gov.cdc.etldatapipeline.investigation.repository.ContactRepository;
-import gov.cdc.etldatapipeline.investigation.repository.InterviewRepository;
-import gov.cdc.etldatapipeline.investigation.repository.model.dto.Contact;
-import gov.cdc.etldatapipeline.investigation.repository.model.dto.Interview;
-import gov.cdc.etldatapipeline.investigation.repository.model.dto.NotificationUpdate;
-import gov.cdc.etldatapipeline.investigation.repository.InvestigationRepository;
-import gov.cdc.etldatapipeline.investigation.repository.model.dto.Investigation;
+import gov.cdc.etldatapipeline.investigation.repository.*;
+import gov.cdc.etldatapipeline.investigation.repository.model.dto.*;
 import gov.cdc.etldatapipeline.investigation.repository.model.reporting.*;
-import gov.cdc.etldatapipeline.investigation.repository.NotificationRepository;
 import gov.cdc.etldatapipeline.investigation.util.ProcessInvestigationDataUtil;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.awaitility.Awaitility;
@@ -20,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -49,6 +44,9 @@ class InvestigationServiceTest {
     private ContactRepository contactRepository;
 
     @Mock
+    private TreatmentRepository treatmentRepository;
+
+    @Mock
     KafkaTemplate<String, String> kafkaTemplate;
 
     @Mock
@@ -73,11 +71,13 @@ class InvestigationServiceTest {
     private final String notificationTopic = "Notification";
     private final String interviewTopic = "Interview";
     private final String contactTopic = "Contact";
+    private final String treatmentTopic = "Treatment";
     //output topics
     private final String investigationTopicOutput = "InvestigationOutput";
     private final String notificationTopicOutput = "investigationNotification";
     private final String interviewTopicOutput = "InterviewOutput";
     private final String contactTopicOutput = "ContactOutput";
+    private final String treatmentTopicOutput = "TreatmentOutput";
 
 
     @BeforeEach
@@ -85,7 +85,7 @@ class InvestigationServiceTest {
         closeable = MockitoAnnotations.openMocks(this);
         ProcessInvestigationDataUtil transformer = new ProcessInvestigationDataUtil(kafkaTemplate, investigationRepository);
 
-        investigationService = new InvestigationService(investigationRepository, notificationRepository, interviewRepository, contactRepository, kafkaTemplate, transformer);
+        investigationService = new InvestigationService(investigationRepository, notificationRepository, interviewRepository, contactRepository,treatmentRepository, kafkaTemplate, transformer);
 
         investigationService.setPhcDatamartEnable(true);
         investigationService.setBmirdCaseEnable(true);
@@ -95,6 +95,7 @@ class InvestigationServiceTest {
         investigationService.setInvestigationTopicReporting(investigationTopicOutput);
         investigationService.setInterviewTopic(interviewTopic);
         investigationService.setContactTopic(contactTopic);
+        investigationService.setTreatmentTopic(treatmentTopic);
 
         transformer.setInvestigationConfirmationOutputTopicName("investigationConfirmation");
         transformer.setInvestigationObservationOutputTopicName("investigationObservation");
@@ -106,6 +107,8 @@ class InvestigationServiceTest {
         transformer.setInterviewAnswerOutputTopicName("interviewAnswer");
         transformer.setInterviewNoteOutputTopicName("interviewNote");
         transformer.setRdbMetadataColumnsOutputTopicName("metadataColumns");
+        transformer.setTreatmentOutputTopicName(treatmentTopicOutput);
+        investigationService.setTreatmentEnable(true);
     }
 
     @AfterEach
@@ -572,6 +575,189 @@ class InvestigationServiceTest {
         contactReporting.setProviderContactInvestigatorUid(1234L);
         contactReporting.setDispositionedByUid(123L);
         return contactReporting;
+    }
+
+  /*  @Test
+    void testProcessTreatmentMessage() throws JsonProcessingException {
+        Long treatmentUid = 234567890L;
+        String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"" + treatmentUid + "\"}}}";
+
+        final Treatment treatment = constructTreatment(treatmentUid);
+        when(treatmentRepository.computeTreatment(String.valueOf(treatmentUid))).thenReturn(Optional.of(treatment));
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+
+        investigationService.processMessage(payload, treatmentTopic, consumer);
+
+        final TreatmentReportingKey treatmentReportingKey = new TreatmentReportingKey();
+        treatmentReportingKey.setTreatmentUid(String.valueOf(treatmentUid));
+
+        final TreatmentReporting treatmentReportingValue = constructTreatmentReporting(treatmentUid);
+
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
+                );
+
+        String actualTopic = topicCaptor.getAllValues().getFirst();
+        String actualKey = keyCaptor.getAllValues().getFirst();
+        String actualValue = messageCaptor.getAllValues().getFirst();
+
+        var actualTreatmentKey = objectMapper.readValue(
+                objectMapper.readTree(actualKey).path("payload").toString(), TreatmentReportingKey.class);
+        var actualTreatmentValue = objectMapper.readValue(
+                objectMapper.readTree(actualValue).path("payload").toString(), TreatmentReporting.class);
+
+        assertEquals(treatmentTopicOutput, actualTopic);
+        assertEquals(treatmentReportingKey, actualTreatmentKey);
+        assertEquals(treatmentReportingValue, actualTreatmentValue);
+
+        verify(treatmentRepository).computeTreatment(String.valueOf(treatmentUid));
+
+
+    } */
+
+    @Test
+    void testProcessTreatmentMessage() throws JsonProcessingException {
+        Long treatmentUid = 234567890L;
+        String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"" + treatmentUid + "\"}}}";
+
+        // Create valid treatment
+        final Treatment treatment = constructTreatment(treatmentUid);
+
+        // Set up mock repository
+        when(treatmentRepository.computeTreatment(String.valueOf(treatmentUid))).thenReturn(Optional.of(treatment));
+
+        // Create a CompletableFuture that we can manually complete
+        CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
+
+        // Mock Kafka operations
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
+        when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
+
+        // Process the message
+        investigationService.processMessage(payload, treatmentTopic, consumer);
+
+        // Complete the future to trigger async operations
+        future.complete(null);
+
+        // Use Awaitility to wait for async operations
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        verify(kafkaTemplate, times(2)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
+                );
+
+        // Verify repository was called with correct ID
+        verify(treatmentRepository).computeTreatment(String.valueOf(treatmentUid));
+
+        // Verify tombstone message (first message)
+        assertEquals(treatmentTopicOutput, topicCaptor.getAllValues().get(0));
+        assertNull(messageCaptor.getAllValues().get(0));
+
+        // Verify treatment data message (second message)
+        assertEquals(treatmentTopicOutput, topicCaptor.getAllValues().get(1));
+
+        // Extract and verify the message content
+        String treatmentJson = messageCaptor.getAllValues().get(1);
+        TreatmentReporting actualTreatment = objectMapper.readValue(
+                objectMapper.readTree(treatmentJson).path("payload").toString(),
+                TreatmentReporting.class);
+
+        // Create expected treatment reporting object
+        TreatmentReporting expectedTreatment = constructTreatmentReporting(treatmentUid);
+
+        // Compare actual to expected
+        assertEquals(expectedTreatment, actualTreatment);
+    }
+
+    @Test
+    void testProcessTreatmentMessageWhenFeatureDisabled() {
+        Long treatmentUid = 234567890L;
+        String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"" + treatmentUid + "\"}}}";
+
+        final Treatment treatment = constructTreatment(treatmentUid);
+        when(treatmentRepository.computeTreatment(String.valueOf(treatmentUid))).thenReturn(Optional.of(treatment));
+
+        investigationService.setTreatmentEnable(false);
+        investigationService.processMessage(payload, treatmentTopic, consumer);
+        verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void testProcessTreatmentException() {
+        String invalidPayload = "{\"payload\": {\"after\": {}}}";
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> investigationService.processMessage(invalidPayload, treatmentTopic, consumer));
+        assertEquals(NoSuchElementException.class, ex.getCause().getClass());
+    }
+
+    @Test
+    void testProcessTreatmentNoDataException() {
+        String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"\"}}}";
+        assertThrows(NoDataException.class, () -> investigationService.processMessage(payload, treatmentTopic, consumer));
+    }
+
+    private Treatment constructTreatment(Long treatmentUid) {
+        Treatment treatment = new Treatment();
+        treatment.setTreatmentUid(String.valueOf(treatmentUid));
+        treatment.setPublicHealthCaseUid("12345");
+        treatment.setOrganizationUid("67890");
+        treatment.setProviderUid("11111");
+        treatment.setPatientTreatmentUid("22222");
+        treatment.setTreatmentName("Test Treatment");
+        treatment.setTreatmentOid("33333");
+        treatment.setTreatmentComments("Test Comments");
+        treatment.setTreatmentSharedInd("Y");
+        treatment.setCd("TEST_CD");
+        treatment.setTreatmentDate("2024-01-01T10:00:00");
+        treatment.setTreatmentDrug("Drug123");
+        treatment.setTreatmentDrugName("Test Drug");
+        treatment.setTreatmentDosageStrength("100");
+        treatment.setTreatmentDosageStrengthUnit("mg");
+        treatment.setTreatmentFrequency("Daily");
+        treatment.setTreatmentDuration("7");
+        treatment.setTreatmentDurationUnit("days");
+        treatment.setTreatmentRoute("Oral");
+        treatment.setLocalId("LOC123");
+        treatment.setRecordStatusCd("Active");
+        treatment.setAddTime("2024-01-01T10:00:00");
+        treatment.setAddUserId("44444");
+        treatment.setLastChangeTime("2024-01-01T10:00:00");
+        treatment.setLastChangeUserId("55555");
+        treatment.setVersionControlNumber("1");
+        return treatment;
+    }
+
+    private TreatmentReporting constructTreatmentReporting(Long treatmentUid) {
+        TreatmentReporting treatmentReporting = new TreatmentReporting();
+        treatmentReporting.setTreatmentUid(treatmentUid.toString());
+        treatmentReporting.setPublicHealthCaseUid("12345");
+        treatmentReporting.setOrganizationUid("67890");
+        treatmentReporting.setProviderUid("11111");
+        treatmentReporting.setPatientTreatmentUid("22222");
+        treatmentReporting.setTreatmentName("Test Treatment");
+        treatmentReporting.setTreatmentOid("33333");
+        treatmentReporting.setTreatmentComments("Test Comments");
+        treatmentReporting.setTreatmentSharedInd("Y");
+        treatmentReporting.setCd("TEST_CD");
+        treatmentReporting.setTreatmentDate("2024-01-01T10:00:00");
+        treatmentReporting.setTreatmentDrug("Drug123");
+        treatmentReporting.setTreatmentDrugName("Test Drug");
+        treatmentReporting.setTreatmentDosageStrength("100");
+        treatmentReporting.setTreatmentDosageStrengthUnit("mg");
+        treatmentReporting.setTreatmentFrequency("Daily");
+        treatmentReporting.setTreatmentDuration("7");
+        treatmentReporting.setTreatmentDurationUnit("days");
+        treatmentReporting.setTreatmentRoute("Oral");
+        treatmentReporting.setLocalId("LOC123");
+        treatmentReporting.setRecordStatusCd("Active");
+        treatmentReporting.setAddTime("2024-01-01T10:00:00");
+        treatmentReporting.setAddUserId("44444");
+        treatmentReporting.setLastChangeTime("2024-01-01T10:00:00");
+        treatmentReporting.setLastChangeUserId("55555");
+        treatmentReporting.setVersionControlNumber("1");
+        return treatmentReporting;
     }
 
 }

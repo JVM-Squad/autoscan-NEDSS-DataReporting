@@ -5,6 +5,7 @@ spring:
       topic-name-ntf: nbs_Notification
       topic-name-int: nbs_Interview
       topic-name-ctr: nbs_CT_contact
+      topic-name-tmt: nbs_Treatment
     output:
       topic-name-reporting: nrt_investigation
       topic-name-confirmation: nrt_investigation_confirmation
@@ -18,6 +19,7 @@ spring:
       topic-name-rdb-metadata-columns: nrt_metadata_columns
       topic-name-contact: nrt_contact
       topic-name-contact-answer: nrt_contact_answer
+      topic-name-treatment: nrt_treatment
     dlq:
       retry-suffix: _retry
       dlq-suffix: _dlt
@@ -47,5 +49,6 @@ featureFlag:
   phc-datamart-enable: ${FF_PHC_DM_ENABLE:false}
   bmird-case-enable: ${FF_BMIRD_CASE_ENABLE:false}
   contact-record-enable: ${FF_CONTACT_RECORD_ENABLE:false}
+  treatment-enable: ${FF_TREATMENT_ENABLE:false}
 server:
   port: '8093'

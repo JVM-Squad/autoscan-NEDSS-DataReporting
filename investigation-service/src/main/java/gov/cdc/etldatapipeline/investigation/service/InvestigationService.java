@@ -2,13 +2,10 @@ package gov.cdc.etldatapipeline.investigation.service;
 
 import gov.cdc.etldatapipeline.commonutil.NoDataException;
 import gov.cdc.etldatapipeline.commonutil.json.CustomJsonGeneratorImpl;
-import gov.cdc.etldatapipeline.investigation.repository.ContactRepository;
-import gov.cdc.etldatapipeline.investigation.repository.InterviewRepository;
+import gov.cdc.etldatapipeline.investigation.repository.*;
 import gov.cdc.etldatapipeline.investigation.repository.model.dto.*;
-import gov.cdc.etldatapipeline.investigation.repository.InvestigationRepository;
 import gov.cdc.etldatapipeline.investigation.repository.model.reporting.InvestigationKey;
 import gov.cdc.etldatapipeline.investigation.repository.model.reporting.InvestigationReporting;
-import gov.cdc.etldatapipeline.investigation.repository.NotificationRepository;
 import gov.cdc.etldatapipeline.investigation.util.ProcessInvestigationDataUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +60,9 @@ public class InvestigationService {
     @Value("${spring.kafka.output.topic-name-reporting}")
     private String investigationTopicReporting;
 
+    @Value("${spring.kafka.output.topic-name-tmt}")
+    private String treatmentTopic;
+
     @Value("${featureFlag.phc-datamart-enable}")
     private boolean phcDatamartEnable;
 
@@ -72,10 +72,14 @@ public class InvestigationService {
     @Value("${featureFlag.contact-record-enable}")
     public boolean contactRecordEnable;
 
+    @Value("${featureFlag.treatment-enable}")
+    public boolean treatmentEnable;
+
     private final InvestigationRepository investigationRepository;
     private final NotificationRepository notificationRepository;
     private final InterviewRepository interviewRepository;
     private final ContactRepository contactRepository;
+    private final TreatmentRepository treatmentRepository;
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ProcessInvestigationDataUtil processDataUtil;
@@ -107,7 +111,8 @@ public class InvestigationService {
                     "${spring.kafka.input.topic-name-phc}",
                     "${spring.kafka.input.topic-name-ntf}",
                     "${spring.kafka.input.topic-name-int}",
-                    "${spring.kafka.input.topic-name-ctr}"
+                    "${spring.kafka.input.topic-name-ctr}",
+                    "${spring.kafka.input.topic-name-tmt}"
             }
     )
     public void processMessage(String message,
@@ -122,6 +127,8 @@ public class InvestigationService {
             processInterview(message);
         } else if (topic.equals(contactTopic) && contactRecordEnable) {
             processContact(message);
+        } else if (topic.equals(treatmentTopic) && treatmentEnable) {
+            processTreatment(message);
         }
         consumer.commitSync();
     }
@@ -226,6 +233,26 @@ public class InvestigationService {
             throw new NoDataException(ex.getMessage(), ex);
         } catch (Exception e) {
             throw new RuntimeException(errorMessage("Contact", contactUid, e), e);
+        }
+    }
+
+    private void processTreatment(String value) {
+        String treatmentUid = "";
+        try {
+            treatmentUid = extractUid(value, "treatment_uid");
+
+            logger.info(topicDebugLog, "Treatment", treatmentUid, treatmentTopic);
+            Optional<Treatment> treatmentData = treatmentRepository.computeTreatment(treatmentUid);
+            if(treatmentData.isPresent()) {
+                Treatment treatment = treatmentData.get();
+                processDataUtil.processTreatment(treatment);
+            } else {
+                throw new EntityNotFoundException("Unable to find treatment with id: " + treatmentUid);
+            }
+        } catch (EntityNotFoundException ex) {
+            throw new NoDataException(ex.getMessage(), ex);
+        } catch (Exception e) {
+            throw new RuntimeException(errorMessage("Treatment", treatmentUid, e), e);
         }
     }
 

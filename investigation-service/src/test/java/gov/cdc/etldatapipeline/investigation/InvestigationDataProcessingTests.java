@@ -22,6 +22,7 @@ import org.mockito.MockitoAnnotations;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.awaitility.Awaitility;
+import org.springframework.kafka.support.SendResult;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -63,11 +64,15 @@ class InvestigationDataProcessingTests {
     private static final String RDB_METADATA_COLS_TOPIC = "rdbMetadataColsTopic";
     private static final String CONTACT_TOPIC = "contactTopic";
     private static final String CONTACT_ANSWERS_TOPIC = "contactAnswersTopic";
+    private static final String TREATMENT_TOPIC = "treatmentTopic";
     private static final Long INVESTIGATION_UID = 234567890L;
     private static final Long INTERVIEW_UID = 234567890L;
     private static final Long CONTACT_UID = 12345678L;
+    private static final Long TREATMENT_UID = 34567890L;
     private static final String INVALID_JSON = "invalidJSON";
     ProcessInvestigationDataUtil transformer;
+
+
 
     @BeforeEach
     void setUp() {
@@ -885,5 +890,184 @@ class InvestigationDataProcessingTests {
         contactAnswer.setAnswerVal("Common Space");
         contactAnswer.setRdbColumnNm("CTT_EXPOSURE_TYPE");
         return contactAnswer;
+    }
+
+    @Test
+    void testProcessTreatment() throws JsonProcessingException {
+        // Set up topic name
+        transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
+
+        // Create valid treatment object
+        Treatment treatment = constructTreatment();
+
+        // Set up the expected key and value
+        final TreatmentReportingKey treatmentReportingKey = new TreatmentReportingKey();
+        treatmentReportingKey.setTreatmentUid(treatment.getTreatmentUid());
+        final TreatmentReporting treatmentReportingValue = constructTreatmentReporting();
+
+        // Create a CompletableFuture that we can manually complete
+        CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
+
+        // Mock the Kafka template send methods - both with value and with null (tombstone)
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
+        when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
+
+        // Process the treatment
+        transformer.processTreatment(treatment);
+
+        // Complete the future to trigger the thenRunAsync callbacks
+        future.complete(null);
+
+        // Use Awaitility to wait for async operations to complete
+        Awaitility.await()
+                .atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        verify(kafkaTemplate, times(2)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
+                );
+
+        // Verify both calls were to the correct topic
+        assertEquals(TREATMENT_TOPIC, topicCaptor.getAllValues().get(0));
+        assertEquals(TREATMENT_TOPIC, topicCaptor.getAllValues().get(1));
+
+        // Verify first call was tombstone message (null value)
+        assertNull(messageCaptor.getAllValues().get(0));
+
+        // Verify the keys
+        String firstKey = keyCaptor.getAllValues().get(0);
+        String secondKey = keyCaptor.getAllValues().get(1);
+
+        var firstKeyObj = objectMapper.readValue(
+                objectMapper.readTree(firstKey).path("payload").toString(),
+                TreatmentReportingKey.class);
+        var secondKeyObj = objectMapper.readValue(
+                objectMapper.readTree(secondKey).path("payload").toString(),
+                TreatmentReportingKey.class);
+
+        assertEquals(treatmentReportingKey, firstKeyObj);
+        assertEquals(treatmentReportingKey, secondKeyObj);
+
+        // Verify the treatment data in second call
+        String treatmentJson = messageCaptor.getAllValues().get(1);
+        var actualTreatmentValue = objectMapper.readValue(
+                objectMapper.readTree(treatmentJson).path("payload").toString(),
+                TreatmentReporting.class);
+
+        assertEquals(treatmentReportingValue, actualTreatmentValue);
+    }
+
+   /* @Test
+    void testProcessTreatmentError() {
+        Treatment treatment = new Treatment();
+        treatment.setTreatmentUid(INVALID_JSON);
+
+
+        transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
+
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+        transformer.processTreatment(treatment);
+
+        verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
+
+        ILoggingEvent log = listAppender.list.getLast();
+        assertTrue(log.getFormattedMessage().contains(INVALID_JSON));
+    }*/
+
+    @Test
+    void testProcessTreatmentError() {
+        // Set up topic name
+        transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
+
+        // Create a Treatment with a valid UID but with invalid fields
+        Treatment treatment = new Treatment();
+        treatment.setTreatmentUid(TREATMENT_UID.toString());
+        // Intentionally don't set other fields to simulate error scenario
+
+        // Create a CompletableFuture that we can manually complete
+        CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
+
+        // Mock the Kafka template send methods
+        when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
+
+        // Process treatment - should handle the error gracefully
+        transformer.processTreatment(treatment);
+
+        // Complete the future to trigger async operations
+        future.complete(null);
+
+        // Verify only tombstone message was sent (only 1 Kafka call)
+        verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
+
+        // Verify it was the tombstone message
+        assertEquals(TREATMENT_TOPIC, topicCaptor.getValue());
+        assertNull(messageCaptor.getValue());
+
+        // Verify the key contains the treatment UID
+        String capturedKey = keyCaptor.getValue();
+        assertTrue(capturedKey.contains(TREATMENT_UID.toString()),
+                "Key should contain treatment UID: " + TREATMENT_UID);
+    }
+
+
+    private Treatment constructTreatment() {
+        Treatment treatment = new Treatment();
+        treatment.setTreatmentUid(TREATMENT_UID.toString());
+        treatment.setPublicHealthCaseUid("12345");
+        treatment.setOrganizationUid("67890");
+        treatment.setProviderUid("11111");
+        treatment.setPatientTreatmentUid("22222");
+        treatment.setTreatmentName("Test Treatment");
+        treatment.setTreatmentOid("33333");
+        treatment.setTreatmentComments("Test Comments");
+        treatment.setTreatmentSharedInd("Y");
+        treatment.setCd("TEST_CD");
+        treatment.setTreatmentDate("2024-01-01T10:00:00");
+        treatment.setTreatmentDrug("Drug123");
+        treatment.setTreatmentDrugName("Test Drug");
+        treatment.setTreatmentDosageStrength("100");
+        treatment.setTreatmentDosageStrengthUnit("mg");
+        treatment.setTreatmentFrequency("Daily");
+        treatment.setTreatmentDuration("7");
+        treatment.setTreatmentDurationUnit("days");
+        treatment.setTreatmentRoute("Oral");
+        treatment.setLocalId("LOC123");
+        treatment.setRecordStatusCd("Active");
+        treatment.setAddTime("2024-01-01T10:00:00");
+        treatment.setAddUserId("44444");
+        treatment.setLastChangeTime("2024-01-01T10:00:00");
+        treatment.setLastChangeUserId("55555");
+        treatment.setVersionControlNumber("1");
+        return treatment;
+    }
+
+    private TreatmentReporting constructTreatmentReporting() {
+        TreatmentReporting treatmentReporting = new TreatmentReporting();
+        treatmentReporting.setTreatmentUid(TREATMENT_UID.toString());
+        treatmentReporting.setPublicHealthCaseUid("12345");
+        treatmentReporting.setOrganizationUid("67890");
+        treatmentReporting.setProviderUid("11111");
+        treatmentReporting.setPatientTreatmentUid("22222");
+        treatmentReporting.setTreatmentName("Test Treatment");
+        treatmentReporting.setTreatmentOid("33333");
+        treatmentReporting.setTreatmentComments("Test Comments");
+        treatmentReporting.setTreatmentSharedInd("Y");
+        treatmentReporting.setCd("TEST_CD");
+        treatmentReporting.setTreatmentDate("2024-01-01T10:00:00");
+        treatmentReporting.setTreatmentDrug("Drug123");
+        treatmentReporting.setTreatmentDrugName("Test Drug");
+        treatmentReporting.setTreatmentDosageStrength("100");
+        treatmentReporting.setTreatmentDosageStrengthUnit("mg");
+        treatmentReporting.setTreatmentFrequency("Daily");
+        treatmentReporting.setTreatmentDuration("7");
+        treatmentReporting.setTreatmentDurationUnit("days");
+        treatmentReporting.setTreatmentRoute("Oral");
+        treatmentReporting.setLocalId("LOC123");
+        treatmentReporting.setRecordStatusCd("Active");
+        treatmentReporting.setAddTime("2024-01-01T10:00:00");
+        treatmentReporting.setAddUserId("44444");
+        treatmentReporting.setLastChangeTime("2024-01-01T10:00:00");
+        treatmentReporting.setLastChangeUserId("55555");
+        treatmentReporting.setVersionControlNumber("1");
+        return treatmentReporting;
     }
 }
