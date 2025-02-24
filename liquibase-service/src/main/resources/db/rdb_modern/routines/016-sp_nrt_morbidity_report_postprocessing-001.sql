@@ -100,25 +100,23 @@ BEGIN
         COMMIT TRANSACTION;
 
         BEGIN TRANSACTION;
-                        SET
+        SET
         @PROC_STEP_NO = @PROC_STEP_NO + 1;
-                        SET
+        SET
         @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_txt ';
 
-        with cte as (
-            select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
-            from (
-                     select *
-                     from dbo.nrt_observation_txt
-                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
-                 ) obstxt
-                     left outer join dbo.nrt_observation obs
-                                     on obs.observation_uid = obstxt.observation_uid
-            where obs.batch_id >= obstxt.batch_id
-        )
-        select *
+
+        select obstxt.*
         into #tmp_nrt_observation_txt
-        from cte where rn=1;
+        from (
+                 select *
+                 from dbo.nrt_observation_txt
+                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+             ) obstxt
+                 left outer join dbo.nrt_observation obs
+                 on obs.observation_uid = obstxt.observation_uid
+        where obs.batch_id = obstxt.batch_id
+       ;
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -129,25 +127,22 @@ BEGIN
         COMMIT TRANSACTION;
 
         BEGIN TRANSACTION;
-                                SET
+        SET
         @PROC_STEP_NO = @PROC_STEP_NO + 1;
-                                SET
+        SET
         @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_coded';
 
-        with cte as (
-            select obscoded.*, row_number() over(partition by obscoded.observation_uid, obscoded.ovc_code order by obscoded.batch_id desc) rn
-            from (
-                     select *
-                     from dbo.nrt_observation_coded
-                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
-                 ) obscoded
-                     left outer join dbo.nrt_observation obs
-                                     on obs.observation_uid = obscoded.observation_uid
-            where obs.batch_id >= obscoded.batch_id
-        )
-        select *
+        select obscoded.*
         into #tmp_nrt_observation_coded
-        from cte where rn=1;
+        from (
+                 select *
+                 from dbo.nrt_observation_coded
+                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+             ) obscoded
+                 left outer join dbo.nrt_observation obs
+                 on obs.observation_uid = obscoded.observation_uid
+        where obs.batch_id = obscoded.batch_id
+        ;
 
         SELECT @RowCount_no = @@ROWCOUNT;
 

@@ -186,20 +186,18 @@ BEGIN
         SET
         @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_txt ';
 
-        with cte as (
-            select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
-            from (
-                 select *
-                 from dbo.nrt_observation_txt
-                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
-             ) obstxt
-             left outer join dbo.nrt_observation obs
-              on obs.observation_uid = obstxt.observation_uid
-              where obs.batch_id >= obstxt.batch_id
-        )
-        select *
+
+        select obstxt.*
         into #tmp_nrt_observation_txt
-        from cte where rn=1;
+        from (
+             select *
+             from dbo.nrt_observation_txt
+             where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+         ) obstxt
+         left outer join dbo.nrt_observation obs
+          on obs.observation_uid = obstxt.observation_uid
+          where obs.batch_id = obstxt.batch_id
+        ;
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
@@ -213,22 +211,20 @@ BEGIN
         SET
         @PROC_STEP_NO = @PROC_STEP_NO + 1;
         SET
-        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_reasons ';
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_reasons';
 
-        with cte as (
-            select obsres.*, row_number() over(partition by obsres.observation_uid, obsres.reason_cd order by obsres.batch_id desc) rn
-            from (
-                 select *
-                 from dbo.nrt_observation_reasons
-                 where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
-             ) obsres
-             left outer join dbo.nrt_observation obs
-              on obs.observation_uid = obsres.observation_uid
-              where obs.batch_id >= obsres.batch_id
-        )
-        select *
+
+        select obsres.*
         into #tmp_nrt_observation_reasons
-        from cte where rn=1;
+        from (
+             select *
+             from dbo.nrt_observation_reasons
+             where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+         ) obsres
+         left outer join dbo.nrt_observation obs
+          on obs.observation_uid = obsres.observation_uid
+          where obs.batch_id = obsres.batch_id
+        ;
 
         SELECT @RowCount_no = @@ROWCOUNT;
 
