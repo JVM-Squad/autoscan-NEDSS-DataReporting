@@ -894,45 +894,34 @@ class InvestigationDataProcessingTests {
 
     @Test
     void testProcessTreatment() throws JsonProcessingException {
-        // Set up topic name
         transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
 
-        // Create valid treatment object
         Treatment treatment = constructTreatment();
 
-        // Set up the expected key and value
         final TreatmentReportingKey treatmentReportingKey = new TreatmentReportingKey();
         treatmentReportingKey.setTreatmentUid(treatment.getTreatmentUid());
         final TreatmentReporting treatmentReportingValue = constructTreatmentReporting();
 
-        // Create a CompletableFuture that we can manually complete
         CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
 
-        // Mock the Kafka template send methods - both with value and with null (tombstone)
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
         when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
 
-        // Process the treatment
         transformer.processTreatment(treatment);
 
-        // Complete the future to trigger the thenRunAsync callbacks
         future.complete(null);
 
-        // Use Awaitility to wait for async operations to complete
         Awaitility.await()
                 .atMost(1, TimeUnit.SECONDS)
                 .untilAsserted(() ->
                         verify(kafkaTemplate, times(2)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
 
-        // Verify both calls were to the correct topic
         assertEquals(TREATMENT_TOPIC, topicCaptor.getAllValues().get(0));
         assertEquals(TREATMENT_TOPIC, topicCaptor.getAllValues().get(1));
 
-        // Verify first call was tombstone message (null value)
         assertNull(messageCaptor.getAllValues().get(0));
 
-        // Verify the keys
         String firstKey = keyCaptor.getAllValues().get(0);
         String secondKey = keyCaptor.getAllValues().get(1);
 
@@ -946,7 +935,6 @@ class InvestigationDataProcessingTests {
         assertEquals(treatmentReportingKey, firstKeyObj);
         assertEquals(treatmentReportingKey, secondKeyObj);
 
-        // Verify the treatment data in second call
         String treatmentJson = messageCaptor.getAllValues().get(1);
         var actualTreatmentValue = objectMapper.readValue(
                 objectMapper.readTree(treatmentJson).path("payload").toString(),
@@ -954,55 +942,27 @@ class InvestigationDataProcessingTests {
 
         assertEquals(treatmentReportingValue, actualTreatmentValue);
     }
-
-   /* @Test
-    void testProcessTreatmentError() {
-        Treatment treatment = new Treatment();
-        treatment.setTreatmentUid(INVALID_JSON);
-
-
-        transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
-
-        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
-        transformer.processTreatment(treatment);
-
-        verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
-
-        ILoggingEvent log = listAppender.list.getLast();
-        assertTrue(log.getFormattedMessage().contains(INVALID_JSON));
-    }*/
-
     @Test
     void testProcessTreatmentError() {
-        // Set up topic name
         transformer.setTreatmentOutputTopicName(TREATMENT_TOPIC);
 
-        // Create a Treatment with a valid UID but with invalid fields
         Treatment treatment = new Treatment();
         treatment.setTreatmentUid(TREATMENT_UID.toString());
-        // Intentionally don't set other fields to simulate error scenario
 
-        // Create a CompletableFuture that we can manually complete
         CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
 
-        // Mock the Kafka template send methods
         when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
 
-        // Process treatment - should handle the error gracefully
         transformer.processTreatment(treatment);
 
-        // Complete the future to trigger async operations
         future.complete(null);
 
-        // Verify only tombstone message was sent (only 1 Kafka call)
         verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture());
 
-        // Verify it was the tombstone message
         assertEquals(TREATMENT_TOPIC, topicCaptor.getValue());
         assertNull(messageCaptor.getValue());
 
-        // Verify the key contains the treatment UID
         String capturedKey = keyCaptor.getValue();
         assertTrue(capturedKey.contains(TREATMENT_UID.toString()),
                 "Key should contain treatment UID: " + TREATMENT_UID);

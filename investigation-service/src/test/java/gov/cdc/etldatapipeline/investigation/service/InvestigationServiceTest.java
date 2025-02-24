@@ -576,98 +576,44 @@ class InvestigationServiceTest {
         contactReporting.setDispositionedByUid(123L);
         return contactReporting;
     }
-
-  /*  @Test
-    void testProcessTreatmentMessage() throws JsonProcessingException {
-        Long treatmentUid = 234567890L;
-        String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"" + treatmentUid + "\"}}}";
-
-        final Treatment treatment = constructTreatment(treatmentUid);
-        when(treatmentRepository.computeTreatment(String.valueOf(treatmentUid))).thenReturn(Optional.of(treatment));
-        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
-
-        investigationService.processMessage(payload, treatmentTopic, consumer);
-
-        final TreatmentReportingKey treatmentReportingKey = new TreatmentReportingKey();
-        treatmentReportingKey.setTreatmentUid(String.valueOf(treatmentUid));
-
-        final TreatmentReporting treatmentReportingValue = constructTreatmentReporting(treatmentUid);
-
-        Awaitility.await()
-                .atMost(1, TimeUnit.SECONDS)
-                .untilAsserted(() ->
-                        verify(kafkaTemplate, times(1)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
-                );
-
-        String actualTopic = topicCaptor.getAllValues().getFirst();
-        String actualKey = keyCaptor.getAllValues().getFirst();
-        String actualValue = messageCaptor.getAllValues().getFirst();
-
-        var actualTreatmentKey = objectMapper.readValue(
-                objectMapper.readTree(actualKey).path("payload").toString(), TreatmentReportingKey.class);
-        var actualTreatmentValue = objectMapper.readValue(
-                objectMapper.readTree(actualValue).path("payload").toString(), TreatmentReporting.class);
-
-        assertEquals(treatmentTopicOutput, actualTopic);
-        assertEquals(treatmentReportingKey, actualTreatmentKey);
-        assertEquals(treatmentReportingValue, actualTreatmentValue);
-
-        verify(treatmentRepository).computeTreatment(String.valueOf(treatmentUid));
-
-
-    } */
-
     @Test
     void testProcessTreatmentMessage() throws JsonProcessingException {
         Long treatmentUid = 234567890L;
         String payload = "{\"payload\": {\"after\": {\"treatment_uid\": \"" + treatmentUid + "\"}}}";
 
-        // Create valid treatment
         final Treatment treatment = constructTreatment(treatmentUid);
 
-        // Set up mock repository
         when(treatmentRepository.computeTreatment(String.valueOf(treatmentUid))).thenReturn(Optional.of(treatment));
 
-        // Create a CompletableFuture that we can manually complete
         CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
 
-        // Mock Kafka operations
         when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
         when(kafkaTemplate.send(anyString(), anyString(), isNull())).thenReturn(future);
 
-        // Process the message
         investigationService.processMessage(payload, treatmentTopic, consumer);
 
-        // Complete the future to trigger async operations
         future.complete(null);
 
-        // Use Awaitility to wait for async operations
         Awaitility.await()
                 .atMost(1, TimeUnit.SECONDS)
                 .untilAsserted(() ->
                         verify(kafkaTemplate, times(2)).send(topicCaptor.capture(), keyCaptor.capture(), messageCaptor.capture())
                 );
 
-        // Verify repository was called with correct ID
         verify(treatmentRepository).computeTreatment(String.valueOf(treatmentUid));
 
-        // Verify tombstone message (first message)
         assertEquals(treatmentTopicOutput, topicCaptor.getAllValues().get(0));
         assertNull(messageCaptor.getAllValues().get(0));
 
-        // Verify treatment data message (second message)
         assertEquals(treatmentTopicOutput, topicCaptor.getAllValues().get(1));
 
-        // Extract and verify the message content
         String treatmentJson = messageCaptor.getAllValues().get(1);
         TreatmentReporting actualTreatment = objectMapper.readValue(
                 objectMapper.readTree(treatmentJson).path("payload").toString(),
                 TreatmentReporting.class);
 
-        // Create expected treatment reporting object
         TreatmentReporting expectedTreatment = constructTreatmentReporting(treatmentUid);
 
-        // Compare actual to expected
         assertEquals(expectedTreatment, actualTreatment);
     }
 
