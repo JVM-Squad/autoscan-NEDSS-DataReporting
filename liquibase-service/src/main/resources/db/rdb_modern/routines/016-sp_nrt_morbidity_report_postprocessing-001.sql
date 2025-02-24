@@ -99,6 +99,63 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        BEGIN TRANSACTION;
+                        SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+                        SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_txt ';
+
+        with cte as (
+            select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
+            from (
+                     select *
+                     from dbo.nrt_observation_txt
+                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+                 ) obstxt
+                     left outer join dbo.nrt_observation obs
+                                     on obs.observation_uid = obstxt.observation_uid
+            where obs.batch_id >= obstxt.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_txt
+        from cte where rn=1;
+
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION;
+                                SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+                                SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_coded';
+
+        with cte as (
+            select obscoded.*, row_number() over(partition by obscoded.observation_uid, obscoded.ovc_code order by obscoded.batch_id desc) rn
+            from (
+                     select *
+                     from dbo.nrt_observation_coded
+                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+                 ) obscoded
+                     left outer join dbo.nrt_observation obs
+                                     on obs.observation_uid = obscoded.observation_uid
+            where obs.batch_id >= obscoded.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_coded
+        from cte where rn=1;
+
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
 
         BEGIN TRANSACTION;
 
@@ -276,7 +333,7 @@ BEGIN
                   ob.ovc_code AS [code]
         INTO #tmp_MorbFrmQCoded
         FROM #tmp_MorbFrmQ					AS oq
-                 INNER JOIN dbo.nrt_observation_coded AS ob
+                 INNER JOIN #tmp_nrt_observation_coded AS ob
                             ON oq.observation_uid = ob.observation_uid;
 
         if @pDebug = 'true' SELECT 'DEBUG: tmp_MorbFrmQCoded', * FROM #tmp_MorbFrmQCoded;
@@ -324,7 +381,7 @@ BEGIN
                   REPLACE(REPLACE(ob.ovt_value_txt, CHAR(13), ' '), CHAR(10), ' ')	as VALUE_TXT
         INTO #tmp_MorbFrmQTxt
         FROM #tmp_MorbFrmQ					AS oq
-                 INNER JOIN  dbo.nrt_observation_txt AS ob ON oq.observation_uid = ob.observation_uid;
+                 INNER JOIN #tmp_nrt_observation_txt AS ob ON oq.observation_uid = ob.observation_uid;
 
 
         SELECT @RowCount_no = @@ROWCOUNT;
@@ -704,7 +761,7 @@ BEGIN
         FROM '+@tmp_Morbidity_Report+'	as root
             INNER JOIN #morb_obs_reference AS obs ON root.morb_rpt_uid = obs.observation_uid
             INNER JOIN #updated_morb_observation_list AS ls ON ls.observation_uid = obs.observation_uid
-            INNER JOIN dbo.nrt_observation_txt AS ovt ON ovt.observation_uid = obs.observation_uid
+            INNER JOIN #tmp_nrt_observation_txt AS ovt ON ovt.observation_uid = obs.observation_uid
         WHERE
           ovt.ovt_value_txt IS NOT NULL
           AND obs.obs_domain_cd_st_1 IN (''C_Order'', ''C_Result'');';

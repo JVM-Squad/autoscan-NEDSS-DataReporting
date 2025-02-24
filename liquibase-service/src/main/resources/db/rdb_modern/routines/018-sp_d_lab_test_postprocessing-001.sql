@@ -180,6 +180,11 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        BEGIN TRANSACTION;
+        SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_txt ';
 
         with cte as (
             select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
@@ -196,6 +201,20 @@ BEGIN
         into #tmp_nrt_observation_txt
         from cte where rn=1;
 
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION;
+        SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+        SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_reasons ';
+
         with cte as (
             select obsres.*, row_number() over(partition by obsres.observation_uid, obsres.reason_cd order by obsres.batch_id desc) rn
             from (
@@ -211,6 +230,13 @@ BEGIN
         into #tmp_nrt_observation_reasons
         from cte where rn=1;
 
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
 
         BEGIN
             TRANSACTION;

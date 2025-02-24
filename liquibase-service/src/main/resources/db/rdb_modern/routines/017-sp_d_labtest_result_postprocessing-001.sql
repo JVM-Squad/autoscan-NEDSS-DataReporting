@@ -102,6 +102,63 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        BEGIN TRANSACTION;
+                SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+                SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_txt ';
+
+        with cte as (
+            select obstxt.*, row_number() over(partition by obstxt.observation_uid, obstxt.ovt_seq order by obstxt.batch_id desc) rn
+            from (
+                     select *
+                     from dbo.nrt_observation_txt
+                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+                 ) obstxt
+                     left outer join dbo.nrt_observation obs
+                     on obs.observation_uid = obstxt.observation_uid
+            where obs.batch_id >= obstxt.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_txt
+        from cte where rn=1;
+
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
+
+        BEGIN TRANSACTION;
+                        SET
+        @PROC_STEP_NO = @PROC_STEP_NO + 1;
+                        SET
+        @PROC_STEP_NAME = ' GENERATING #tmp_nrt_observation_coded';
+
+        with cte as (
+            select obscoded.*, row_number() over(partition by obscoded.observation_uid, obscoded.ovc_code order by obscoded.batch_id desc) rn
+            from (
+                     select *
+                     from dbo.nrt_observation_coded
+                     where observation_uid in (select value from STRING_SPLIT(@obs_ids, ',') )
+                 ) obscoded
+                     left outer join dbo.nrt_observation obs
+                     on obs.observation_uid = obscoded.observation_uid
+            where obs.batch_id >= obscoded.batch_id
+        )
+        select *
+        into #tmp_nrt_observation_coded
+        from cte where rn=1;
+
+        SELECT @RowCount_no = @@ROWCOUNT;
+
+        INSERT INTO [dbo].[job_flow_log]
+        (batch_id, [Dataflow_Name], [package_Name], [Status_Type], [step_number], [step_name], [row_count])
+        VALUES (@batch_id, 'D_LAB_TEST', 'D_LAB_TEST', 'START', @Proc_Step_no, @Proc_Step_Name, @RowCount_no);
+
+        COMMIT TRANSACTION;
 
         BEGIN TRANSACTION;
         SET @PROC_STEP_NO =  @PROC_STEP_NO + 1;
@@ -244,7 +301,7 @@ BEGIN
         INTO #TMP_Lab_Result_Comment
         FROM
             #TMP_Result_And_R_Result		AS lab104
-                INNER JOIN dbo.nrt_observation_txt AS ovt with (nolock) ON ovt.observation_uid =  lab104.lab_test_uid
+                INNER JOIN #tmp_nrt_observation_txt AS ovt ON ovt.observation_uid =  lab104.lab_test_uid
         WHERE 	ovt.ovt_value_txt IS NOT NULL
           AND ovt.ovt_txt_type_cd = 'N'
           AND ovt.ovt_seq <>  0;
@@ -552,7 +609,7 @@ BEGIN
             NULL, --Test_Result_Val_Key
             NULL --lab_result_txt_val1
         FROM #TMP_Result_And_R_Result		as rslt
-                 LEFT JOIN dbo.nrt_observation_txt	as otxt  with (nolock)	ON rslt.lab_test_uid = otxt.observation_uid
+                 LEFT JOIN #tmp_nrt_observation_txt	as otxt	ON rslt.lab_test_uid = otxt.observation_uid
             AND ((otxt.ovt_txt_type_cd IS NULL) OR (rslt.ELR_IND = 'Y' AND otxt.ovt_txt_type_cd <>  'N'))
             --AND otxt.OBS_VALUE_TXT_SEQ =1
             /*
@@ -560,7 +617,7 @@ BEGIN
             AND otxt.OBS_VALUE_TXT_SEQ =1
             */
                  LEFT JOIN dbo.nrt_observation_numeric	as onum  with (nolock)	ON rslt.lab_test_uid = onum.observation_uid
-                 LEFT JOIN dbo.nrt_observation_coded		as code	 with (nolock)	ON rslt.lab_test_uid = code.observation_uid
+                 LEFT JOIN #tmp_nrt_observation_coded	as code	 ON rslt.lab_test_uid = code.observation_uid
                  LEFT JOIN dbo.nrt_observation_date		as ndate  with (nolock)	ON rslt.lab_test_uid = ndate.observation_uid
 
         --LEFT JOIN (SELECT *, ROW_NUMBER() OVER (PARTITION BY observation_uid ORDER BY refresh_datetime DESC) AS cr
