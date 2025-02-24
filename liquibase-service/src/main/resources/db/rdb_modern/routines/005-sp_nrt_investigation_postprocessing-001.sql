@@ -186,7 +186,13 @@ BEGIN
                 SELECT nio.public_health_case_uid, nio.observation_id, nio.branch_id, nio.branch_type_cd
                 INTO #temp_inv_obs
                 FROM #temp_inv_table t
-                         LEFT JOIN dbo.nrt_investigation_observation nio on nio.public_health_case_uid = t.case_uid
+                LEFT JOIN (
+                    select invobs.*
+                    from dbo.nrt_investigation_observation invobs
+                    left outer join dbo.nrt_observation obs
+                    on obs.observation_uid = invobs.observation_uid
+                    where obs.batch_id = invobs.batch_id
+                ) nio on nio.public_health_case_uid = t.case_uid
                 WHERE nio.branch_type_cd = 'InvFrmQ';
 
                 IF @debug = 'true' SELECT '#temp_inv_obs', * FROM #temp_inv_table;
