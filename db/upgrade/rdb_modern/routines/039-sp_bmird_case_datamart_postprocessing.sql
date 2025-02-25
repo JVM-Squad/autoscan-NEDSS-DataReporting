@@ -331,8 +331,8 @@ BEGIN
 
             SELECT ANTIMICROBIAL_GRP_KEY
             INTO #OLD_AM_GRP_KEYS
-            FROM dbo.BMIRD_Case bmc
-            INNER JOIN dbo.INVESTIGATION inv ON inv.INVESTIGATION_KEY = bmc.INVESTIGATION_KEY
+            FROM dbo.BMIRD_Case bmc WITH (nolock)
+            INNER JOIN dbo.INVESTIGATION inv WITH (nolock) ON inv.INVESTIGATION_KEY = bmc.INVESTIGATION_KEY
             WHERE inv.CASE_UID IN (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
 
             if @debug = 'true'
@@ -362,8 +362,8 @@ BEGIN
                             COALESCE(ANTIMICROBIAL_GRP_KEY, 1) AS ANTIMICROBIAL_GRP_KEY
             INTO #TMP_AM_GRP
             FROM dbo.v_rdb_obs_mapping rom
-            LEFT JOIN dbo.INVESTIGATION inv on inv.CASE_UID=rom.public_health_case_uid
-            LEFT JOIN dbo.BMIRD_Case bmc ON bmc.INVESTIGATION_KEY = inv.INVESTIGATION_KEY
+            LEFT JOIN dbo.INVESTIGATION inv WITH (nolock) ON inv.CASE_UID=rom.public_health_case_uid
+            LEFT JOIN dbo.BMIRD_Case bmc WITH (nolock) ON bmc.INVESTIGATION_KEY = inv.INVESTIGATION_KEY
             WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) AND RDB_table=@am_tgt_table_nm;
 
             if @debug = 'true'
@@ -540,8 +540,8 @@ BEGIN
 
             SELECT BMIRD_MULTI_VAL_GRP_KEY
             INTO #OLD_MV_GRP_KEYS
-            FROM dbo.BMIRD_Case bmc
-            INNER JOIN dbo.INVESTIGATION inv ON inv.INVESTIGATION_KEY = bmc.INVESTIGATION_KEY
+            FROM dbo.BMIRD_Case bmc WITH (nolock)
+            INNER JOIN dbo.INVESTIGATION inv WITH (nolock) ON inv.INVESTIGATION_KEY = bmc.INVESTIGATION_KEY
             WHERE inv.CASE_UID IN (SELECT value FROM STRING_SPLIT(@phc_uids, ','))
 
             if @debug = 'true'
@@ -571,8 +571,8 @@ BEGIN
                             COALESCE(BMIRD_MULTI_VAL_GRP_KEY, 1) AS BMIRD_MULTI_VAL_GRP_KEY
             INTO #TMP_MV_GRP
             FROM dbo.v_rdb_obs_mapping rom
-            LEFT JOIN dbo.INVESTIGATION inv on inv.CASE_UID=rom.public_health_case_uid
-            LEFT JOIN dbo.BMIRD_Case bmc ON bmc.INVESTIGATION_KEY = inv.INVESTIGATION_KEY
+            LEFT JOIN dbo.INVESTIGATION inv WITH (nolock) ON inv.CASE_UID=rom.public_health_case_uid
+            LEFT JOIN dbo.BMIRD_Case bmc WITH (nolock) ON bmc.INVESTIGATION_KEY = inv.INVESTIGATION_KEY
             WHERE public_health_case_uid in (SELECT value FROM STRING_SPLIT(@phc_uids, ',')) AND RDB_table=@multival_tgt_table_nm;
 
             if @debug = 'true'
@@ -749,10 +749,11 @@ BEGIN
                 PHYSICIAN_KEY,
                 PATIENT_KEY,
                 REPORTER_KEY,
-                1 AS NURSING_HOME_KEY,
-                1 AS DAYCARE_FACILITY_KEY,
+                map.chronic_care_fac_uid AS NURSING_HOME_KEY,
+                map.daycare_fac_uid AS DAYCARE_FACILITY_KEY,
                 INV_ASSIGNED_DT_KEY,
                 1 AS TREATMENT_HOSPITAL_KEY,
+                map.diagnosis_time AS FIRST_POSITIVE_CULTURE_DT,
                 COALESCE(mvg.BMIRD_MULTI_VAL_GRP_KEY, 1) AS BMIRD_MULTI_VAL_GRP_KEY,
                 COALESCE(amg.ANTIMICROBIAL_GRP_KEY, 1) AS ANTIMICROBIAL_GRP_KEY,
                 INVESTIGATION_KEY,
